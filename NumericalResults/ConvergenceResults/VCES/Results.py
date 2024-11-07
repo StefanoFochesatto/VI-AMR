@@ -11,12 +11,11 @@ from netgen.geom2d import SplineGeometry
 
 import matplotlib.pyplot as plt
 import numpy as np
-import copy
-import time
+
 
 import pandas as pd
 import subprocess
-import os
+
 
 RunExperiment = 0
 
