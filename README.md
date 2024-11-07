@@ -47,7 +47,7 @@ pip install -r requirements.txt
 Recreating the convergence results for VCES can be done by navigating to _NumericalResults/ConvergenceResults/VCES_ and running
 
 ```
-(firedrake) python3 ResultsPlots.py
+(firedrake) python3 Results.py
 ```
 
 Results for UDO can be recreated analogously. Parameters like number of iterations, thresholding, and neighborhood depth can be set for each experiment using global variables in the corresponding `RunSolution.py` script located in the same directory.
@@ -60,4 +60,12 @@ To recreate the inactive set load balancing example navigate to _NumericalResult
 (firedrake) python3 GenerateSphereMesh.py --iter 5 --trih 0.45 --thresh 0.2 0.8 --proc 5
 ```
 
-Here the experiment parameters can be adjusted using kwargs.
+For this script, the experiment parameters like VCES iterations, initial mesh triangle height, thresholding parameters and number of processes can be adjusted using kwargs.
+
+##### Parameter Exploration
+
+To recreate the parameter exploration results navigate to _NumericalResults/ParameterExploration/VCES_ and run the following command
+
+```
+(firedrake) python3 Results.py
+```
