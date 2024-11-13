@@ -1,14 +1,3 @@
-from firedrake import *
-try:
-    import netgen
-except ImportError:
-    import sys
-    warning("Unable to import NetGen.")
-    sys.exit(0)
-
-from firedrake.petsc import PETSc
-from netgen.geom2d import SplineGeometry
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -17,7 +6,7 @@ import pandas as pd
 import subprocess
 
 
-RunExperiment = 0
+RunExperiment = 1
 
 
 def run_command(refinement_value):
@@ -71,11 +60,17 @@ if __name__ == "__main__":
 
     axis_label_fontsize = 16
 
-   # Number of elements vs L2 error
+    # loglog Number of elements vs l2 with convergence rate
+    ConvUnif = np.polyfit(np.log(elementsUnif), np.log(l2Unif), 1)
+    ConvAMR = np.polyfit(np.log(elementsAMR), np.log(l2AMR), 1)
+    ConvHybrid = np.polyfit(np.log(elementsHybrid), np.log(l2Hybrid), 1)
     plt.figure(figsize=(10, 6))
-    plt.loglog(elementsUnif, l2Unif, label='Uniform Refinement', marker='o')
-    plt.loglog(elementsAMR, l2AMR, label='Adaptive Refinement', marker='s')
-    plt.loglog(elementsHybrid, l2Hybrid, label='Hybrid Refinement', marker='x')
+    plt.loglog(elementsUnif, l2Unif,
+               label=f'Uniform Convergence Rate: {ConvUnif[0]:.2f}', marker='o')
+    plt.loglog(elementsAMR, l2AMR,
+               label=f'Adaptive Convergence Rate: {ConvAMR[0]:.2f}', marker='s')
+    plt.loglog(elementsHybrid, l2Hybrid,
+               label=f'Hybrid Convergence Rate: {ConvHybrid[0]:.2f}', marker='x')
     plt.xlabel('Number of Elements', fontsize=axis_label_fontsize)
     plt.ylabel('L2 Error', fontsize=axis_label_fontsize)
     plt.title('Convergence Plot UDO - Uniform vs Adaptive vs Hybrid Refinement')
@@ -98,6 +93,25 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.show()
 
+    # loglog Number of elements vs Hausdorff distance
+    ConvUnif = np.polyfit(np.log(elementsUnif), np.log(hausdorffUnif), 1)
+    ConvAMR = np.polyfit(np.log(elementsAMR), np.log(hausdorffAMR), 1)
+    ConvHybrid = np.polyfit(np.log(elementsHybrid), np.log(hausdorffHybrid), 1)
+
+    plt.figure(figsize=(10, 6))
+    plt.loglog(elementsUnif, hausdorffUnif,
+               label=f'Uniform Convergence Rate: {ConvUnif[0]:.2f}', marker='o')
+    plt.loglog(elementsAMR, hausdorffAMR,
+               label=f'Adaptive Convergence Rate: {ConvAMR[0]:.2f}', marker='s')
+    plt.loglog(elementsHybrid, hausdorffHybrid,
+               label=f'Hybrid Convergence Rate: {ConvHybrid[0]:.2f}', marker='x')
+    plt.xlabel('Number of Elements', fontsize=axis_label_fontsize)
+    plt.ylabel('Hausdorff Distance', fontsize=axis_label_fontsize)
+    plt.title('Convergence Plot UDO - Uniform vs Adaptive vs Hybrid Refinement')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
     # Number of elements vs IoU
     plt.figure(figsize=(10, 6))
     plt.semilogx(elementsUnif, iouUnif, label='Uniform Refinement', marker='o')
@@ -111,77 +125,19 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.show()
 
-    # refinement vs log dof
+    # loglog Number of elements vs 1 - IoU
+    ConvUnif = np.polyfit(np.log(elementsUnif), np.log(1 - iouUnif), 1)
+    ConvAMR = np.polyfit(np.log(elementsAMR), np.log(1 - iouAMR), 1)
+    ConvHybrid = np.polyfit(np.log(elementsHybrid), np.log(1 - iouHybrid), 1)
     plt.figure(figsize=(10, 6))
-    plt.semilogy(Refinements, dofUnif, label='Uniform Refinement', marker='o')
-    plt.semilogy(Refinements, dofAMR, label='Adaptive Refinement', marker='s')
-    plt.semilogy(Refinements, dofHybrid, label='Hybrid Refinement', marker='x')
-    plt.xlabel('Refinement Level', fontsize=axis_label_fontsize)
-    plt.ylabel('Log DOF', fontsize=axis_label_fontsize)
-    plt.title('Convergence Plot UDO - Uniform vs Adaptive vs Hybrid Refinement')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-    # Refinement level vs log l2 error
-    plt.figure(figsize=(10, 6))
-    plt.semilogy(Refinements, l2Unif, label='Uniform Refinement', marker='o')
-    plt.semilogy(Refinements, l2AMR, label='Adaptive Refinement', marker='s')
-    plt.semilogy(Refinements, l2Hybrid, label='Hybrid Refinement', marker='x')
-    plt.xlabel('Refinement Level', fontsize=axis_label_fontsize)
-    plt.ylabel('L2 Error', fontsize=axis_label_fontsize)
-    plt.title('Convergence Plot UDO - Uniform vs Adaptive vs Hybrid Refinement')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-    # Refinement level vs IoU
-    plt.figure(figsize=(10, 6))
-    plt.semilogy(Refinements, iouUnif, label='Uniform Refinement', marker='o')
-    plt.semilogy(Refinements, iouAMR, label='Adaptive Refinement', marker='s')
-    plt.semilogy(Refinements, iouHybrid, label='Hybrid Refinement', marker='x')
-    plt.xlabel('Refinement Level', fontsize=axis_label_fontsize)
-    plt.ylabel('Jaccard index', fontsize=axis_label_fontsize)
-    plt.title('Convergence Plot UDO - Uniform vs Adaptive vs Hybrid Refinement')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-    # Refinement level vs Hausdorff distance
-    plt.figure(figsize=(10, 6))
-    plt.semilogy(Refinements, hausdorffUnif,
-                 label='Uniform Refinement', marker='o')
-    plt.semilogy(Refinements, hausdorffAMR,
-                 label='Adaptive Refinement', marker='s')
-    plt.semilogy(Refinements, hausdorffHybrid,
-                 label='Hybrid Refinement', marker='x')
-    plt.xlabel('Refinement Level', fontsize=axis_label_fontsize)
-    plt.ylabel('Hausdorff Distance', fontsize=axis_label_fontsize)
-    plt.title('Convergence Plot UDO - Uniform vs Adaptive vs Hybrid Refinement')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-    # Area Metric vs Dof
-    plt.figure(figsize=(10, 6))
-    plt.loglog(dofUnif, iouUnif, label='Uniform Refinement', marker='o')
-    plt.loglog(dofAMR, iouAMR, label='Adaptive Refinement', marker='s')
-    plt.loglog(dofHybrid, iouHybrid, label='Hybrid Refinement', marker='x')
-    plt.xlabel('Degrees of Freedom', fontsize=axis_label_fontsize)
-    plt.ylabel('IoU', fontsize=axis_label_fontsize)
-    plt.title('Convergence Plot UDO - Uniform vs Adaptive vs Hybrid Refinement')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-    # Hausdorff vs Dof
-    plt.figure(figsize=(10, 6))
-    plt.loglog(dofUnif, hausdorffUnif, label='Uniform Refinement', marker='o')
-    plt.loglog(dofAMR, hausdorffAMR, label='Adaptive Refinement', marker='s')
-    plt.loglog(dofHybrid, hausdorffHybrid,
-               label='Hybrid Refinement', marker='x')
-    plt.xlabel('Degrees of Freedom', fontsize=axis_label_fontsize)
-    plt.ylabel('Hausdorff Distance', fontsize=axis_label_fontsize)
+    plt.loglog(elementsUnif, 1 - iouUnif,
+               label=f'Uniform Convergence Rate: {ConvUnif[0]:.2f}', marker='o')
+    plt.loglog(elementsAMR, 1 - iouAMR,
+               label=f'Adaptive Convergence Rate: {ConvAMR[0]:.2f}', marker='s')
+    plt.loglog(elementsHybrid, 1 - iouHybrid,
+               label=f'Hybrid Convergence Rate: {ConvHybrid[0]:.2f}', marker='x')
+    plt.xlabel('Number of Elements', fontsize=axis_label_fontsize)
+    plt.ylabel('1 - Jaccard index', fontsize=axis_label_fontsize)
     plt.title('Convergence Plot UDO - Uniform vs Adaptive vs Hybrid Refinement')
     plt.legend()
     plt.grid(True)
