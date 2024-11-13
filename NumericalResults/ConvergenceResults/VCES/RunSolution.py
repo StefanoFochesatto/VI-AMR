@@ -189,16 +189,16 @@ def Mark(msh, u, lb, iter, Refinement, bracket=[.2, .8]):
     if debug:
         if Refinement == 'AMR':
             towrite = (u, NodalDifference, u0, u1, u1DG0, mark)
-            File('Debug/AMRMarkingFunction:%s.pvd' % iter).write(*towrite)
+            File('debug/AMRMarkingFunction:%s.pvd' % iter).write(*towrite)
         elif Refinement == 'Unif':
-            File('Debug/UNIFMarkingFunction:%s.pvd' % iter).write(mark)
+            File('debug/UNIFMarkingFunction:%s.pvd' % iter).write(mark)
         else:
             if bracket == [0, 1]:
-                File('Debug/HybridMarkingFunction:%s(Unif).pvd' %
+                File('debug/HybridMarkingFunction:%s(Unif).pvd' %
                      iter).write(mark)
             else:
                 towrite = (u, NodalDifference, u0, u1, u1DG0, mark)
-                File('Debug/HybridMarkingFunction:%s(AMR).pvd' %
+                File('debug/HybridMarkingFunction:%s(AMR).pvd' %
                      iter).write(*towrite)
 
     return mark
