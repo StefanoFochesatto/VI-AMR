@@ -6,7 +6,7 @@ This repository contains the code supporting the research presented in my thesis
 
 ### Main Methods
 
-- **UDO and VCES**: These directories contain the primary examples for the proposed methods outlined in the thesis. They serve as the core implementation of the Unstructured Dilation Operator (UDO) and Variational Complex Elasticity Solver (VCES).
+- **UDO and VCES**: These directories contain the primary examples for the proposed methods outlined in the thesis. They serve as the core implementation of the Unstructured Dilation Operator (UDO) and Varable Coefficient Elliptic Smoothing (VCES).
 
 ### Numerical Results
 
