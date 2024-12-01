@@ -20,14 +20,21 @@ An existing firedrake install can be updated to include netgen/ngsolve integrati
 ```
 from  running the firedrake-update script in `firedrake/bin/`.  Make sure the firedrake virtual environment is active before doing so.
 
-Certain tests have additiona dependencies.  These can be installed using
+FIXME I THINK VERSIONS IN requirements.txt UNDESIRABLE, AND mpi4py SHOULD BE REMOVED  Certain tests have additional dependencies.  These can be installed using
 ```
 pip install -r requirements.txt
 ```
 
+## Installation
+
+Install editable with pip:
+```
+pip install -e .
+```
+
 ## Usage
 
-A first example compares 3 levels of refinement with UDO and VCES, using default parameters, on an obstacle problem with known exact solution.  In `src/` do
+A first example compares 3 levels of refinement with UDO and VCES, using default parameters, on an obstacle problem with known exact solution.  In `examples/` do
 ```
 python3 sphere.py
 ```
