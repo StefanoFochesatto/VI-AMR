@@ -44,13 +44,13 @@ pip install .
 
 ## Usage
 
-A first example compares 3 levels of refinement with UDO and VCES, using default parameters, on an obstacle problem with known exact solution.  In `examples/` do
+A first example compares 3 levels of refinement with UDO and VCES, using default parameters, on two obstacle problems.  The sphere problem has a known exact solution while the spiral problem does not.  In `examples/` do
 ```
-python3 sphere.py
+python3 spherespiral.py
 ```
-Then view the fields in `result_udo.pvd` and `result_vces.pvd` using [Paraview]().  For this example these files contain the obstacle `psi`, the solution `u`, and the numerical error `|u - uexact|`.
+Then view the fields in `result_PROBLEM_METHOD.pvd` using [Paraview](FIXME LINK).  These files contain the obstacle `psi`, the solution `u`, and the gap `u - psi`.  The `_sphere` files also contain the numerical error `|u - uexact|`.
 
-Clean up the results files with
+Clean up all `results...` files and subdirectories with
 ```
 make clean
 ```
