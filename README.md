@@ -1,44 +1,40 @@
-# VI AMR
+# VI-AMR
 
-This repository contains the code supporting the research presented in my thesis. It serves as the primary working space for managing and maintaining all scripts and modules used throughout the research process.
+This repository contains algorithms for adaptive mesh refinement with a goal of targeting refinement to the free boundary.  These codes support the research presented in my thesis.
 
-## Structure
+There are two methods, called Unstructured Dilation Operator (UDO) and Varable Coefficient Elliptic Smoothing (VCES).  These are methods of the class `VIAMR` which is implemented in `src/viamr.py`.
 
-### Main Methods
+## Dependencies
 
-- **UDO and VCES**: These directories contain the primary examples for the proposed methods outlined in the thesis. They serve as the core implementation of the Unstructured Dilation Operator (UDO) and Varable Coefficient Elliptic Smoothing (VCES).
+To get started, install firedrake along with the netgen/ngsolve integration.  Follow the instructions at [Firedrake download page](https://www.firedrakeproject.org/firedrake/download.html).
 
-### Numerical Results
-
-- **Convergence Results**: Contains scripts for generating the various convergence results regarding these AMR methods found near the end of the thesis
-- **Load Balancing Examples**: Includes the final result regarding the inactive set balancing behavior these methods exhibit.
-- **Parameter Exploration**: Contains scripts used for exploring thresholding and neighborhood depth parameters for both VCES and UDO respectively.
-
-### Additional Scripts
-
-- **Firedrake Examples and VI Convergence Experiment**: These folders encompass the remaining scripts utilized in the thesis. They include supplementary experiments and examples developed during the research, including those related to the Firedrake platform and VI convergence studies.
-
-## Usage
-
-To get started, install firedrake along with the netgen/ngsolve integration instructions for which can be found in the [Firedrake download page](https://www.firedrakeproject.org/firedrake/download.html).
-
-On an new firedrake install, the netgen/ngsolve integration is installed by running the firedrake-install script with the '--netgen' flag.
+On an new firedrake install, netgen/ngsolve integration is added by running the firedrake-install script with the `--netgen` flag.
 
 ```
 python3 firedrake-install --netgen
 ```
 
-Alternatively, a firedrake install can be updated to include the netgen/ngsolve integration by running the firedrake-update script in _firedrake/bin/firedrake-update_. Make sure the firedrake virtual environment is active before doing so.
-
+An existing firedrake install can be updated to include netgen/ngsolve integration by
 ```
 (firedrake) python3 firedrake-update --netgen
 ```
+from  running the firedrake-update script in `firedrake/bin/`.  Make sure the firedrake virtual environment is active before doing so.
 
-The rest of the dependencies can be installed using
-
+Certain tests have additiona dependencies.  These can be installed using
 ```
 pip install -r requirements.txt
 ```
+
+## Usage
+
+A first example compares 3 levels of refinement with UDO and VCES, using default parameters, on an obstacle problem with known exact solution.  In `src/` do
+```
+python3 sphere.py
+```
+Then view the fields `u_udo` and `u_vces` in `result.pvd` using [Paraview](), along with their associated errors.
+
+
+FIXME from here
 
 #### Numerical Results
 
