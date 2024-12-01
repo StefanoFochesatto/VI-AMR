@@ -31,8 +31,12 @@ A first example compares 3 levels of refinement with UDO and VCES, using default
 ```
 python3 sphere.py
 ```
-Then view the fields `u_udo` and `u_vces` in `result.pvd` using [Paraview](), along with their associated errors.
+Then view the fields in `result_udo.pvd` and `result_vces.pvd` using [Paraview]().  For this example these files contain the obstacle `psi`, the solution `u`, and the numerical error `|u - uexact|`.
 
+Clean up the results files with
+```
+make clean
+```
 
 FIXME from here
 
