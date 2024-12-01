@@ -2,7 +2,7 @@
 
 This repository contains algorithms for adaptive mesh refinement with a goal of targeting refinement to the free boundary.  These codes support the research presented in my thesis.
 
-There are two methods, called Unstructured Dilation Operator (UDO) and Varable Coefficient Elliptic Smoothing (VCES).  These are methods of the class `VIAMR` which is implemented in `src/viamr.py`.
+There are two methods, called Unstructured Dilation Operator (UDO) and Varable Coefficient Elliptic Smoothing (VCES).  These are element marking methods of the class `VIAMR`, which is implemented in `viamr/viamr.py`.
 
 ## Dependencies
 
@@ -20,16 +20,26 @@ An existing firedrake install can be updated to include netgen/ngsolve integrati
 ```
 from  running the firedrake-update script in `firedrake/bin/`.  Make sure the firedrake virtual environment is active before doing so.
 
-FIXME I THINK VERSIONS IN requirements.txt UNDESIRABLE, AND mpi4py SHOULD BE REMOVED  Certain tests have additional dependencies.  These can be installed using
+FIXME I THINK VERSIONS IN requirements.txt ARE UNDESIRABLE, AND mpi4py SHOULD BE REMOVED
+Certain tests have additional dependencies.  These can be installed using
 ```
 pip install -r requirements.txt
 ```
 
 ## Installation
 
+### development
+
 Install editable with pip:
 ```
 pip install -e .
+```
+
+### production
+
+Install with pip:
+```
+pip install .
 ```
 
 ## Usage
@@ -43,6 +53,13 @@ Then view the fields in `result_udo.pvd` and `result_vces.pvd` using [Paraview](
 Clean up the results files with
 ```
 make clean
+```
+
+## Testing
+
+Software tests use [pytest](FIXME LINK).  In the main directory `VI-AMR/` do
+```
+pytest .
 ```
 
 FIXME from here
