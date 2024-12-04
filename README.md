@@ -1,30 +1,26 @@
 # VI-AMR
 
-This repository contains algorithms for adaptive mesh refinement with a goal of targeting refinement to the free boundary. These codes support the research presented in my thesis.
+This repository contains algorithms for adaptive mesh refinement with a goal of targeting refinement to the free boundary.
 
-There are two methods, called Unstructured Dilation Operator (UDO) and Varable Coefficient Elliptic Smoothing (VCES). These are element marking methods of the class `VIAMR`, which is implemented in `viamr/viamr.py`.
+There are two element marking methods, Unstructured Dilation Operator (UDO) and Varable Coefficient Elliptic Smoothing (VCES). These are methods of the class `VIAMR`, which is implemented in `viamr/viamr.py`.
+
+These codes support S. Fochesatto (2024). _Adaptive mesh refinement for variational inequalities_, Master of Science project, UAF, and a paper in progress.
 
 ## Dependencies
 
-To get started, install firedrake along with the netgen/ngsolve integration. Follow the instructions at [Firedrake download page](https://www.firedrakeproject.org/firedrake/download.html).
-
-On an new firedrake install, netgen/ngsolve integration is added by running the firedrake-install script with the `--netgen` flag.
-
+To get started, install firedrake with the [netgen/ngsolve](https://ngsolve.org/) integration.  To do this install, follow the instructions at [Firedrake download page](https://www.firedrakeproject.org/firedrake/download.html).  Run the `firedrake-install` script with the `--netgen` flag:
 ```
 python3 firedrake-install --netgen
 ```
 
-An existing firedrake install can be updated to include netgen/ngsolve integration by
-
+For an existing firedrake install, make sure that the firedrake virtual environment is active, and then use the `firedrake-update` script from `firedrake/bin/` to add netgen/ngsolve integration:
 ```
-(firedrake) python3 firedrake-update --netgen
+python3 firedrake-update --netgen
 ```
 
-from running the firedrake-update script in `firedrake/bin/`. Make sure the firedrake virtual environment is active before doing so.
+## Installation of VI-AMR
 
-## Installation
-
-### development
+### development install
 
 Install editable with pip:
 
@@ -32,7 +28,7 @@ Install editable with pip:
 pip install -e .
 ```
 
-### production
+### production install
 
 Install with pip:
 
@@ -42,16 +38,13 @@ pip install .
 
 ## Usage
 
-A first example compares 3 levels of refinement with UDO and VCES, using default parameters, on two obstacle problems. The sphere problem has a known exact solution while the spiral problem does not. In `examples/` do
-
+A first example compares 3 levels of refinement with UDO and VCES, using default parameters, on two obstacle problems. The sphere problem has a known exact solution while the spiral problem does not. First make sure that the firedrake virtual environment is active.  In `examples/` do
 ```
 python3 spherespiral.py
 ```
+View the output fields in `result_PROBLEM_METHOD.pvd` using [Paraview](https://www.paraview.org/). These files contain the obstacle `psi`, the solution `u`, and the gap `u - psi`. The `_sphere` files also contain the numerical error `|u - uexact|`.
 
-Then view the fields in `result_PROBLEM_METHOD.pvd` using [Paraview](FIXME LINK). These files contain the obstacle `psi`, the solution `u`, and the gap `u - psi`. The `_sphere` files also contain the numerical error `|u - uexact|`.
-
-Clean up all `results...` files and subdirectories with
-
+Clean up all `results*` files and subdirectories with
 ```
 make clean
 ```
@@ -63,5 +56,3 @@ Software tests use [pytest](https://docs.pytest.org/en/stable/index.html). In th
 ```
 pytest .
 ```
-
-FIXME from here
