@@ -1,5 +1,6 @@
 # Import Firedrake and Netgen
 from firedrake import *
+from firedrake.output import VTKFile
 try:
     import netgen
 except ImportError:
@@ -84,7 +85,7 @@ def GetProblem(mesh, u, i):
         u = Function(V, name="u (FE soln)")
     else:
         V_dest = FunctionSpace(mesh, "CG", 1)
-        u = interpolate(u, V_dest)
+        u = Function(V_dest).interpolate(u)
 
     # Defining Reference Problem (Chapter 12 Bueler (2021))
 
@@ -96,14 +97,14 @@ def GetProblem(mesh, u, i):
     dpsi0 = - r0 / psi0
     psi_ufl = conditional(le(r, r0), sqrt(1.0 - r * r),
                           psi0 + dpsi0 * (r - r0))
-    lb = interpolate(psi_ufl, V)
+    lb = Function(V).interpolate(psi_ufl)
 
     # Defining the exact solution and Dirichlet Boundary
     afree = 0.697965148223374
     A = 0.680259411891719
     B = 0.471519893402112
     gbdry_ufl = conditional(le(r, afree), psi_ufl, - A * ln(r) + B)
-    gbdry = interpolate(gbdry_ufl, V)
+    gbdry = Function(V).interpolate(gbdry_ufl)
     uexact = gbdry.copy()
     bdry_ids = (1, 2, 3, 4)   # all four sides of boundary
     bcs = DirichletBC(V, gbdry, bdry_ids)
@@ -134,7 +135,7 @@ def GetSolver(F, u, lb, bcs, V):
         problem, solver_parameters=sp, options_prefix="")
 
     # No upper obstacle
-    ub = interpolate(Constant(PETSc.INFINITY), V)
+    ub = Function(V).interpolate(Constant(PETSc.INFINITY))
     solver.solve(bounds=(lb, ub))
 
     return (F, u, lb, bcs, sp, problem, solver, ub)
@@ -229,17 +230,17 @@ def MarkUDO(msh, u, lb, iter, Refinement, n):
         if Refinement == 'AMR':
             towrite = (u, NodalDifference, ElementActiveSetIndicator,
                        NodalActiveSetIndicator, BorderElements, mark)
-            File('debug/AMRMarkingFunction:%s.pvd' % iter).write(*towrite)
+            VTKFile('debug/AMRMarkingFunction:%s.pvd' % iter).write(*towrite)
         elif Refinement == 'Unif':
-            File('debug/UNIFMarkingFunction:%s.pvd' % iter).write(mark)
+            VTKFile('debug/UNIFMarkingFunction:%s.pvd' % iter).write(mark)
         else:
             if n == 0:
-                File('debug/HybridMarkingFunction:%s(Unif).pvd' %
+                VTKFile('debug/HybridMarkingFunction:%s(Unif).pvd' %
                      iter).write(mark)
             else:
                 towrite = (u, NodalDifference, ElementActiveSetIndicator,
                            NodalActiveSetIndicator, BorderElements, mark)
-                File('debug/HybridMarkingFunction:%s(AMR).pvd' %
+                VTKFile('debug/HybridMarkingFunction:%s(AMR).pvd' %
                      iter).write(*towrite)
 
     return mark
@@ -266,7 +267,7 @@ def GetComputedFreeBoundary(mesh, NodalActiveIndicator):
     # FreeboundaryIndicator.dat.data[ActiveVerticesIdx] = 1
     # towrite = (DiffCG, ActiveSet, ActiveSetCG,
     #           OuterElements, FreeboundaryIndicator)
-    # File('AreaMetric/Test: %s.pvd' % iter).write(*towrite)
+    # VTKFile('AreaMetric/Test: %s.pvd' % iter).write(*towrite)
 
     return ComputedFreeBoundary
 
@@ -382,7 +383,7 @@ def RunSolution(max_iterations):
         Hausdorff.append(HausdorffError)
 
         # Compute L2 Error
-        diffu = interpolate(u - uexact, V)
+        diffu = Function(V).interpolate(u - uexact)
         L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
         l2.append(L2Error)
 
