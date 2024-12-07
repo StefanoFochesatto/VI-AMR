@@ -1,0 +1,83 @@
+\documentclass[]{interact}
+
+\usepackage[caption=false]{subfig}% Support for small, `sub' figures and tables
+%\usepackage[nolists,tablesfirst]{endfloat}% To `separate' figures and tables from text if required
+%\usepackage[doublespacing]{setspace}% To produce a `double spaced' document if required
+%\setlength\parindent{24pt}% To increase paragraph indentation when line spacing is doubled
+%\setlength\bibindent{2em}% To increase hanging indent in bibliography when line spacing is doubled
+
+\usepackage[numbers,sort&compress]{natbib}% Citation support using natbib.sty
+\bibpunct[, ]{[}{]}{,}{n}{,}{,}% Citation support using natbib.sty
+\renewcommand\bibfont{\fontsize{10}{12}\selectfont}% Bibliography support using natbib.sty
+
+\theoremstyle{plain}% Theorem-like structures provided by amsthm.sty
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+\newtheorem{notation}{Notation}
+
+
+\begin{document}
+
+%\articletype{ARTICLE TEMPLATE}% Specify the article type or omit as appropriate
+
+\title{Free-boundary aware adaptive mesh refinement for variational inequalities}
+
+\author{
+\name{G.~Stefano Fochesatto\thanks{CONTACT G.~Stefano Fochesatto Email: gsfochesatto@alaska.edu} and Ed Bueler}
+\affil{Dept.~of Mathematics and Statistics, University of Alaska Fairbanks, USA}
+}
+
+\maketitle
+
+\begin{abstract}
+FIXME
+\end{abstract}
+
+%\begin{keywords}
+%FIXME
+%\end{keywords}
+
+
+\section{Introduction} \label{sec:intro}
+
+FIXME
+
+
+\subsection{FIXME} \label{sec:nextsec}
+
+
+
+\section*{Acknowledgements}
+
+FIXME
+
+
+%\section*{Notes on contributor(s)}
+%An unnumbered section, e.g.\ \verb"\section*{Notes on contributors}", may be included \emph{in the non-anonymous version} if required. A photograph may be added if requested.
+
+
+\section{References}
+
+%\subsection{References cited in the text}
+%References should be cited in the text by numbers in square brackets based on the order in which they appear in an alphabetical list of references at the end of the document (not the order of citation), so the first reference cited in the text might be [23]. For example, these may take the forms [32], [5,\,6,\,14], [21--55] (\emph{not} [21]--[55]). For further details on this reference style, see the Instructions for Authors on the Taylor \& Francis website.
+%Each bibliographic entry has a key, which is assigned by the author and is used to refer to that entry in the text. In this document, the key \verb"Ali95" in the citation form \verb"\cite{Ali95}" produces `\cite{Ali95}', and the keys \verb"Bow76" and \verb"BGP02" in the citation form \verb"\cite{Bow76,BGP02}" produce `\cite{Bow76,BGP02}'. The citation for a range of bibliographic entries (e.g. `\cite{GMW81,Hor96,Con96,Har97,FGK03,Fle80,Ste98,Ell98,Str97,Coo03,Kih01,Hol03,Hai01,Hag03,Hov03,Mul00,GHGsoft,Pow00}') will automatically be produced by \verb"\cite{GMW81,Hor96,Con96,Har97,FGK03,Fle80,Ste98,Ell98,Str97,Coo03,Kih01," \verb"Hol03,Hai01,Hag03,Hov03,Mul00,GHGsoft,Pow00}".
+%Optional notes may be included at the beginning and/or end of a citation by the use of square brackets, e.g. \verb"\cite[cf.][]{Tay03}" produces `\cite[cf.][]{Tay03}', and \verb"\cite[see][and references therein]{Wei95}" produces `\cite[see][and references therein]{Wei95}'.
+
+\bibliographystyle{tfs}
+\bibliography{viamr}
+
+
+%Any appendices should be placed after the list of references, beginning with the command \verb"\appendix" followed by the command \verb"\section" for each appendix title, e.g.
+%\appendix
+%\section{This is the title of the first appendix}
+
+\end{document}

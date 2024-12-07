@@ -1,0 +1,8 @@
+/viamr.pdf
+#/publish*
+/*.log
+/*.aux
+/*.blg
+/*.vrb
+/*.bbl
+/*.synctex.gz
