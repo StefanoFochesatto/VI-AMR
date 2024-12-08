@@ -12,6 +12,9 @@
 
 \usepackage{amsmath}
 
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+
 \theoremstyle{plain}% Theorem-like structures provided by amsthm.sty
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
@@ -70,7 +73,7 @@ The goal of this project is to introduce two techniques for adaptive mesh refine
 
 In the context of the finite element method (FEM), the discretization of a partial differential equation (PDE) is described by a partition of its domain into a finite number of elements (i.e a mesh) and a finite dimensional function space (i.e a finite element space). In a two dimensional domain, these elements are usually triangles or rectangles and the basis of the finite element space is composed of hat functions over vertices in the mesh, with support over neighboring elements. 
 
-The convergence of finite element solutions is most commonly achieved via approximating on increasingly refined meshes by the use of a finite basis of piecewise polynomials of low degree; this method of convergence is often referred to as $h$-refinement. We also see convergence achieved by approximating via increasingly higher degree basis of piecewise polynomials over a coarse mesh; this is referred to as $p$-refinement. Several schema have been explored that take advantage of both methods of convergence, so-called $hp$-refinement finite elements, further discussion of such methods can be found in \citet{demkowicz_computing_2007}.
+The convergence of finite element solutions is most commonly achieved via approximating on increasingly refined meshes by the use of a finite basis of piecewise polynomials of low degree; this method of convergence is often referred to as $h$-refinement. We also see convergence achieved by approximating via increasingly higher degree basis of piecewise polynomials over a coarse mesh; this is referred to as $p$-refinement. Several schema have been explored that take advantage of both methods of convergence, so-called $hp$-refinement finite elements, further discussion of such methods can be found in \cite{Demkowicz2007}.
 
 The classical obstacle problem consists of finding the equilibrium position of an elastic membrane with a fixed boundary after some force is applied, where the membrane is constrained to lie above some obstacle. Let $\Omega \subset \RR$ be a bounded domain. The problem is then formulated as a constrained minimization problem where we seek to find the position of the membrane $u(x)$, with fixed valued $u(x) = g_D(x)$ on $\partial \Omega$ with a load $f$ applied, and where $u(x)$ is constrained to be above an obstacle $\psi(x)$, 
 \begin{align}
@@ -106,22 +109,22 @@ The same problem can also be defined by its strong form formulation
   u - \psi \geq 0\\
   (-\nabla^2u - f)(u - \psi) = 0
 \end{align}
-Each of these formulations are instrumental in our understanding of the problem. The constrained energy minimization formulation can be helpful for understanding the physics of the problem. The class of problems described by the VI and CP formulations is a superset of the minimization formulation \citep[page 319]{bueler_petsc_2021}. As we will see, the CP formulation is also instrumental in the implementation of numerical solvers.
+Each of these formulations are instrumental in our understanding of the problem. The constrained energy minimization formulation can be helpful for understanding the physics of the problem. The class of problems described by the VI and CP formulations is a superset of the minimization formulation \citep[page 319]{Bueler2021}. As we will see, the CP formulation is also instrumental in the implementation of numerical solvers.
 
-In terms of numerics, the constraint of $u \geq \psi$ makes this problem nonlinear so we are required to use an iterative solver. In this project our main solver will be VI-adapted Newton with Reduced-Space Line Search (VINEWTONRSLS). In Chapter 3 we will show that numerical methods will not converge until the active and inactive sets stabilize and the free boundary is identified. For solvers like VINEWTONRSLS which employ a Newton iteration, we find that they can only adjust the approximated free boundary by one-cell per iteration \citep{graser_multigrid_2009} and therefore convergence is tied to mesh resolution and is proportional to the number of grid spaces between initial iterate free boundary and discrete solution free boundary \citep[page 324]{bueler_petsc_2021}. 
+In terms of numerics, the constraint of $u \geq \psi$ makes this problem nonlinear so we are required to use an iterative solver. In this project our main solver will be VI-adapted Newton with Reduced-Space Line Search (VINEWTONRSLS). In Chapter 3 we will show that numerical methods will not converge until the active and inactive sets stabilize and the free boundary is identified. For solvers like VINEWTONRSLS which employ a Newton iteration, we find that they can only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009} and therefore convergence is tied to mesh resolution and is proportional to the number of grid spaces between initial iterate free boundary and discrete solution free boundary \citep[page 324]{Bueler2021}. 
 
-Adaptation involves altering the discretization to achieve a more desirable solution, whether that be with the goal of reducing $L_2$ error or reducing the error in some post-computation quantity like drag or lift. For example, consider the flow of some incompressable fluid through a pipe with an obstructive obstacle. Computing its drag coefficient would be an example of such a desired quantity \citep[Chapter 1.1]{bangerth_adaptive_2003}.
+Adaptation involves altering the discretization to achieve a more desirable solution, whether that be with the goal of reducing $L_2$ error or reducing the error in some post-computation quantity like drag or lift. For example, consider the flow of some incompressable fluid through a pipe with an obstructive obstacle. Computing its drag coefficient would be an example of such a desired quantity \citep[Chapter 1.1]{BangerthRannacher2003}.
 
-Further -adaptive methods have also been explored. These methods are designed to increase mesh resolution or polynomial degree locally by means of a local error estimator, for some goal term often referred to as the Quantity of Interest (QoI), and is also usually denoted as $J(\cdot)$. The most common of these employ the Dual Weighted Residual (DWR) method, derived in \citet{becker_feed-back_1996}. The DWR method, like most adaptive refinement techniques begins with a rigorous, a posteriori or a priori analysis of the quantity $J(u) - J(u_n)$. Estimation of this error quantity is then decomposed into local element-wise error estimators which can be used as a heuristic to tag elements for refinement. Finally a refinement strategy is employed to refine the mesh. Choices of whether to refine elements or increase the degree of polynomial basis functions, and by how much, must be made. 
+Further -adaptive methods have also been explored. These methods are designed to increase mesh resolution or polynomial degree locally by means of a local error estimator, for some goal term often referred to as the Quantity of Interest (QoI), and is also usually denoted as $J(\cdot)$. The most common of these employ the Dual Weighted Residual (DWR) method, derived in \cite{RannacherSuttmeier1997}. The DWR method, like most adaptive refinement techniques begins with a rigorous, a posteriori or a priori analysis of the quantity $J(u) - J(u_n)$. Estimation of this error quantity is then decomposed into local element-wise error estimators which can be used as a heuristic to tag elements for refinement. Finally a refinement strategy is employed to refine the mesh. Choices of whether to refine elements or increase the degree of polynomial basis functions, and by how much, must be made. 
 
-The techniques outlined above are referred to as tagging methods, in which the error indicators are used to 'tag' elements for refinement. However, there are 'metric-based' methods which control the size, shape and orientation of the elements instead \citep{alauzet_metric-based_2010}.  For this project we will primarily focus on $h$-adaptive tagging methods.
+The techniques outlined above are referred to as tagging methods, in which the error indicators are used to 'tag' elements for refinement. However, there are 'metric-based' methods which control the size, shape and orientation of the elements instead \citep{Alauzet2010}.  For this project we will primarily focus on $h$-adaptive tagging methods.
 
 As we will see in Chapter 3, convergence of VI problems is dominated by the error in approximating the free boundary. An adaptive refinement scheme that is able to concentrate effort around the solution free boundary will both, enhance convergence properties and reduce unnecessary computation in the active set.
 
 
 In this project we will introduce two adaptive refinement schemes which can identify the free boundary to a high degree of accuracy and permit the user to vary the spread of the refinement area. In the first strategy we compute a node-wise indicator function for the active set for use as an initial iterate in a time-dependent heat equation problem. Solving a single step of this problem has the effect of smoothing the indicator about the free boundary. The result of this smoothing is then averaged over each element and thresholded for refinement. The second strategy focuses on the discrete identification of elements adjacent to the free boundary, employing a graph-based approach to mark neighboring elements for refinement.
 
-Our implementations of these methods are written using the Firedrake finite element library and produce conforming meshes with no hanging nodes. These high quality meshes are suitable for various VI solvers, including as coarse grids for the FASCD multilevel solver in \citet{bueler_full_2023}
+Our implementations of these methods are written using the Firedrake finite element library and produce conforming meshes with no hanging nodes. These high quality meshes are suitable for various VI solvers, including as coarse grids for the FASCD multilevel solver in \cite{BuelerFarrell2024}
 
 FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCES and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries. 
 
@@ -150,8 +153,8 @@ If also $u \in C(\overline{\Omega}) \cap C^2(\Omega)$ (is a classical solution),
       \label{ncp}
       \begin{align}
         -\nabla^2 u - f \geq 0\label{ncp:1}\\
-        u - \psi \geq 0\label{ncp:1}\\
-        (-\nabla^2u - f)(u - \psi) = 0\label{ncp:1}
+        u - \psi \geq 0\label{ncp:2}\\
+        (-\nabla^2u - f)(u - \psi) = 0\label{ncp:3}
       \end{align}
     \end{subequations}
   \end{enumerate}
@@ -160,7 +163,15 @@ If also $u \in C(\overline{\Omega}) \cap C^2(\Omega)$ (is a classical solution),
 The equivalence of these formulations is key to becoming familiar with free boundary problems. The energy minimization formulation is ideal for understanding the physical framework of the problem. The variational inequality formulation is necessary for defining the more broader class of free boundary problems whose solutions may not be derived from a potential function. The complementarity formulation reframes the problem in a way which can be solved using a variety of iterative methods.
 
 
-\section{Finite element method} \label{sec:fem}
+
+\section{Finite element methods and adaptive mesh refinement} \label{sec:fem}
+
+FIXME \cite{ElmanSilvesterWathen2014} \cite{Suttmeier2008}
+
+
+\section{Geometric error measures for free boundaries} \label{sec:geometric}
+
+FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
 
 \section{Implementation} \label{sec:implementation}
 
@@ -170,7 +181,6 @@ The equivalence of these formulations is key to becoming familiar with free boun
 
 \section*{Acknowledgements}
 
-FIXME \cite{Elman2014} \cite{Suttmeier2008}
 
 
 %\section*{Notes on contributor(s)}
@@ -178,11 +188,6 @@ FIXME \cite{Elman2014} \cite{Suttmeier2008}
 
 
 \section{References}
-
-%\subsection{References cited in the text}
-%References should be cited in the text by numbers in square brackets based on the order in which they appear in an alphabetical list of references at the end of the document (not the order of citation), so the first reference cited in the text might be [23]. For example, these may take the forms [32], [5,\,6,\,14], [21--55] (\emph{not} [21]--[55]). For further details on this reference style, see the Instructions for Authors on the Taylor \& Francis website.
-%Each bibliographic entry has a key, which is assigned by the author and is used to refer to that entry in the text. In this document, the key \verb"Ali95" in the citation form \verb"\cite{Ali95}" produces `\cite{Ali95}', and the keys \verb"Bow76" and \verb"BGP02" in the citation form \verb"\cite{Bow76,BGP02}" produce `\cite{Bow76,BGP02}'. The citation for a range of bibliographic entries (e.g. `\cite{GMW81,Hor96,Con96,Har97,FGK03,Fle80,Ste98,Ell98,Str97,Coo03,Kih01,Hol03,Hai01,Hag03,Hov03,Mul00,GHGsoft,Pow00}') will automatically be produced by \verb"\cite{GMW81,Hor96,Con96,Har97,FGK03,Fle80,Ste98,Ell98,Str97,Coo03,Kih01," \verb"Hol03,Hai01,Hag03,Hov03,Mul00,GHGsoft,Pow00}".
-%Optional notes may be included at the beginning and/or end of a citation by the use of square brackets, e.g. \verb"\cite[cf.][]{Tay03}" produces `\cite[cf.][]{Tay03}', and \verb"\cite[see][and references therein]{Wei95}" produces `\cite[see][and references therein]{Wei95}'.
 
 \bibliographystyle{tfs}
 \bibliography{viamr}

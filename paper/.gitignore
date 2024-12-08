@@ -2,6 +2,7 @@
 #/publish*
 /*.log
 /*.aux
+/*.out
 /*.blg
 /*.vrb
 /*.bbl
