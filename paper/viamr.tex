@@ -1,0 +1,200 @@
+\documentclass[]{interact}
+
+\usepackage[caption=false]{subfig}% Support for small, `sub' figures and tables
+%\usepackage[nolists,tablesfirst]{endfloat}% To `separate' figures and tables from text if required
+%\usepackage[doublespacing]{setspace}% To produce a `double spaced' document if required
+%\setlength\parindent{24pt}% To increase paragraph indentation when line spacing is doubled
+%\setlength\bibindent{2em}% To increase hanging indent in bibliography when line spacing is doubled
+
+\usepackage[numbers,sort&compress]{natbib}% Citation support using natbib.sty
+\bibpunct[, ]{[}{]}{,}{n}{,}{,}% Citation support using natbib.sty
+\renewcommand\bibfont{\fontsize{10}{12}\selectfont}% Bibliography support using natbib.sty
+
+\usepackage{amsmath}
+
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+
+\theoremstyle{plain}% Theorem-like structures provided by amsthm.sty
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+\newtheorem{notation}{Notation}
+
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\norm}[2]{\left\| #1 \right\|_{#2}}
+\newcommand{\abs}[1]{\left| #1 \right|}
+
+
+\begin{document}
+
+%\articletype{ARTICLE TEMPLATE}% Specify the article type or omit as appropriate
+
+\title{Free-boundary oriented adaptive mesh refinement for obstacle problems}
+
+\author{
+\name{G.~Stefano Fochesatto\thanks{CONTACT G.~Stefano Fochesatto Email: gsfochesatto@alaska.edu} and Ed Bueler}
+\affil{Dept.~of Mathematics and Statistics, University of Alaska Fairbanks, USA}
+}
+
+\maketitle
+
+\begin{abstract}
+FIXME SHORTER, START MORE GENERAL, EMPHASIZE FREE BOUNDARY FOCUS
+
+Variational inequalities play a pivotal role in a wide array of scientific and engineering
+applications. This project presents two techniques for adaptive mesh refinement (AMR) in the context of variational inequalities, with a specific focus on the classical obstacle problem. 
+
+We propose two distinct AMR strategies: Variable Coefficient Elliptic Smoothing (VCES) and Unstructured Dilation Operator (UDO). VCES uses a nodal active set indicator function as the initial iterate to a time-dependent heat equation problem. Solving a single step of this problem has the effect of smoothing the indicator about the free boundary. We threshold this smoothed indicator function to identify elements near the free boundary. Key parameters such as timestep and threshold values significantly influence the efficacy of this method.
+
+The second strategy, UDO, focuses on the discrete identification of elements adjacent to the free boundary, employing a graph-based approach to mark neighboring elements for refinement. This technique resembles the dilation morphological operation in image processing, but tailored for unstructured meshes.
+
+We also examine the theory of variational inequalities, the convergence behavior of finite element solutions, and implementation in the Firedrake finite element library. Convergence analysis reveals that accurate free boundary estimation is pivotal for solver performance. Numerical experiments demonstrate the effectiveness of the proposed methods in dynamically enhancing mesh resolution around free boundaries, thereby improving the convergence rates and computational efficiency of variational inequality solvers. Our approach integrates seamlessly with existing Firedrake numerical solvers, and it is promising for solving more complex free boundary problems.
+\end{abstract}
+
+%\begin{keywords}
+%FIXME
+%\end{keywords}
+
+
+\section{Introduction} \label{sec:intro}
+
+FIXME MAKE BROADER I THINK
+
+The goal of this project is to introduce two techniques for adaptive mesh refinement for free boundary problems (variational inequalities). We will consider only the classical obstacle problem as an example of a variational inequality. 
+
+In the context of the finite element method (FEM), the discretization of a partial differential equation (PDE) is described by a partition of its domain into a finite number of elements (i.e a mesh) and a finite dimensional function space (i.e a finite element space). In a two dimensional domain, these elements are usually triangles or rectangles and the basis of the finite element space is composed of hat functions over vertices in the mesh, with support over neighboring elements. 
+
+The convergence of finite element solutions is most commonly achieved via approximating on increasingly refined meshes by the use of a finite basis of piecewise polynomials of low degree; this method of convergence is often referred to as $h$-refinement. We also see convergence achieved by approximating via increasingly higher degree basis of piecewise polynomials over a coarse mesh; this is referred to as $p$-refinement. Several schema have been explored that take advantage of both methods of convergence, so-called $hp$-refinement finite elements, further discussion of such methods can be found in \cite{Demkowicz2007}.
+
+The classical obstacle problem consists of finding the equilibrium position of an elastic membrane with a fixed boundary after some force is applied, where the membrane is constrained to lie above some obstacle. Let $\Omega \subset \RR$ be a bounded domain. The problem is then formulated as a constrained minimization problem where we seek to find the position of the membrane $u(x)$, with fixed valued $u(x) = g_D(x)$ on $\partial \Omega$ with a load $f$ applied, and where $u(x)$ is constrained to be above an obstacle $\psi(x)$, 
+\begin{align}
+    \underset{u}{\text{ minimize: }}  &I(u) = \int_\Omega \frac{1}{2} \abs{\nabla u}^2 - fu \\
+  \text{ subject to: } v &\geq \psi, \\
+    u |_{\partial\Omega} &= g_D. 
+  \end{align}
+  The admissable set for such a problem can be described by 
+  \begin{equation}
+    K_\psi = \{u \in X| u \geq \psi \}
+  \end{equation}
+  where $X$ is a Sobolev space with boundary conditions $g_D$ enforced. 
+  
+  We can describe another, equivalent, variational inequality (VI) formulation of the obstacle problem 
+  \begin{equation}
+    \int_\Omega \nabla u \cdot \nabla(v - u) \geq \int_\Omega f(v - u), \quad \text{ for all } v \in K_\psi.
+  \end{equation} 
+  Equivalence of these formulations is proven in Chapter 3. From a solution to (1.1)-(1.3) or (1.5) we may identify the inactive and active sets $I_u$ and $A_u$,
+\begin{equation}
+  I_u = \{x \in \Omega | u(x) > \psi(x)\} \quad A_u = \Omega \setminus I_u.
+\end{equation} 
+With these definitions of the inactive and active set we can also define the free boundary $\Gamma_u = \partial I_u \cap \Omega$.
+
+The same problem can also be defined by its strong form formulation
+\begin{align}
+  -\nabla^2 u &= f \quad \text{ on } I_u,\\
+  u &= \psi \quad \text{ on } A_u,\\
+  u &= g_D \quad \text{ on } \partial \Omega.
+\end{align}
+ Observe that this 'naive' strong form is not sufficient to describe the problem as neither $A_u$ or $I_u$ are known a priori. A better strong formulation is as a complementarity problem (CP). In this form each statement holds over the entire domain $\Omega$. A solution $u$ satisfies the following, 
+\begin{align}
+  -\nabla^2 u - f \geq 0\\
+  u - \psi \geq 0\\
+  (-\nabla^2u - f)(u - \psi) = 0
+\end{align}
+Each of these formulations are instrumental in our understanding of the problem. The constrained energy minimization formulation can be helpful for understanding the physics of the problem. The class of problems described by the VI and CP formulations is a superset of the minimization formulation \citep[page 319]{Bueler2021}. As we will see, the CP formulation is also instrumental in the implementation of numerical solvers.
+
+In terms of numerics, the constraint of $u \geq \psi$ makes this problem nonlinear so we are required to use an iterative solver. In this project our main solver will be VI-adapted Newton with Reduced-Space Line Search (VINEWTONRSLS). In Chapter 3 we will show that numerical methods will not converge until the active and inactive sets stabilize and the free boundary is identified. For solvers like VINEWTONRSLS which employ a Newton iteration, we find that they can only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009} and therefore convergence is tied to mesh resolution and is proportional to the number of grid spaces between initial iterate free boundary and discrete solution free boundary \citep[page 324]{Bueler2021}. 
+
+Adaptation involves altering the discretization to achieve a more desirable solution, whether that be with the goal of reducing $L_2$ error or reducing the error in some post-computation quantity like drag or lift. For example, consider the flow of some incompressable fluid through a pipe with an obstructive obstacle. Computing its drag coefficient would be an example of such a desired quantity \citep[Chapter 1.1]{BangerthRannacher2003}.
+
+Further -adaptive methods have also been explored. These methods are designed to increase mesh resolution or polynomial degree locally by means of a local error estimator, for some goal term often referred to as the Quantity of Interest (QoI), and is also usually denoted as $J(\cdot)$. The most common of these employ the Dual Weighted Residual (DWR) method, derived in \cite{RannacherSuttmeier1997}. The DWR method, like most adaptive refinement techniques begins with a rigorous, a posteriori or a priori analysis of the quantity $J(u) - J(u_n)$. Estimation of this error quantity is then decomposed into local element-wise error estimators which can be used as a heuristic to tag elements for refinement. Finally a refinement strategy is employed to refine the mesh. Choices of whether to refine elements or increase the degree of polynomial basis functions, and by how much, must be made. 
+
+The techniques outlined above are referred to as tagging methods, in which the error indicators are used to 'tag' elements for refinement. However, there are 'metric-based' methods which control the size, shape and orientation of the elements instead \citep{Alauzet2010}.  For this project we will primarily focus on $h$-adaptive tagging methods.
+
+As we will see in Chapter 3, convergence of VI problems is dominated by the error in approximating the free boundary. An adaptive refinement scheme that is able to concentrate effort around the solution free boundary will both, enhance convergence properties and reduce unnecessary computation in the active set.
+
+
+In this project we will introduce two adaptive refinement schemes which can identify the free boundary to a high degree of accuracy and permit the user to vary the spread of the refinement area. In the first strategy we compute a node-wise indicator function for the active set for use as an initial iterate in a time-dependent heat equation problem. Solving a single step of this problem has the effect of smoothing the indicator about the free boundary. The result of this smoothing is then averaged over each element and thresholded for refinement. The second strategy focuses on the discrete identification of elements adjacent to the free boundary, employing a graph-based approach to mark neighboring elements for refinement.
+
+Our implementations of these methods are written using the Firedrake finite element library and produce conforming meshes with no hanging nodes. These high quality meshes are suitable for various VI solvers, including as coarse grids for the FASCD multilevel solver in \cite{BuelerFarrell2024}
+
+FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCES and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries. 
+
+
+\section{Variational inequalities and obstacle problems} \label{sec:vi}
+
+Obstacle problems have several different formulations which are well-known.
+
+\begin{theorem}[\cite{KinderlehrerStampacchia1980}] Fix $f \in L^2(\Omega)$, $\psi \in C(\overline{\Omega})$, $g_D \in C(\overline{\Omega})$, $g_D \geq \psi$, $X = H^1(\Omega)$, and
+  \begin{equation}
+    K_\psi = \{v \in X| v \geq \psi\}
+  \end{equation}
+   where $X$ is a Sobolev space with boundary conditions equal to $g$ as before. Then the following statements are equivalent for a solution $u \in K_\psi$, 
+  \begin{enumerate}
+    \item[(a)] $u$ is a solution to the energy minimization formulation, 
+\begin{align}
+    \underset{u \in K_\psi}{\text{ minimize: }}  &I(u) = \int_\Omega \frac{1}{2} \abs{\nabla u}^2 - fu 
+  \end{align}
+    \item[(b)] $u$ is a solution to the variational inequality formulation,
+      \begin{equation}
+    \int_\Omega \nabla u \cdot \nabla(v - u) \geq \int_\Omega f(v - u), \quad \text{ for all } v \in K_\psi.
+  \end{equation} 
+If also $u \in C(\overline{\Omega}) \cap C^2(\Omega)$ (is a classical solution), then (a) or (b) implies
+    \item[(c)] $u$ is a solution to the complementarity problem formulation, for which the following hold over $\Omega$ a.e.
+    \begin{subequations}
+      \label{ncp}
+      \begin{align}
+        -\nabla^2 u - f \geq 0\label{ncp:1}\\
+        u - \psi \geq 0\label{ncp:2}\\
+        (-\nabla^2u - f)(u - \psi) = 0\label{ncp:3}
+      \end{align}
+    \end{subequations}
+  \end{enumerate}
+\end{theorem}
+
+The equivalence of these formulations is key to becoming familiar with free boundary problems. The energy minimization formulation is ideal for understanding the physical framework of the problem. The variational inequality formulation is necessary for defining the more broader class of free boundary problems whose solutions may not be derived from a potential function. The complementarity formulation reframes the problem in a way which can be solved using a variety of iterative methods.
+
+
+
+\section{Finite element methods and adaptive mesh refinement} \label{sec:fem}
+
+FIXME \cite{ElmanSilvesterWathen2014} \cite{Suttmeier2008}
+
+
+\section{Geometric error measures for free boundaries} \label{sec:geometric}
+
+FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
+
+\section{Implementation} \label{sec:implementation}
+
+\section{Results} \label{sec:results}
+
+
+
+\section*{Acknowledgements}
+
+
+
+%\section*{Notes on contributor(s)}
+%An unnumbered section, e.g.\ \verb"\section*{Notes on contributors}", may be included \emph{in the non-anonymous version} if required. A photograph may be added if requested.
+
+
+\section{References}
+
+\bibliographystyle{tfs}
+\bibliography{viamr}
+
+
+%Any appendices should be placed after the list of references, beginning with the command \verb"\appendix" followed by the command \verb"\section" for each appendix title, e.g.
+%\appendix
+%\section{This is the title of the first appendix}
+
+\end{document}
