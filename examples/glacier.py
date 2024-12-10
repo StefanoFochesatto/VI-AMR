@@ -137,8 +137,8 @@ if not args.bumps:
 if args.opvd:
     CU = ((n+2)/(n+1)) * Gamma
     U_ufl = CU * (s - lb)**p * inner(grad(s), grad(s))**((p-2)/2) * grad(s)
-    U = Function(VectorFunctionSpace(mesh, 'CG', degree=1))
-    U.interpolate(secpera * U_ufl)
+    U = Function(VectorFunctionSpace(mesh, 'CG', degree=2))
+    U.project(secpera * U_ufl)
     U.rename("U = surface velocity (m/a)")
     Q = Function(VectorFunctionSpace(mesh, 'CG', degree=1))
     Q.interpolate(U * (s - lb))
