@@ -2,4 +2,8 @@
 /*.pvtu
 /*.vtu
 /result*
+/foo*
+/hires*
+/dome*
+/bumps*
 /__pycache__/
