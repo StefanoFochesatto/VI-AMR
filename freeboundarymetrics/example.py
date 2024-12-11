@@ -11,16 +11,8 @@ except ImportError:
 from netgen.geom2d import SplineGeometry
 
 # Shapely library for computation of Hausdorff distance and Jaccard index
-from shapely.geometry import Polygon
-from shapely.geometry import MultiPolygon
-from shapely.geometry import LineString
 from shapely.geometry import MultiLineString
-
-
 from shapely import hausdorff_distance
-
-import networkx as nx
-import math
 
 
 debugoutputs = False
@@ -123,6 +115,27 @@ def getActiveIndicators(mesh, u, lb):
     return ElementActiveIndicator, OuterElementIndicator
 
 
+def getHausdorff(ComputedPolygon, AnalyticPolygon):
+
+    distance = hausdorff_distance(ComputedPolygon, AnalyticPolygon, .99)
+
+    return distance
+
+
+def getJaccard(ComputedActiveIndicator, AnalyticActiveIndicator):
+
+    DG0Analytic = AnalyticActiveIndicator._function_space
+    AnalyticMesh = AnalyticActiveIndicator._mesh
+    ProjComputed = Function(DG0Analytic).project(ComputedActiveIndicator)
+    AreaIntersection = assemble(
+        ProjComputed * AnalyticActiveIndicator * dx(AnalyticMesh))
+    AreaUnion = assemble(
+        (ProjComputed + AnalyticActiveIndicator - (ProjComputed * AnalyticActiveIndicator)) * dx(AnalyticMesh))
+
+    # Fixme: Divide by zero check
+    return AreaIntersection/AreaUnion
+
+
 def getGraph(mesh, ElementActiveIndicator, OuterElementIndicator):
 
     # Get the cell to vertex connectivity
@@ -173,70 +186,8 @@ def getGraph(mesh, ElementActiveIndicator, OuterElementIndicator):
     return FreeBoundaryVertices, EdgeSet
 
 
-def orderVerticesInCycle(vertices, edges):
-    G = nx.Graph()
-    G.add_nodes_from(vertices)
-    G.add_edges_from(edges)
-
-    # Extract the cycle order from NetworkX
-    cycle = list(nx.find_cycle(G))
-    OrderedVertices = [edge[0] for edge in cycle] + [cycle[0][0]]
-    return OrderedVertices
-
-
-def getConnectedComponents(VertexSet, EdgeSet):
-    G = nx.Graph()
-    # Add vertices and edges
-    G.add_nodes_from(VertexSet)
-    G.add_edges_from(EdgeSet)
-
-    # Find connected components
-    ConnectedComponents = list(nx.connected_components(G))
-    numComponents = len(ConnectedComponents)
-
-    # Partition the vertex set into connected components
-    PartitionedVertexSet = [list(component)
-                            for component in ConnectedComponents]
-
-    PartitionedEdgeSet = []
-    for component in ConnectedComponents:
-        # Get subgraph corresponding to the current component
-        subgraph = G.subgraph(component)
-        # Extract edges from the subgraph
-        PartitionedEdgeSet.append(list(subgraph.edges))
-
-    return numComponents, PartitionedVertexSet, PartitionedEdgeSet
-
-
-def getJaccard(ComputedPolygon, AnalyticPolygon):
-    Intersection = ComputedPolygon.intersection(AnalyticPolygon)
-    Union = ComputedPolygon.union(AnalyticPolygon)
-    if debugoutputs:
-        import matplotlib.pyplot as plt
-        import geopandas as gpd
-        fig, ax = plt.subplots()
-        p = gpd.GeoSeries(Intersection)
-        p.plot(ax=ax)
-        fig.savefig("intersection.png", dpi=300, bbox_inches='tight')
-
-        fig, ax = plt.subplots()
-        p = gpd.GeoSeries(Union)
-        p.plot(ax=ax)
-        fig.savefig("union.png", dpi=300, bbox_inches='tight')
-
-    Jaccard = Intersection.area/Union.area
-    return Jaccard
-
-
-def getHausdorff(ComputedPolygon, AnalyticPolygon):
-    distance = hausdorff_distance(ComputedPolygon, AnalyticPolygon, .99)
-    return distance
-
-    # Experimental script for computing Jaccard and Hausdorff metrics on arbitrary active set (with multiple components)
-    # Comparison is done against another 'analytic' active set indicator; can be defined via ufl or another higher resolution solution.
 if __name__ == "__main__":
 
-    # Test Case: Jaccard should be 1 and Hausdorff should be 0
     ComputedTriHeight = .3
     AnalyticTriHeight = .075
 
@@ -245,10 +196,8 @@ if __name__ == "__main__":
     AnalyticMesh = getInitialMesh(AnalyticTriHeight)
 
     ActiveIndicators = []
-
-    PolygonCollections = []
-
     LineStringCollections = []
+
     for mesh in [ComputedMesh, AnalyticMesh]:
         # Define FE space
         V = FunctionSpace(mesh, "CG", 1)
@@ -264,8 +213,11 @@ if __name__ == "__main__":
         #  Construct Element-wise Active Set and Border Active Set indicators
         ElementActiveIndicator, OuterElementIndicator = getActiveIndicators(
             mesh, u, lb)
+
+        # Store ActiveIndicators for Jaccard Computation
         ActiveIndicators.append(ElementActiveIndicator)
 
+        # Constructing
         # Constructs graph for computed free boundary using dmplex indices
         V, E = getGraph(mesh, ElementActiveIndicator, OuterElementIndicator)
 
@@ -283,55 +235,12 @@ if __name__ == "__main__":
         # construct and store linestring object
         LineStringCollections.append(MultiLineString(CoordinateEdges))
 
-        # Identify components using networkx
-        numComponents, PartitionedVertexSet, PartitionedEdgeSet = getConnectedComponents(
-            V, E)
-
-        ShapelyComponents = []
-        for i in range(numComponents):
-            # Pass component subgraph, reorder vertices into cycle for shapely
-            orderedVertex = orderVerticesInCycle(
-                PartitionedVertexSet[i], PartitionedEdgeSet[i])
-
-            # Convert ordered dmplex index vertex set to fd index
-            fdVertexSet = [mesh.topology._vertex_numbering.getOffset(
-                vertex) for vertex in orderedVertex]
-
-            # Convert fd index to coordinates
-            ComponentCoords = coords[fdVertexSet]
-
-            # Generate Shapely polygon for current component
-            Component = Polygon(ComponentCoords)
-
-            # Store component
-            ShapelyComponents.append(Component)
-
-        # Store list of components
-        PolygonCollections.append(ShapelyComponents)
-
         if debugoutputs:
             VTKFile(f"{mesh}.pvd").write(
                 u, lb, ElementActiveIndicator, OuterElementIndicator)
 
-    ComputedActiveSet = MultiPolygon(PolygonCollections[0])
-    AnalyticActiveSet = MultiPolygon(PolygonCollections[1])
-
-    JaccardError = getJaccard(ComputedActiveSet, AnalyticActiveSet)
-    HausdorffError = getHausdorff(ComputedActiveSet, AnalyticActiveSet)
-    LineStringHausdorffError = getHausdorff(
+    HausdorffError = getHausdorff(
         LineStringCollections[0], LineStringCollections[1])
-
-    print(f"Hausdorff MultiPolygon: {HausdorffError}")
-    print(f"Hausdorff MultiLineString: {LineStringHausdorffError}")
-    print(f"Jaccard from Shapely: {JaccardError}")
+    JaccardError = getJaccard(ActiveIndicators[0], ActiveIndicators[1])
 
     # Jaccard computation using Firedrake.
-    DG0Analytic = FunctionSpace(AnalyticMesh, "DG", 0)
-    ProjComputed = Function(DG0Analytic).project(ActiveIndicators[0])
-    fdAreaIntersection = assemble(
-        ProjComputed * ActiveIndicators[1] * dx(AnalyticMesh))
-    fdAreaUnion = assemble(
-        (ProjComputed + ActiveIndicators[1] - (ProjComputed * ActiveIndicators[1])) * dx(AnalyticMesh))
-    fdJaccardError = fdAreaIntersection/fdAreaUnion
-
-    print(f"Jaccard from Firedrake: {fdJaccardError}")
