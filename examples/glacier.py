@@ -2,11 +2,6 @@
 #            mountain splits into pieces (by modifying a) and has bigger bumps
 #      * allow other strategies than alternating AMR & uniform?
 
-# Hi-resolution parallel run:
-#   mpiexec -n 16 python3 glacier.py -refine 8 -snes_rtol 1.0e-10 -snes_monitor -opvd hires.pvd
-# One level uniform comparison?? (need to count elements etc to compare):
-#   mpiexec -n 16 python3 glacier.py -onelevel -m 800 -snes_rtol 1.0e-10 -snes_monitor -opvd hires_onelevel.pvd
-
 from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description="""
 Solves 2D steady shallow ice approximation obstacle problem on a square [0,L]^2
@@ -29,14 +24,14 @@ parser.add_argument('-epsplap', type=float, default=1.0e-4, metavar='X',
                     help='diffusivity regularization for p-Laplacian [default 1.0e-4]')
 parser.add_argument('-m', type=int, default=20, metavar='M',
                     help='number of cells in each direction [default=20]')
+parser.add_argument('-onelevel', action='store_true', default=False,
+                    help='no AMR refinements; use Firedrake to generate uniform mesh')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
                     help='output file name for Paraview format (.pvd)')
 parser.add_argument('-qdegree', type=int, default=4, metavar='DEG',
                     help='quadrature degree used in SIA nonlinear weak form [default 4]')
 parser.add_argument('-refine', type=int, default=3, metavar='R',
                     help='number of AMR refinements')
-parser.add_argument('-onelevel', action='store_true', default=False,
-                    help='no AMR refinements; use Firedrake to generate uniform mesh')
 args, passthroughoptions = parser.parse_known_args()
 
 import numpy as np
@@ -44,9 +39,9 @@ import petsc4py
 petsc4py.init(passthroughoptions)
 from firedrake import *
 from firedrake.output import VTKFile
-
 from firedrake.petsc import PETSc
 printpar = PETSc.Sys.Print
+from viamr import VIAMR
 
 assert args.m >= 1, 'at least one cell in mesh'
 if args.onelevel:
@@ -109,7 +104,6 @@ if args.onelevel:
     mesh = RectangleMesh(args.m, args.m, L, L)
 else:
     # prepare for AMR by generating via netgen
-    from viamr import VIAMR
     try:
         import netgen
     except ImportError:
