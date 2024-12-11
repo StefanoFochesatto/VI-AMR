@@ -195,6 +195,7 @@ for i in range(args.refine + 1):
                  % (err_l2, err_av))
 
 if args.opvd:
+    H = Function(V, name="H = thickness (m)").interpolate(s - lb)
     CU = ((n+2)/(n+1)) * Gamma
     U_ufl = CU * (s - lb)**p * inner(grad(s), grad(s))**((p-2)/2) * grad(s)
     U = Function(VectorFunctionSpace(mesh, 'CG', degree=2))
@@ -204,7 +205,7 @@ if args.opvd:
     Q.interpolate(U * (s - lb))
     Q.rename("Q = UH = volume flux (m^2/a)")
     printpar('writing to %s ...' % args.opvd)
-    if args.dome:
-        VTKFile(args.opvd).write(a,s,U,Q,sexact,sdiff)
+    if args.prob == 'dome':
+        VTKFile(args.opvd).write(a,s,H,U,Q,sexact,sdiff)
     else:
-        VTKFile(args.opvd).write(a,s,U,Q,lb)
+        VTKFile(args.opvd).write(a,s,H,U,Q,lb)
