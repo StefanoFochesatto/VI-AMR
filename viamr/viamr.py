@@ -40,14 +40,14 @@ class VIAMR(OptionsManager):
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
         return z
 
-    def bfs_neighbors(self, cmesh, border, levels, active):
+    def bfs_neighbors(self, mesh, border, levels, active):
         '''element-wise Fast Multi Neighbor Lookup BFS can Avoid Active Set'''
 
         # dictionary to map each vertex to the cells that contain it
         vertex_to_cells = {}
-        cell_vertex_map = cmesh.topology.cell_closure # cell to vertex connectivity
+        cell_vertex_map = mesh.topology.cell_closure # cell to vertex connectivity
         # Loop over all cells to populate the dictionary
-        for i in range(cmesh.num_cells()):
+        for i in range(mesh.num_cells()):
             # first three entries correspond to the vertices
             for vertex in cell_vertex_map[i][:3]:
                 if vertex not in vertex_to_cells:
@@ -57,7 +57,7 @@ class VIAMR(OptionsManager):
         # Loop over all cells to mark neighbors
         # Create a new DG0 function to store the result
         result = Function(border.function_space(), name='nNeighbors')
-        for i in range(cmesh.num_cells()):
+        for i in range(mesh.num_cells()):
             # If the function value is 1 and the cell is in the active set
             if border.dat.data[i] == 1 and active.dat.data[i] == 0:
                 # Use a BFS algorithm to find all cells within the specified number of levels
@@ -73,11 +73,12 @@ class VIAMR(OptionsManager):
                                 queue.append((neighbor, level + 1))
         return result
 
-    def udomark(self, cmesh, u, lb, n=2):
-        "Mark current mesh using Unstructured Dilation Operator (UDO) algorithm."
+    def udomark(self, mesh, u, lb, n=2):
+        '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
+        Warning: Not valid in parallel.'''
 
         # generate element-wise and nodal-wise indicators for active set
-        CG1, DG0 = self.spaces(cmesh)
+        CG1, DG0 = self.spaces(mesh)
         nodaldiffCG = Function(CG1).interpolate(abs(u - lb))
         elemactive = Function(DG0, name="Element Active Set Indicator")
         elemactive.interpolate(conditional(nodaldiffCG < self.activetol, 1, 0))
@@ -91,21 +92,22 @@ class VIAMR(OptionsManager):
 
         # bfs_neighbors() constructs N^n(B) indicator.  Last argument
         # is to refine only in active or only in inactive set (currently commented out).
-        return self.bfs_neighbors(cmesh, elemborder, n, elemactive)
+        return self.bfs_neighbors(mesh, elemborder, n, elemactive)
 
 
-    def vcesmark(self, cmesh, u, lb, bracket=[0.2, 0.8]):
-        "Mark current mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm"
+    def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8]):
+        '''Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
+        Valid in parallel.'''
 
         # Compute nodal active set indicator within some tolerance
-        CG1, DG0 = self.spaces(cmesh)
+        CG1, DG0 = self.spaces(mesh)
         nodalactive = self.nodalactive(u, lb)
 
         # Vary timestep by average cell area of each patch.
         # Not exactly an average because msh.cell_sizes is an L2 projection of
         # the obvious DG0 function into CG1.
         timestep = Function(CG1)
-        timestep.dat.data[:] = 0.5 * cmesh.cell_sizes.dat.data[:] ** 2
+        timestep.dat.data[:] = 0.5 * mesh.cell_sizes.dat.data[:] ** 2
 
         # Solve one step implicitly using a linear solver
         # Nodal indicator is initial condition to time dependent Heat eq
@@ -117,7 +119,7 @@ class VIAMR(OptionsManager):
         solve(a == L, u)
 
         # Compute average over elements by interpolation into DG0
-        DG0 = FunctionSpace(cmesh, "DG", 0)
+        DG0 = FunctionSpace(mesh, "DG", 0)
         uDG0 = Function(DG0, name="Smoothed Nodal Active Indicator as DG0")
         uDG0.interpolate(u)
 
