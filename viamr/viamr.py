@@ -14,9 +14,11 @@ class VIAMR(OptionsManager):
         self.activetol = 1.0e-10
 
     def spaces(self, mesh, p=1):
+        '''Return CG{p} and DG{p-1} spaces.'''
         return FunctionSpace(mesh, "CG", p), FunctionSpace(mesh, "DG", p-1)
 
     def nodalactive(self, u, lb):
+        '''Compute nodal active set indicator in same function space as u.'''
         z = Function(u.function_space(), name="Nodal Active Set Indicator")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
         return z
