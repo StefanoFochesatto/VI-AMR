@@ -75,7 +75,7 @@ for prob in range(2):
                 # cross-mesh interpolation
                 u = Function(V).interpolate(u)
             u.rename("solution u")
-            print(f"  mesh has {mesh.num_cells()} elements")
+            VIAMR().meshreport(mesh)
 
             # set up weak form problem; F is residual operator in nonlinear system F==0
             if prob == 0:

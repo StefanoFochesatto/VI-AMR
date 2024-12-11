@@ -1,7 +1,7 @@
 import numpy as np
 from collections import deque
 from firedrake import *
-from firedrake.petsc import OptionsManager
+from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 from pyop2.mpi import MPI
 
@@ -27,6 +27,12 @@ class VIAMR(OptionsManager):
         hmin = float(mesh.comm.allreduce(min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
         hmax = float(mesh.comm.allreduce(max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
         return nvertices, nelements, hmin, hmax
+
+    def meshreport(self, mesh, indent=2):
+        '''Print standard mesh report.  Valid in parallel.'''
+        nv, ne, hmin, hmax = self.meshsizes(mesh)
+        PETSc.Sys.Print(f'current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]')
+        return None
 
     def nodalactive(self, u, lb):
         '''Compute nodal active set indicator in same function space as u.'''
