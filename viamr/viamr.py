@@ -3,6 +3,7 @@ from collections import deque
 from firedrake import *
 from firedrake.petsc import OptionsManager
 from firedrake.output import VTKFile
+from pyop2.mpi import MPI
 
 
 class VIAMR(OptionsManager):
@@ -16,6 +17,16 @@ class VIAMR(OptionsManager):
     def spaces(self, mesh, p=1):
         '''Return CG{p} and DG{p-1} spaces.'''
         return FunctionSpace(mesh, "CG", p), FunctionSpace(mesh, "DG", p-1)
+
+    def meshsizes(self, mesh):
+        '''Compute number of vertices, number of elements, and range of
+        mesh diameters.  Valid in parallel.'''
+        CG1, DG0 = self.spaces(mesh, p=1)
+        nvertices = CG1.dim()
+        nelements = DG0.dim()
+        hmin = float(mesh.comm.allreduce(min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
+        hmax = float(mesh.comm.allreduce(max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
+        return nvertices, nelements, hmin, hmax
 
     def nodalactive(self, u, lb):
         '''Compute nodal active set indicator in same function space as u.'''

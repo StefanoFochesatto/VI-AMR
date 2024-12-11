@@ -1,6 +1,4 @@
-# TODO * instrument with number of elements reported at each level
-#      * also report range of h values?
-#      * new option: -cases {cap,mountain,dome};  cap and dome are current;
+# TODO * new option: -cases {cap,mountain,dome};  cap and dome are current;
 #            mountain splits into pieces (by modifying a) and has bigger bumps
 #      * allow other strategies than alternating AMR & uniform?
 
@@ -20,6 +18,8 @@ VCES method (because UD0 is not currently parallel) alternately with uniform
 refinement.  Examples:
   python3 glacier.py -dome -opvd dome.pvd
   python3 glacier.py -opvd bumps.pvd
+Also runs in parallel:
+  mpiexec -n 4 glacier.py -opvd bumps4.pvd
 """, formatter_class=RawTextHelpFormatter)
 parser.add_argument('-dome', action='store_true', default=False,
                     help='generate dome case, which has exact solution')
@@ -43,13 +43,15 @@ import numpy as np
 import petsc4py
 petsc4py.init(passthroughoptions)
 from firedrake import *
-from firedrake.petsc import PETSc
 from firedrake.output import VTKFile
+
+from firedrake.petsc import PETSc
+printpar = PETSc.Sys.Print
 
 assert args.m >= 1, 'at least one cell in mesh'
 if args.onelevel:
     args.refine = 0
-    PETSc.Sys.Print('not using refinement; uniform mesh generated with Firedrake')
+    printpar('not using refinement; uniform mesh generated with Firedrake')
 
 L = 1800.0e3        # domain is [0,L]^2, with fields centered at (xc,xc)
 xc = L/2
@@ -101,7 +103,7 @@ def bumps(x):
     return B0 * b
 
 # generate first mesh
-PETSc.Sys.Print(f'generating {args.m} x {args.m} initial mesh ...')
+printpar(f'generating {args.m} x {args.m} initial mesh ...')
 if args.onelevel:
     # generate via Firedrake
     mesh = RectangleMesh(args.m, args.m, L, L)
@@ -111,7 +113,7 @@ else:
     try:
         import netgen
     except ImportError:
-        print("ImportError.  Unable to import NetGen.  Exiting.")
+        printpar("ImportError.  Unable to import NetGen.  Exiting.")
         import sys
         sys.exit(0)
     from netgen.geom2d import SplineGeometry
@@ -167,8 +169,8 @@ for i in range(args.refine + 1):
 
     if i == 0:
         # initialize as pile of ice, from accumulation
-        pilefactor = 400.0
-        sinit = lb + pilefactor * secpera * conditional(a > 0.0, a, 0.0)
+        pileage = 400.0  # years
+        sinit = lb + pileage * secpera * conditional(a > 0.0, a, 0.0)
         s = Function(V).interpolate(sinit)
     else:
         # cross-mesh interpolation of previous solution
@@ -185,17 +187,18 @@ for i in range(args.refine + 1):
     problem = NonlinearVariationalProblem(F, s, bcs)
 
     # solve
+    nv, ne, hmin, hmax = VIAMR().meshsizes(mesh)
+    printpar(f'solving level {i}, {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
     solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
     solver.solve(bounds=(lb, Function(V).interpolate(Constant(PETSc.INFINITY))))
 
-    PETSc.Sys.Print(f'done: level {i}')
     if args.dome:
         sdiff = Function(V).interpolate(s - dome_exact(x))
         sdiff.rename("sdiff = s - s_exact")
         err_l2 = norm(sdiff / L)
         err_av = norm(sdiff, 'l1') / L**2
-        PETSc.Sys.Print('    |s-s_exact|_2 = %.3f m,  |s-s_exact|_av = %.3f m' \
-                        % (err_l2, err_av))
+        printpar('    |s-s_exact|_2 = %.3f m,  |s-s_exact|_av = %.3f m' \
+                 % (err_l2, err_av))
 
 if args.opvd:
     CU = ((n+2)/(n+1)) * Gamma
@@ -206,7 +209,7 @@ if args.opvd:
     Q = Function(VectorFunctionSpace(mesh, 'DG', degree=1))
     Q.interpolate(U * (s - lb))
     Q.rename("Q = UH = volume flux (m^2/a)")
-    PETSc.Sys.Print('writing to %s ...' % args.opvd)
+    printpar('writing to %s ...' % args.opvd)
     if args.dome:
         VTKFile(args.opvd).write(a,s,U,Q,sexact,sdiff)
     else:
