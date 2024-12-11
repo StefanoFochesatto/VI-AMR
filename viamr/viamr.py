@@ -86,7 +86,6 @@ class VIAMR(OptionsManager):
         # Not exactly an average because msh.cell_sizes is an L2 projection of
         # the obvious DG0 function into CG1.
         timestep = Function(CG1)
-        # FIXME following not parallel
         timestep.dat.data[:] = 0.5 * cmesh.cell_sizes.dat.data[:] ** 2
 
         # Solve one step implicitly using a linear solver
