@@ -1,23 +1,20 @@
-# TODO * new option: -cases {cap,mountain,dome};  cap and dome are current;
-#            mountain splits into pieces (by modifying a) and has bigger bumps
-#      * allow other strategies than alternating AMR & uniform?
+# TODO * allow other strategies than alternating AMR & uniform?
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description="""
 Solves 2D steady shallow ice approximation obstacle problem on a square [0,L]^2
 where L = 1800.0 km.  By default generates a random, but smooth, bed topography.
-Option -dome solves in a flat bed case where the exact solution is known.  Note
+Option -prob dome solves in a flat bed case where the exact solution is known,
+and -prob range generates a disconnected glacier.  Note
 there is a double regularization in the isothermal, Glen-law diffusivity; see
 options -epsH and -epsplap.  Solver is vinewtonrsls + mumps.  Applies VIAMR
 VCES method (because UD0 is not currently parallel) alternately with uniform
 refinement.  Examples:
-  python3 glacier.py -dome -opvd dome.pvd
-  python3 glacier.py -opvd bumps.pvd
+  python3 glacier.py -opvd cap.pvd
+  python3 glacier.py -prob dome -opvd dome.pvd
 Also runs in parallel:
-  mpiexec -n 4 glacier.py -opvd bumps4.pvd
+  mpiexec -n 4 glacier.py -opvd cap4.pvd
 """, formatter_class=RawTextHelpFormatter)
-parser.add_argument('-dome', action='store_true', default=False,
-                    help='generate dome case, which has exact solution')
 parser.add_argument('-epsH', type=float, default=20.0, metavar='X',
                     help='diffusivity regularization for thickness [default 20.0 m]')
 parser.add_argument('-epsplap', type=float, default=1.0e-4, metavar='X',
@@ -28,10 +25,13 @@ parser.add_argument('-onelevel', action='store_true', default=False,
                     help='no AMR refinements; use Firedrake to generate uniform mesh')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
                     help='output file name for Paraview format (.pvd)')
+parser.add_argument('-prob', type=str, default='cap', metavar='X',
+                    choices = ['cap','dome','range'],
+                    help='choose problem from {cap,dome,range}')
 parser.add_argument('-qdegree', type=int, default=4, metavar='DEG',
                     help='quadrature degree used in SIA nonlinear weak form [default 4]')
 parser.add_argument('-refine', type=int, default=3, metavar='R',
-                    help='number of AMR refinements')
+                    help='number of AMR refinements [default 3]')
 args, passthroughoptions = parser.parse_known_args()
 
 import numpy as np
@@ -48,32 +48,23 @@ if args.onelevel:
     args.refine = 0
     printpar('not using refinement; uniform mesh generated with Firedrake')
 
+# constants (same for all problems)
 L = 1800.0e3        # domain is [0,L]^2, with fields centered at (xc,xc)
 xc = L/2
 secpera = 31556926.0
 n = Constant(3.0)
 p = n + 1
-A = Constant(1.0e-16) / secpera
 g = Constant(9.81)
 rho = Constant(910.0)
+A = Constant(1.0e-16) / secpera
 Gamma = 2*A*(rho * g)**n / (n+2)
+aGamma = Gamma   # used in accumulation
+if args.prob == 'range':
+    Gamma *= 10.0
 
+# exact solution to prob=='dome'
 domeL = 750.0e3
 domeH0 = 3600.0
-
-def accumulation(x):
-    # https://github.com/bueler/sia-fve/blob/master/petsc/base/exactsia.c#L51
-    R = sqrt(dot(x - as_vector([xc, xc]), x - as_vector([xc, xc])))
-    r = conditional(lt(R, 0.01), 0.01, R)
-    r = conditional(gt(r, domeL - 0.01), domeL - 0.01, r)
-    s = r / domeL
-    C = domeH0**(2*n + 2) * Gamma / (2 * domeL * (1 - 1/n) )**n
-    pp = 1/n
-    tmp1 = s**pp + (1-s)**pp - 1
-    tmp2 = 2*s**pp + (1-s)**(pp-1) * (1-2*s) - 1
-    a = (C / r) * tmp1**(n-1) * tmp2
-    return a
-
 def dome_exact(x):
     # https://github.com/bueler/sia-fve/blob/master/petsc/base/exactsia.c#L83
     r = sqrt(dot(x - as_vector([xc, xc]), x - as_vector([xc, xc])))
@@ -86,8 +77,34 @@ def dome_exact(x):
     sexact = conditional(lt(r, domeL), expr, 0)
     return sexact
 
-def bumps(x):
-    B0 = 200.0  # (m); amplitude of bumps
+# accumulation; uses dome parameters
+def accumulation(x, problem='cap'):
+    # https://github.com/bueler/sia-fve/blob/master/petsc/base/exactsia.c#L51
+    R = sqrt(dot(x - as_vector([xc, xc]), x - as_vector([xc, xc])))
+    r = conditional(lt(R, 0.01), 0.01, R)
+    r = conditional(gt(r, domeL - 0.01), domeL - 0.01, r)
+    s = r / domeL
+    C = domeH0**(2*n + 2) * aGamma / (2 * domeL * (1 - 1/n) )**n
+    pp = 1/n
+    tmp1 = s**pp + (1-s)**pp - 1
+    tmp2 = 2*s**pp + (1-s)**(pp-1) * (1-2*s) - 1
+    a0 = (C / r) * tmp1**(n-1) * tmp2
+    if problem == 'range':
+        dxc = x[0] - xc
+        dyc = x[1] - xc
+        dd = L / 30
+        aneg = -3.0e-8  # roughly the min of a0
+        return conditional(gt(R, domeL), a0,
+                           conditional(lt(dxc**2, (1.9 * dd)**2), aneg,
+                                       conditional(lt(dyc**2, (1.1 * dd)**2), aneg, a0)))
+    else:
+        return a0
+
+def bumps(x, problem='cap'):
+    if problem == 'range':
+        B0 = 400.0  # (m); amplitude of bumps
+    else:
+        B0 = 200.0  # (m); amplitude of bumps
     xx, yy = x[0] / L, x[1] / L
     b = + 5.0 * sin(pi*xx) * sin(pi*yy) \
         + sin(pi*xx) * sin(3*pi*yy) - sin(2*pi*xx) * sin(pi*yy) \
@@ -98,7 +115,7 @@ def bumps(x):
     return B0 * b
 
 # generate first mesh
-printpar(f'generating {args.m} x {args.m} initial mesh ...')
+printpar(f'generating {args.m} x {args.m} initial mesh for problem {args.prob} ...')
 if args.onelevel:
     # generate via Firedrake
     mesh = RectangleMesh(args.m, args.m, L, L)
@@ -149,16 +166,16 @@ for i in range(args.refine + 1):
     # obstacle
     V = FunctionSpace(mesh, "CG", 1)
     x = SpatialCoordinate(mesh)
-    if args.dome:
+    if args.prob == 'dome':
         lb = Function(V).interpolate(Constant(0))
         sexact = Function(V).interpolate(dome_exact(x))
         sexact.rename("s_exact")
     else:
-        lb = Function(V).interpolate(bumps(x))
+        lb = Function(V).interpolate(bumps(x, problem=args.prob))
         lb.rename("lb = bedrock topography")
 
     # source term
-    a = Function(V).interpolate(accumulation(x))
+    a = Function(V).interpolate(accumulation(x, problem=args.prob))
     a.rename("a = accumulation")
 
     if i == 0:
@@ -186,7 +203,7 @@ for i in range(args.refine + 1):
     solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
     solver.solve(bounds=(lb, Function(V).interpolate(Constant(PETSc.INFINITY))))
 
-    if args.dome:
+    if args.prob == 'dome':
         sdiff = Function(V).interpolate(s - dome_exact(x))
         sdiff.rename("sdiff = s - s_exact")
         err_l2 = norm(sdiff / L)
