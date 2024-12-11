@@ -217,7 +217,8 @@ if __name__ == "__main__":
         # Store ActiveIndicators for Jaccard Computation
         ActiveIndicators.append(ElementActiveIndicator)
 
-        # Constructing
+        # Constructing MultiLineString objects to compute hausdorff distance with shapely
+
         # Constructs graph for computed free boundary using dmplex indices
         V, E = getGraph(mesh, ElementActiveIndicator, OuterElementIndicator)
 
