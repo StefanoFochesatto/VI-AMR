@@ -217,6 +217,7 @@ class VIAMR(OptionsManager):
         return AreaIntersection/AreaUnion
 
     # Fixme: better design would be input as two edge sets
+
     def hausdorff(self, sol1, sol2, lb):
         '''Compute the Hausdorff distance between two free boundaries'''
         lb1 = Function(sol1.function_space()).interpolate(lb)
