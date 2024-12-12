@@ -148,8 +148,8 @@ class VIAMR(OptionsManager):
         return mark
 
     # Fixme: checks for when free boundary is emptyset
-    def freeboundarygraph(self, u, lb):
-        ''' pulls the graph for the free boundary using dmplex verticex indices'''
+    def freeboundarygraph(self, u, lb, type='coords'):
+        ''' pulls the graph for the free boundary, return as dm, fd, or coords'''
         mesh = u.function_space().mesh()
         CellVertexMap = mesh.topology.cell_closure
 
@@ -201,7 +201,21 @@ class VIAMR(OptionsManager):
                         # Ensure consistent ordering
                         EdgeSet.add((min(v1, v2), max(v1, v2)))
 
-        return FreeBoundaryVertices, EdgeSet
+        if type == "dm":
+            return FreeBoundaryVertices, EdgeSet
+        else:
+            fdV = [mesh.topology._vertex_numbering.getOffset(
+                vertex) for vertex in list(FreeBoundaryVertices)]
+            fdE = [[mesh.topology._vertex_numbering.getOffset(
+                edge[0]), mesh.topology._vertex_numbering.getOffset(edge[1])] for edge in list(EdgeSet)]
+            if type == "fd":
+                return fdV, fdE
+            elif type == "coords":
+                coords = mesh.coordinates.dat.data_ro_with_halos
+                coordsV = [coords[vertex] for vertex in fdV]
+                coordsE = [[[coords[edge[0]][0], coords[edge[0]][1]], [
+                    coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
+                return coordsV, coordsE
 
     def jaccard(self, sol1active, sol2active):
         '''Compute the Jaccard metric given two element-wise active set indicators'''
@@ -216,33 +230,5 @@ class VIAMR(OptionsManager):
         # Fixme: Divide by zero check
         return AreaIntersection/AreaUnion
 
-    # Fixme: better design would be input as two edge sets
-
-    def hausdorff(self, sol1, sol2, lb):
-        '''Compute the Hausdorff distance between two free boundaries'''
-        lb1 = Function(sol1.function_space()).interpolate(lb)
-        lb2 = Function(sol2.function_space()).interpolate(lb)
-
-        LineStrings = []
-        # Create a list of tuples to iterate over
-        solutions = [(sol1, lb1), (sol2, lb2)]
-        # Loop through each pair
-        for sol, lb in solutions:
-            _, E = self.freeboundarygraph(sol, lb)
-
-            # Convert dmplex indices to fd indices
-            fdE = [[sol.function_space().mesh().topology._vertex_numbering.getOffset(
-                edge[0]), sol.function_space().mesh().topology._vertex_numbering.getOffset(edge[1])] for edge in list(E)]
-
-            # Map from fd vertex index to coordinates
-            coords = sol.function_space().mesh().coordinates.dat.data_ro_with_halos
-
-            # Use map fd index edges to coordinate edges
-            coordinateedges = [[[coords[edge[0]][0], coords[edge[0]][1]], [
-                coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
-
-            # Create and store multilinestring shapely object
-            LineStrings.append(MultiLineString(coordinateedges))
-
-        # return shapely hausdorff distance
-        return hausdorff_distance(LineStrings[0], LineStrings[1], .99)
+    def hausdorff(self, E1, E2):
+        return hausdorff_distance(MultiLineString(E1), MultiLineString(E2), .99)
