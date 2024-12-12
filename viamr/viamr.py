@@ -24,14 +24,17 @@ class VIAMR(OptionsManager):
         CG1, DG0 = self.spaces(mesh, p=1)
         nvertices = CG1.dim()
         nelements = DG0.dim()
-        hmin = float(mesh.comm.allreduce(min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
-        hmax = float(mesh.comm.allreduce(max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
+        hmin = float(mesh.comm.allreduce(
+            min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
+        hmax = float(mesh.comm.allreduce(
+            max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
         return nvertices, nelements, hmin, hmax
 
     def meshreport(self, mesh, indent=2):
         '''Print standard mesh report.  Valid in parallel.'''
         nv, ne, hmin, hmax = self.meshsizes(mesh)
-        PETSc.Sys.Print(f'current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]')
+        PETSc.Sys.Print(
+            f'current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]')
         return None
 
     def nodalactive(self, u, lb):
@@ -40,12 +43,19 @@ class VIAMR(OptionsManager):
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
         return z
 
+    def elemactive(self, u, lb):
+        '''Compute element active set indicator in DG0.'''
+        _, DG0 = self.spaces(u.function_space().mesh())
+        z = Function(DG0, name="Element Active Set Indicator")
+        z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
+        return z
+
     def bfs_neighbors(self, mesh, border, levels, active):
         '''element-wise Fast Multi Neighbor Lookup BFS can Avoid Active Set'''
 
         # dictionary to map each vertex to the cells that contain it
         vertex_to_cells = {}
-        cell_vertex_map = mesh.topology.cell_closure # cell to vertex connectivity
+        cell_vertex_map = mesh.topology.cell_closure  # cell to vertex connectivity
         # Loop over all cells to populate the dictionary
         for i in range(mesh.num_cells()):
             # first three entries correspond to the vertices
@@ -78,11 +88,9 @@ class VIAMR(OptionsManager):
         Warning: Not valid in parallel.'''
 
         # generate element-wise and nodal-wise indicators for active set
-        CG1, DG0 = self.spaces(mesh)
-        nodaldiffCG = Function(CG1).interpolate(abs(u - lb))
-        elemactive = Function(DG0, name="Element Active Set Indicator")
-        elemactive.interpolate(conditional(nodaldiffCG < self.activetol, 1, 0))
+        _, DG0 = self.spaces(mesh)
         nodalactive = self.nodalactive(u, lb)
+        elemactive = self.elemactive(u, lb)
 
         # Define Border Elements Set
         elemborder = Function(DG0, name="Border Elements")
@@ -93,7 +101,6 @@ class VIAMR(OptionsManager):
         # bfs_neighbors() constructs N^n(B) indicator.  Last argument
         # is to refine only in active or only in inactive set (currently commented out).
         return self.bfs_neighbors(mesh, elemborder, n, elemactive)
-
 
     def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8]):
         '''Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
@@ -126,6 +133,20 @@ class VIAMR(OptionsManager):
         # Applying thresholding parameters
         mark = Function(DG0, name="VCES Marking")
         mark.interpolate(
-            conditional(uDG0 > bracket[0], conditional(uDG0 < bracket[1], 1, 0), 0)
+            conditional(uDG0 > bracket[0], conditional(
+                uDG0 < bracket[1], 1, 0), 0)
         )
         return mark
+
+    def jaccard(self, sol1active, sol2active):
+
+        # Compute Jaccard
+        mesh1 = sol1active.function_space().mesh()
+        DG0mesh1 = sol1active.function_space()
+        projsol2 = Function(DG0mesh1).project(sol2active)
+        AreaIntersection = assemble(projsol2 * sol1active * dx(mesh1))
+        AreaUnion = assemble(
+            (projsol2 + sol1active - (projsol2 * sol1active)) * dx(mesh1))
+
+        # Fixme: Divide by zero check
+        return AreaIntersection/AreaUnion

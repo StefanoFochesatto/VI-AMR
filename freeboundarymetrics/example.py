@@ -1,5 +1,4 @@
 # Import Firedrake and Netgen
-import geopandas as gpd
 from firedrake import *
 from firedrake.output import VTKFile
 try:
@@ -165,7 +164,7 @@ def getGraph(mesh, ElementActiveIndicator, OuterElementIndicator):
         ActiveVertices.update(vertices)
 
     # Find intersection of border and active vertices
-    FreeBoundaryVertices = BorderVertices.intersection(ActiveVertices)
+    FreeBoundaryVertices = BorderVertices.inftersection(ActiveVertices)
 
     # Create an edge set for the FreeBoundaryVertices
     EdgeSet = set()
@@ -243,5 +242,3 @@ if __name__ == "__main__":
     HausdorffError = getHausdorff(
         LineStringCollections[0], LineStringCollections[1])
     JaccardError = getJaccard(ActiveIndicators[0], ActiveIndicators[1])
-
-    # Jaccard computation using Firedrake.
