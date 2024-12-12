@@ -164,7 +164,7 @@ def getGraph(mesh, ElementActiveIndicator, OuterElementIndicator):
         ActiveVertices.update(vertices)
 
     # Find intersection of border and active vertices
-    FreeBoundaryVertices = BorderVertices.inftersection(ActiveVertices)
+    FreeBoundaryVertices = BorderVertices.intersection(ActiveVertices)
 
     # Create an edge set for the FreeBoundaryVertices
     EdgeSet = set()

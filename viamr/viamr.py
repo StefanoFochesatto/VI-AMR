@@ -5,6 +5,9 @@ from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 from pyop2.mpi import MPI
 
+from shapely.geometry import MultiLineString
+from shapely import hausdorff_distance
+
 
 class VIAMR(OptionsManager):
 
@@ -50,6 +53,15 @@ class VIAMR(OptionsManager):
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
         return z
 
+    def elemborder(self, nodalactive):
+        '''From nodal activeset indicator compute bordering element indicator.'''
+        _, DG0 = self.spaces(nodalactive.function_space().mesh())
+        z = Function(DG0, name="Border Elements")
+        z.interpolate(conditional(nodalactive > 0,
+                                  conditional(nodalactive < 1, 1, 0),
+                                  0))
+        return z
+
     def bfs_neighbors(self, mesh, border, levels, active):
         '''element-wise Fast Multi Neighbor Lookup BFS can Avoid Active Set'''
 
@@ -92,11 +104,8 @@ class VIAMR(OptionsManager):
         nodalactive = self.nodalactive(u, lb)
         elemactive = self.elemactive(u, lb)
 
-        # Define Border Elements Set
-        elemborder = Function(DG0, name="Border Elements")
-        elemborder.interpolate(conditional(nodalactive > 0,
-                                           conditional(nodalactive < 1, 1, 0),
-                                           0))
+        # generate border element indicator
+        elemborder = self.elemborder(nodalactive)
 
         # bfs_neighbors() constructs N^n(B) indicator.  Last argument
         # is to refine only in active or only in inactive set (currently commented out).
@@ -138,8 +147,64 @@ class VIAMR(OptionsManager):
         )
         return mark
 
-    def jaccard(self, sol1active, sol2active):
+    # Fixme: checks for when free boundary is emptyset
+    def freeboundarygraph(self, u, lb):
+        ''' pulls the graph for the free boundary using dmplex verticex indices'''
+        mesh = u.function_space().mesh()
+        CellVertexMap = mesh.topology.cell_closure
 
+        # Get active indicators
+        nodalactive = self.nodalactive(u, lb)  # vertex
+        elemactive = self.elemactive(u, lb)  # cell
+        elemborder = self.elemborder(nodalactive)  # bordering cell
+
+        # Pull Indices
+        ActiveSetElementsIndices = [i for i, value in enumerate(
+            elemactive.dat.data) if value != 0]
+        BorderElementsIndices = [i for i, value in enumerate(
+            elemborder.dat.data) if value != 0]
+
+        # Create sets for vertices related to BorderElements and ActiveSet
+        BorderVertices = set()
+        ActiveVertices = set()
+
+        # Populate BorderVertices set
+        for cellIdx in BorderElementsIndices:
+            # Add vertices of this border element cell to the set
+            # Assuming cells are triangles, adjust if needed
+            vertices = CellVertexMap[cellIdx][:3]
+            BorderVertices.update(vertices)
+
+        # Populate ActiveVertices set
+        for cellIdx in ActiveSetElementsIndices:
+            # Add vertices of this active set element cell to the set
+            # Assuming cells are triangles, adjust if needed
+            vertices = CellVertexMap[cellIdx][:3]
+            ActiveVertices.update(vertices)
+
+        # Find intersection of border and active vertices
+        FreeBoundaryVertices = BorderVertices.intersection(ActiveVertices)
+
+        # Create an edge set for the FreeBoundaryVertices
+        EdgeSet = set()
+
+        # Loop through BorderElements and form edges
+        for cellIdx in BorderElementsIndices:
+            vertices = CellVertexMap[cellIdx][:3]
+            # Check all pairs of vertices in the element
+            for i in range(len(vertices)):
+                for j in range(i+1, len(vertices)):
+                    v1 = vertices[i]
+                    v2 = vertices[j]
+                    # Add edge if both vertices are part of the free boundary
+                    if v1 in FreeBoundaryVertices and v2 in FreeBoundaryVertices:
+                        # Ensure consistent ordering
+                        EdgeSet.add((min(v1, v2), max(v1, v2)))
+
+        return FreeBoundaryVertices, EdgeSet
+
+    def jaccard(self, sol1active, sol2active):
+        '''Compute the Jaccard metric given two element-wise active set indicators'''
         # Compute Jaccard
         mesh1 = sol1active.function_space().mesh()
         DG0mesh1 = sol1active.function_space()
@@ -150,3 +215,33 @@ class VIAMR(OptionsManager):
 
         # Fixme: Divide by zero check
         return AreaIntersection/AreaUnion
+
+    # Fixme: better design would be input as two edge sets
+    def hausdorff(self, sol1, sol2, lb):
+        '''Compute the Hausdorff distance between two free boundaries'''
+        lb1 = Function(sol1.function_space()).interpolate(lb)
+        lb2 = Function(sol2.function_space()).interpolate(lb)
+
+        LineStrings = []
+        # Create a list of tuples to iterate over
+        solutions = [(sol1, lb1), (sol2, lb2)]
+        # Loop through each pair
+        for sol, lb in solutions:
+            _, E = self.freeboundarygraph(sol, lb)
+
+            # Convert dmplex indices to fd indices
+            fdE = [[sol.function_space().mesh().topology._vertex_numbering.getOffset(
+                edge[0]), sol.function_space().mesh().topology._vertex_numbering.getOffset(edge[1])] for edge in list(E)]
+
+            # Map from fd vertex index to coordinates
+            coords = sol.function_space().mesh().coordinates.dat.data_ro_with_halos
+
+            # Use map fd index edges to coordinate edges
+            coordinateedges = [[[coords[edge[0]][0], coords[edge[0]][1]], [
+                coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
+
+            # Create and store multilinestring shapely object
+            LineStrings.append(MultiLineString(coordinateedges))
+
+        # return shapely hausdorff distance
+        return hausdorff_distance(LineStrings[0], LineStrings[1], .99)

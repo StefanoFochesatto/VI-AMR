@@ -64,9 +64,23 @@ def test_overlapping_and_nonoverlapping_jaccard():
         conditional(x < -.5, 1, 0))  # smaller left half active
     assert z.jaccard(sol1active, sol3active) == 0.0
 
+# Fixme: modify for hausdorff(E1, E2)
+
+
+def test_overlapping_and_nonoverlapping_hausdorff():
+    mesh = RectangleMesh(10, 10, 1, 1)
+    z = VIAMR()
+    CG1, _ = z.spaces(mesh)
+    x, y = SpatialCoordinate(mesh)
+    sol1 = Function(CG1).interpolate(Constant(1.0))
+    sol2 = Function(CG1).interpolate(Constant(1.0))
+    lb = conditional(x < .5, 1, 0)
+    assert z.hausdorff(sol1, sol2, lb) == 0
+
 
 if __name__ == "__main__":
     test_netgen_mesh_creation()
     test_viamr_spaces()
     test_viamr_mark_none()
     test_overlapping_and_nonoverlapping_jaccard()
+    test_overlapping_and_nonoverlapping_hausdorff()
