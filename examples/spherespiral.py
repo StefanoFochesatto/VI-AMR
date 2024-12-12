@@ -120,11 +120,11 @@ for prob in range(2):
             if i == refinements:
                 break
 
-            # refine via marking using default parameters
+            # refine via marking
             if method == 'udo':
                 mark = VIAMR().udomark(mesh, u, lbound)
             else:
-                mark = VIAMR().vcesmark(mesh, u, lbound)
+                mark = VIAMR().vcesmark(mesh, u, lbound, bracket=[0.06, 0.94])  # more refinement
             if debugoutputs:
                 VTKFile(f"result_{problems[prob]}_{method}{i}.pvd").write(u, lbound, mark)
 
