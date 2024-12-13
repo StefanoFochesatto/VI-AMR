@@ -181,9 +181,9 @@ class VIAMR(OptionsManager):
         return AreaIntersection / AreaUnion
 
 
-    # FIXME check for when free boundary is emptyset
-    def freeboundarygraph(self, u, lb):
-        ''' pulls the graph for the free boundary using dmplex verticex indices'''
+    # Fixme: checks for when free boundary is emptyset
+    def freeboundarygraph(self, u, lb, type='coords'):
+        ''' pulls the graph for the free boundary, return as dm, fd, or coords'''
         mesh = u.function_space().mesh()
         CellVertexMap = mesh.topology.cell_closure
 
@@ -235,7 +235,21 @@ class VIAMR(OptionsManager):
                         # Ensure consistent ordering
                         EdgeSet.add((min(v1, v2), max(v1, v2)))
 
-        return FreeBoundaryVertices, EdgeSet
+        if type == "dm":
+            return FreeBoundaryVertices, EdgeSet
+        else:
+            fdV = [mesh.topology._vertex_numbering.getOffset(
+                vertex) for vertex in list(FreeBoundaryVertices)]
+            fdE = [[mesh.topology._vertex_numbering.getOffset(
+                edge[0]), mesh.topology._vertex_numbering.getOffset(edge[1])] for edge in list(EdgeSet)]
+            if type == "fd":
+                return fdV, fdE
+            elif type == "coords":
+                coords = mesh.coordinates.dat.data_ro_with_halos
+                coordsV = [coords[vertex] for vertex in fdV]
+                coordsE = [[[coords[edge[0]][0], coords[edge[0]][1]], [
+                    coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
+                return coordsV, coordsE
 
 
     # FIXME better design would be input as two edge sets
