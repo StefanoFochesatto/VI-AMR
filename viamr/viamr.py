@@ -167,8 +167,14 @@ class VIAMR(OptionsManager):
         two sets is
             J(S,T) = |S \cap T| / |S \cup T|,
         that is, the ratio of the area (measure) of the intersection
-        divided by the ares of the union.'''
+        divided by the area of the union.
+        Warning: Not valid in parallel.'''
         # FIXME how to check that active1, active2 are in DG0 spaces?
+        # FIXME fails in parallel; the line generating proj2 will throw
+        #     AssertionError: Whoever made mesh_B should explicitly mark
+        #     mesh_A as having a compatible parallel layout.
+        assert active1.function_space().mesh()._comm.size == 1, \
+               'jaccard() not valid in parallel'
         if self.debug:
             for a in [active1, active2]:
                 assert min(a.dat.data_ro) >= 0.0
