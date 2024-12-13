@@ -1,5 +1,6 @@
 import numpy as np
 from collections import deque
+
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
@@ -12,13 +13,14 @@ from shapely import hausdorff_distance
 class VIAMR(OptionsManager):
 
     def __init__(self, **kwargs):
-        # solver_parameters = flatten_parameters(kwargs.pop("solver_parameters",{}))
-        # self.options_prefix = kwargs.pop("options_prefix","")
-        # super().__init__(solver_parameters, self.options_prefix)  # set PETSc parameters
-        self.activetol = 1.0e-10
+        self.activetol = kwargs.pop("activetol", 1.0e-10)
+        self.debug = kwargs.pop("debug", False)  # if True, add (slow) extra checking
 
     def spaces(self, mesh, p=1):
         '''Return CG{p} and DG{p-1} spaces.'''
+        if self.debug:
+            assert isinstance(p, int)
+            assert p >= 1
         return FunctionSpace(mesh, "CG", p), FunctionSpace(mesh, "DG", p-1)
 
     def meshsizes(self, mesh):
@@ -41,13 +43,19 @@ class VIAMR(OptionsManager):
         return None
 
     def nodalactive(self, u, lb):
-        '''Compute nodal active set indicator in same function space as u.'''
+        '''Compute nodal active set indicator in same function space as u.
+        Applies to unilateral obstacle problems with u >= lb.  The active
+        set is {x : u(x) == lb(x)}, within activetol.'''
+        if self.debug:
+            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         z = Function(u.function_space(), name="Nodal Active Set Indicator")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
         return z
 
     def elemactive(self, u, lb):
         '''Compute element active set indicator in DG0.'''
+        if self.debug:
+            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
         z = Function(DG0, name="Element Active Set Indicator")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
@@ -55,6 +63,9 @@ class VIAMR(OptionsManager):
 
     def elemborder(self, nodalactive):
         '''From nodal activeset indicator compute bordering element indicator.'''
+        if self.debug:
+            assert min(nodalactive.dat.data_ro) >= 0.0
+            assert max(nodalactive.dat.data_ro) <= 1.0
         _, DG0 = self.spaces(nodalactive.function_space().mesh())
         z = Function(DG0, name="Border Elements")
         z.interpolate(conditional(nodalactive > 0,
@@ -110,6 +121,7 @@ class VIAMR(OptionsManager):
         # bfs_neighbors() constructs N^n(B) indicator.  Last argument
         # is to refine only in active or only in inactive set (currently commented out).
         return self.bfs_neighbors(mesh, elemborder, n, elemactive)
+
 
     def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8]):
         '''Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
