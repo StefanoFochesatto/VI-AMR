@@ -1,24 +1,27 @@
 import numpy as np
 from collections import deque
+
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 from pyop2.mpi import MPI
 
 from shapely.geometry import MultiLineString
-from shapely import hausdorff_distance
+import shapely
 
 
 class VIAMR(OptionsManager):
 
     def __init__(self, **kwargs):
-        # solver_parameters = flatten_parameters(kwargs.pop("solver_parameters",{}))
-        # self.options_prefix = kwargs.pop("options_prefix","")
-        # super().__init__(solver_parameters, self.options_prefix)  # set PETSc parameters
-        self.activetol = 1.0e-10
+        self.activetol = kwargs.pop("activetol", 1.0e-10)
+        # if True, add (slow) extra checking
+        self.debug = kwargs.pop("debug", False)
 
     def spaces(self, mesh, p=1):
         '''Return CG{p} and DG{p-1} spaces.'''
+        if self.debug:
+            assert isinstance(p, int)
+            assert p >= 1
         return FunctionSpace(mesh, "CG", p), FunctionSpace(mesh, "DG", p-1)
 
     def meshsizes(self, mesh):
@@ -34,13 +37,19 @@ class VIAMR(OptionsManager):
         return nvertices, nelements, hmin, hmax
 
     def nodalactive(self, u, lb):
-        '''Compute nodal active set indicator in same function space as u.'''
+        '''Compute nodal active set indicator in same function space as u.
+        Applies to unilateral obstacle problems with u >= lb.  The active
+        set is {x : u(x) == lb(x)}, within activetol.'''
+        if self.debug:
+            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         z = Function(u.function_space(), name="Nodal Active Set Indicator")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
         return z
 
     def elemactive(self, u, lb):
         '''Compute element active set indicator in DG0.'''
+        if self.debug:
+            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
         z = Function(DG0, name="Element Active Set Indicator")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
@@ -48,6 +57,9 @@ class VIAMR(OptionsManager):
 
     def elemborder(self, nodalactive):
         '''From nodal activeset indicator compute bordering element indicator.'''
+        if self.debug:
+            assert min(nodalactive.dat.data_ro) >= 0.0
+            assert max(nodalactive.dat.data_ro) <= 1.0
         _, DG0 = self.spaces(nodalactive.function_space().mesh())
         z = Function(DG0, name="Border Elements")
         z.interpolate(conditional(nodalactive > 0,
@@ -140,6 +152,26 @@ class VIAMR(OptionsManager):
         )
         return mark
 
+    def jaccard(self, active1, active2):
+        '''Compute the Jaccard metric from two element-wise active
+        set indicators.  These indicators must be DG0 functions, but they
+        can be on different meshes.  By definition, the Jaccard metric of
+        two sets is
+            J(S,T) = |S \cap T| / |S \cup T|,
+        that is, the ratio of the area (measure) of the intersection
+        divided by the ares of the union.'''
+        # FIXME how to check that active1, active2 are in DG0 spaces?
+        if self.debug:
+            for a in [active1, active2]:
+                assert min(a.dat.data_ro) >= 0.0
+                assert max(a.dat.data_ro) <= 1.0
+        mesh1 = active1.function_space().mesh()
+        proj2 = Function(active1.function_space()).project(active2)
+        AreaIntersection = assemble(proj2 * active1 * dx(mesh1))
+        AreaUnion = assemble((proj2 + active1 - (proj2 * active1)) * dx(mesh1))
+        assert AreaUnion > 0.0
+        return AreaIntersection / AreaUnion
+
     # Fixme: maybe move these to another file? utility.py?
 
     def meshreport(self, mesh, indent=2):
@@ -219,18 +251,32 @@ class VIAMR(OptionsManager):
                     coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
                 return coordsV, coordsE
 
-    def jaccard(self, sol1active, sol2active):
-        '''Compute the Jaccard metric given two element-wise active set indicators'''
-        # Compute Jaccard
-        mesh1 = sol1active.function_space().mesh()
-        DG0mesh1 = sol1active.function_space()
-        projsol2 = Function(DG0mesh1).project(sol2active)
-        AreaIntersection = assemble(projsol2 * sol1active * dx(mesh1))
-        AreaUnion = assemble(
-            (projsol2 + sol1active - (projsol2 * sol1active)) * dx(mesh1))
+    # FIXME better design would be input as two edge sets
 
-        # Fixme: Divide by zero check
-        return AreaIntersection/AreaUnion
+    def hausdorff(self, sol1, sol2, lb):
+        '''Compute the Hausdorff distance between two free boundaries'''
+        lb1 = Function(sol1.function_space()).interpolate(lb)
+        lb2 = Function(sol2.function_space()).interpolate(lb)
 
-    def hausdorff(self, E1, E2):
-        return hausdorff_distance(MultiLineString(E1), MultiLineString(E2), .99)
+        LineStrings = []
+        # Create a list of tuples to iterate over
+        solutions = [(sol1, lb1), (sol2, lb2)]
+        # Loop through each pair
+        for sol, lb in solutions:
+            _, E = self.freeboundarygraph(sol, lb)
+
+            # Convert dmplex indices to fd indices
+            fdE = [[sol.function_space().mesh().topology._vertex_numbering.getOffset(
+                edge[0]), sol.function_space().mesh().topology._vertex_numbering.getOffset(edge[1])] for edge in list(E)]
+
+            # Map from fd vertex index to coordinates
+            coords = sol.function_space().mesh().coordinates.dat.data_ro_with_halos
+
+            # Use map fd index edges to coordinate edges
+            coordinateedges = [[[coords[edge[0]][0], coords[edge[0]][1]], [
+                coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
+
+            # Create and store multilinestring shapely object
+            LineStrings.append(MultiLineString(coordinateedges))
+
+        return shapely.hausdorff_distance(LineStrings[0], LineStrings[1], .99)

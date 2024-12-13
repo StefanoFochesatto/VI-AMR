@@ -23,14 +23,14 @@ def test_netgen_mesh_creation():
 
 def test_viamr_spaces():
     mesh = get_netgen_mesh()
-    V, W = VIAMR().spaces(mesh)
+    V, W = VIAMR(debug=True).spaces(mesh)
     assert V.dim() == 135
     assert W.dim() == 228
 
 
 def test_viamr_mark_none():
     mesh = get_netgen_mesh()
-    z = VIAMR()
+    z = VIAMR(debug=True)
     CG1, _ = z.spaces(mesh)
     (x, y) = SpatialCoordinate(mesh)
     r = sqrt(x * x + y * y)
@@ -51,18 +51,43 @@ def test_viamr_mark_none():
     assert norm(mark, 'L1') == 0.0
 
 
-def test_overlapping_and_nonoverlapping_jaccard():
+def test_overlapping_jaccard():
     mesh = get_netgen_mesh()
-    z = VIAMR()
+    z = VIAMR(debug=True)
     _, DG0 = z.spaces(mesh)
-    (x, y) = SpatialCoordinate(mesh)
-    sol1active = Function(DG0).interpolate(
-        conditional(x > 0, 1, 0))  # right half active
-    sol2active = Function(DG0).interpolate(conditional(x > 0, 1, 0))  # overlap
-    assert z.jaccard(sol1active, sol2active) == 1.0
-    sol3active = Function(DG0).interpolate(
-        conditional(x < -.5, 1, 0))  # smaller left half active
-    assert z.jaccard(sol1active, sol3active) == 0.0
+    x, _ = SpatialCoordinate(mesh)
+    right = conditional(x > 0, 1, 0)
+    active1 = Function(DG0).interpolate(right)  # right half active
+    active2 = Function(DG0).interpolate(right)  # same; full overlap
+    assert z.jaccard(active1, active1) == 1.0
+
+
+def test_nonoverlapping_jaccard():
+    mesh = get_netgen_mesh()
+    z = VIAMR(debug=True)
+    _, DG0 = z.spaces(mesh)
+    x, _ = SpatialCoordinate(mesh)
+    right = conditional(x > 0, 1, 0)
+    farleft = conditional(x < -.5, 1, 0)
+    active1 = Function(DG0).interpolate(right)
+    active2 = Function(DG0).interpolate(farleft)  # no overlap
+    assert z.jaccard(active1, active2) == 0.0
+
+
+def test_symmetry_jaccard():
+    mesh = get_netgen_mesh()
+    z = VIAMR(debug=True)
+    _, DG0 = z.spaces(mesh)
+    x, _ = SpatialCoordinate(mesh)
+    right = conditional(x > 0, 1, 0)
+    more = conditional(x < 1, 1, 0)
+    active1 = Function(DG0).interpolate(right)
+    active2 = Function(DG0).interpolate(more)
+    # FIXME is exact symmetry expected, or just within rounding error?
+    assert z.jaccard(active1, active2) == z.jaccard(active2, active1)
+
+
+# FIXME modify for hausdorff(E1, E2)  ??
 
 
 def test_overlapping_and_nonoverlapping_hausdorff():
@@ -84,5 +109,7 @@ if __name__ == "__main__":
     test_netgen_mesh_creation()
     test_viamr_spaces()
     test_viamr_mark_none()
-    test_overlapping_and_nonoverlapping_jaccard()
+    test_overlapping_jaccard()
+    test_nonoverlapping_jaccard()
+    test_symmetry_jaccard()
     test_overlapping_and_nonoverlapping_hausdorff()
