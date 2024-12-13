@@ -33,13 +33,6 @@ class VIAMR(OptionsManager):
             max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
         return nvertices, nelements, hmin, hmax
 
-    def meshreport(self, mesh, indent=2):
-        '''Print standard mesh report.  Valid in parallel.'''
-        nv, ne, hmin, hmax = self.meshsizes(mesh)
-        PETSc.Sys.Print(
-            f'current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]')
-        return None
-
     def nodalactive(self, u, lb):
         '''Compute nodal active set indicator in same function space as u.'''
         z = Function(u.function_space(), name="Nodal Active Set Indicator")
@@ -146,6 +139,15 @@ class VIAMR(OptionsManager):
                 uDG0 < bracket[1], 1, 0), 0)
         )
         return mark
+
+    # Fixme: maybe move these to another file? utility.py?
+
+    def meshreport(self, mesh, indent=2):
+        '''Print standard mesh report.  Valid in parallel.'''
+        nv, ne, hmin, hmax = self.meshsizes(mesh)
+        PETSc.Sys.Print(
+            f'current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]')
+        return None
 
     # Fixme: checks for when free boundary is emptyset
     def freeboundarygraph(self, u, lb, type='coords'):

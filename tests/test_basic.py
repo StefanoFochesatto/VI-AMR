@@ -66,6 +66,7 @@ def test_overlapping_and_nonoverlapping_jaccard():
 
 
 def test_overlapping_and_nonoverlapping_hausdorff():
+    # to have free boundaries line up with conditional statements
     mesh = RectangleMesh(10, 10, 1, 1)
     z = VIAMR()
     CG1, _ = z.spaces(mesh)
