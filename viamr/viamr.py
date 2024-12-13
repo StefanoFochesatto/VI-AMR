@@ -7,7 +7,7 @@ from firedrake.output import VTKFile
 from pyop2.mpi import MPI
 
 from shapely.geometry import MultiLineString
-from shapely import hausdorff_distance
+import shapely
 
 
 class VIAMR(OptionsManager):
@@ -159,7 +159,29 @@ class VIAMR(OptionsManager):
         )
         return mark
 
-    # Fixme: checks for when free boundary is emptyset
+
+    def jaccard(self, active1, active2):
+        '''Compute the Jaccard metric from two element-wise active
+        set indicators.  These indicators must be DG0 functions, but they
+        can be on different meshes.  By definition, the Jaccard metric of
+        two sets is
+            J(S,T) = |S \cap T| / |S \cup T|,
+        that is, the ratio of the area (measure) of the intersection
+        divided by the ares of the union.'''
+        # FIXME how to check that active1, active2 are in DG0 spaces?
+        if self.debug:
+            for a in [active1, active2]:
+                assert min(a.dat.data_ro) >= 0.0
+                assert max(a.dat.data_ro) <= 1.0
+        mesh1 = active1.function_space().mesh()
+        proj2 = Function(active1.function_space()).project(active2)
+        AreaIntersection = assemble(proj2 * active1 * dx(mesh1))
+        AreaUnion = assemble((proj2 + active1 - (proj2 * active1)) * dx(mesh1))
+        assert AreaUnion > 0.0
+        return AreaIntersection / AreaUnion
+
+
+    # FIXME check for when free boundary is emptyset
     def freeboundarygraph(self, u, lb):
         ''' pulls the graph for the free boundary using dmplex verticex indices'''
         mesh = u.function_space().mesh()
@@ -215,21 +237,8 @@ class VIAMR(OptionsManager):
 
         return FreeBoundaryVertices, EdgeSet
 
-    def jaccard(self, sol1active, sol2active):
-        '''Compute the Jaccard metric given two element-wise active set indicators'''
-        # Compute Jaccard
-        mesh1 = sol1active.function_space().mesh()
-        DG0mesh1 = sol1active.function_space()
-        projsol2 = Function(DG0mesh1).project(sol2active)
-        AreaIntersection = assemble(projsol2 * sol1active * dx(mesh1))
-        AreaUnion = assemble(
-            (projsol2 + sol1active - (projsol2 * sol1active)) * dx(mesh1))
 
-        # Fixme: Divide by zero check
-        return AreaIntersection/AreaUnion
-
-    # Fixme: better design would be input as two edge sets
-
+    # FIXME better design would be input as two edge sets
     def hausdorff(self, sol1, sol2, lb):
         '''Compute the Hausdorff distance between two free boundaries'''
         lb1 = Function(sol1.function_space()).interpolate(lb)
@@ -256,5 +265,4 @@ class VIAMR(OptionsManager):
             # Create and store multilinestring shapely object
             LineStrings.append(MultiLineString(coordinateedges))
 
-        # return shapely hausdorff distance
-        return hausdorff_distance(LineStrings[0], LineStrings[1], .99)
+        return shapely.hausdorff_distance(LineStrings[0], LineStrings[1], .99)
