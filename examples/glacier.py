@@ -12,6 +12,8 @@ VCES method (because UD0 is not currently parallel) alternately with uniform
 refinement.  Examples:
   python3 glacier.py -opvd cap.pvd
   python3 glacier.py -prob dome -opvd dome.pvd
+Works in serial only:
+  python3 glacier.py -jaccard
 Also runs in parallel:
   mpiexec -n 4 glacier.py -opvd cap4.pvd
 """, formatter_class=RawTextHelpFormatter)
@@ -19,6 +21,8 @@ parser.add_argument('-epsH', type=float, default=20.0, metavar='X',
                     help='diffusivity regularization for thickness [default 20.0 m]')
 parser.add_argument('-epsplap', type=float, default=1.0e-4, metavar='X',
                     help='diffusivity regularization for p-Laplacian [default 1.0e-4]')
+parser.add_argument('-jaccard', action='store_true', default=False,
+                    help='use VIAMR.jaccard() to evaluate glaciated area convergence')
 parser.add_argument('-m', type=int, default=20, metavar='M',
                     help='number of cells in each direction [default=20]')
 parser.add_argument('-onelevel', action='store_true', default=False,
@@ -151,8 +155,11 @@ sp = {"snes_type": "vinewtonrsls",
 
 # main loop
 for i in range(args.refine + 1):
+    if i > 0 and args.jaccard:
+        # generate active set indicator so we can evaluate Jaccard index
+        eactive = VIAMR(debug=True).elemactive(s, lb)
     if i > 0:
-        # alternate: AMR,uniform,AMR,uniform,...
+        # refinement schedule is to alternate: AMR,uniform,AMR,uniform,...
         if np.mod(i, 2) == 1:
             mark = VIAMR().vcesmark(mesh, s, lb)
             #mark = VIAMR().udomark(mesh, s, lb, n=1)  # not in parallel, but otherwise great
@@ -202,6 +209,13 @@ for i in range(args.refine + 1):
     printpar(f'solving level {i}, {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
     solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
     solver.solve(bounds=(lb, Function(V).interpolate(Constant(PETSc.INFINITY))))
+
+    if i > 0 and args.jaccard:
+        z = VIAMR(debug=True)
+        neweactive = z.elemactive(s, lb)
+        jac = z.jaccard(eactive, neweactive)
+        printpar(f'  glaciated areas Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]' )
+        eactive = neweactive
 
     if args.prob == 'dome':
         sdiff = Function(V).interpolate(s - dome_exact(x))
