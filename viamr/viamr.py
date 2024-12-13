@@ -165,7 +165,7 @@ class VIAMR(OptionsManager):
         set indicators.  These indicators must be DG0 functions, but they
         can be on different meshes.  By definition, the Jaccard metric of
         two sets is
-            J(S,T) = |S \cap T| / |S \cup T|,
+            J(S,T) = |S cap T| / |S cup T|,
         that is, the ratio of the area (measure) of the intersection
         divided by the area of the union.
         Warning: Not valid in parallel.'''
