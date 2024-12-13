@@ -87,9 +87,6 @@ def test_symmetry_jaccard():
     assert z.jaccard(active1, active2) == z.jaccard(active2, active1)
 
 
-# FIXME modify for hausdorff(E1, E2)  ??
-
-
 def test_overlapping_and_nonoverlapping_hausdorff():
     # to have free boundaries line up with conditional statements
     mesh = RectangleMesh(10, 10, 1, 1)

@@ -127,6 +127,7 @@ for prob in range(2):
 
         mark = VIAMR().vcesmark(mesh, u, lbound, bracket=[
             0.06, 0.94])  # more refinement
+
         if debugoutputs:
             VTKFile(f"result_{problems[prob]}_{'vces'}{i}.pvd").write(
                 u, lbound, mark)

@@ -166,7 +166,7 @@ class VIAMR(OptionsManager):
         #     AssertionError: Whoever made mesh_B should explicitly mark
         #     mesh_A as having a compatible parallel layout.
         assert active1.function_space().mesh()._comm.size == 1, \
-               'jaccard() not valid in parallel'
+            'jaccard() not valid in parallel'
         if self.debug:
             for a in [active1, active2]:
                 assert min(a.dat.data_ro) >= 0.0
@@ -257,32 +257,5 @@ class VIAMR(OptionsManager):
                     coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
                 return coordsV, coordsE
 
-    # FIXME better design would be input as two edge sets
-
-    def hausdorff(self, sol1, sol2, lb):
-        '''Compute the Hausdorff distance between two free boundaries'''
-        lb1 = Function(sol1.function_space()).interpolate(lb)
-        lb2 = Function(sol2.function_space()).interpolate(lb)
-
-        LineStrings = []
-        # Create a list of tuples to iterate over
-        solutions = [(sol1, lb1), (sol2, lb2)]
-        # Loop through each pair
-        for sol, lb in solutions:
-            _, E = self.freeboundarygraph(sol, lb)
-
-            # Convert dmplex indices to fd indices
-            fdE = [[sol.function_space().mesh().topology._vertex_numbering.getOffset(
-                edge[0]), sol.function_space().mesh().topology._vertex_numbering.getOffset(edge[1])] for edge in list(E)]
-
-            # Map from fd vertex index to coordinates
-            coords = sol.function_space().mesh().coordinates.dat.data_ro_with_halos
-
-            # Use map fd index edges to coordinate edges
-            coordinateedges = [[[coords[edge[0]][0], coords[edge[0]][1]], [
-                coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
-
-            # Create and store multilinestring shapely object
-            LineStrings.append(MultiLineString(coordinateedges))
-
-        return shapely.hausdorff_distance(LineStrings[0], LineStrings[1], .99)
+    def hausdorff(self, E1, E2):
+        return shapely.hausdorff_distance(MultiLineString(E1), MultiLineString(E2), .99)
