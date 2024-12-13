@@ -31,13 +31,13 @@ except ImportError:
 debugoutputs = False
 
 width = 2.0
-TriHeight = 0.5
+TriHeight = 0.05
 
 metric_params = {
     "dm_plex_metric": {
         "target_complexity": 3000.0,
         "p": 2.0,  # normalisation order
-        "h_min": 1e-07,  # minimum allowed edge length
+        "h_min": 1e-06,  # minimum allowed edge length
         "h_max": 1.0,  # maximum allowed edge length
     }
 }
@@ -125,18 +125,15 @@ for i in range(3):
         Constant(PETSc.INFINITY))  # no upper obstacle
     solver.solve(bounds=(lbound, ubound))
 
-    # Create free boundary indicator
-    Vertex, _ = VIAMR().freeboundarygraph(u, lbound, 'fd')
-    freeboundaryid = Function(V)
-    freeboundaryid.dat.data[list(Vertex)[:]] = 1
+    _, freeboundaryfield = VIAMRMetric().vcesmark(
+        mesh, u, lbound, bracket=[0.06, 0.94])
 
-    # Build Metrics
     solutionMetric = metricfromhessian(mesh, u)
-    freeboundaryMetric = metricfromhessian(mesh, freeboundaryid)
+    freeboundaryMetric = metricfromhessian(mesh, freeboundaryfield)
 
-    VImetric = solutionMetric.copy(deepcopy=True)
-    VImetric.average(freeboundaryMetric, weights=[.50, .50])
-    mesh_intersected = adapt(mesh, VImetric)
+    intersected_metric = solutionMetric.copy(deepcopy=True)
+    intersected_metric.average(freeboundaryMetric, weights=[.2, .8])
+    mesh_intersected = adapt(mesh, intersected_metric)
     mesh = mesh_intersected
 
-VTKFile("result_MetricMesh.pvd").write(mesh)
+VTKFile("MetricMesh.pvd").write(mesh)
