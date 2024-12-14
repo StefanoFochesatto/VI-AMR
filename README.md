@@ -12,10 +12,19 @@ To get started, install firedrake with the [netgen/ngsolve](https://ngsolve.org/
 ```
 python3 firedrake-install --netgen
 ```
-
 For an existing firedrake install, make sure that the firedrake virtual environment is active, and then use the `firedrake-update` script from `firedrake/bin/` to add netgen/ngsolve integration:
 ```
 python3 firedrake-update --netgen
+```
+
+Now activate the venv.  Typically something like:
+```
+unset PETSC_DIR;  unset PYTHONPATH
+source ~/firedrake/bin/activate
+```
+Now install [shapely](https://pypi.org/project/shapely/) in the venv:
+```
+pip install shapely
 ```
 
 ## Installation of VI-AMR
