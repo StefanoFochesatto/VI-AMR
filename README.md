@@ -25,6 +25,7 @@ source ~/firedrake/bin/activate
 Now install [shapely](https://pypi.org/project/shapely/) in the venv:
 ```
 pip install shapely
+pip install siphash24   # may also be needed
 ```
 
 ## Installation of VI-AMR

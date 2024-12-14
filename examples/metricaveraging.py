@@ -1,13 +1,8 @@
 from netgen.geom2d import SplineGeometry
 import numpy as np
 from firedrake import *
-# I found the best way to install animate is to clone to the src folder
-# and make install with the firedrake env activated
-# git clone https://github.com/mesh-adaptation/animate.git
-# cd animate
-# make install
 
-from animate import *
+from animate import *   # see README.md regarding this dependency
 
 from viamr import VIAMR
 # Subclass VIAMR to return u
