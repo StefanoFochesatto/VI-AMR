@@ -4,14 +4,18 @@
 from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description="""
 Solves 2D steady shallow ice approximation glacier obstacle problem.
-Synthetic examples are on a square [0,L]^2 where L = 1800.0 km.
-By default generates a random, but smooth, bed topography.
-Option -prob dome solves in a flat bed case where the exact solution is known,
-and -prob range generates a disconnected glacier.  Note
-there is a double regularization in the isothermal, Glen-law diffusivity; see
-options -epsH and -epsplap.  Solver is vinewtonrsls + mumps.  Applies VIAMR
+Synthetic problem (default):
+    Domain is a square [0,L]^2 where L = 1800.0 km. By default generates
+    a random, but smooth, bed topography.  Option -prob dome solves in
+    a flat bed case where the exact solution is known, and -prob range
+    generates a disconnected glacier.
+Data-based problem (-data DATA.nc):
+    FIXME WIP
+Note there is a double regularization in the isothermal, Glen-law diffusivity;
+see options -epsH and -epsplap.  Solver is vinewtonrsls + mumps.  Applies VIAMR
 VCES method (because UD0 is not currently parallel) alternately with uniform
-refinement.  Examples:
+refinement.
+Examples:
   python3 steady.py -opvd cap.pvd
   python3 steady.py -prob dome -opvd dome.pvd
 Works in serial only:
@@ -19,6 +23,8 @@ Works in serial only:
 Also runs in parallel:
   mpiexec -n 4 steady.py -opvd cap4.pvd
 """, formatter_class=RawTextHelpFormatter)
+parser.add_argument('-data', metavar='FILE', type=str, default='',
+                    help='read "topg" variable from NetCDF file (.nc)')
 parser.add_argument('-epsH', type=float, default=20.0, metavar='X',
                     help='diffusivity regularization for thickness [default 20.0 m]')
 parser.add_argument('-epsplap', type=float, default=1.0e-4, metavar='X',
@@ -53,6 +59,20 @@ assert args.m >= 1, 'at least one cell in mesh'
 if args.onelevel:
     args.refine = 0
     printpar('not using refinement; uniform mesh generated with Firedrake')
+
+# read data for bed topography into numpy array, from 'topg' variable
+if args.data:
+    import netCDF4
+    data = netCDF4.Dataset(args.data)
+    data.set_auto_mask(False)  # otherwise irritating masked arrays
+    lb_np = data.variables['topg'][0,:,:]
+    if False:  # debug view of data if True
+        import matplotlib.pyplot as plt
+        x_d = data.variables['x1']
+        y_d = data.variables['y1']
+        plt.pcolormesh(x_d, y_d, lb_np)
+        plt.axis('equal')
+        plt.show()
 
 # constants (same for all problems)
 L = 1800.0e3        # domain is [0,L]^2, with fields centered at (xc,xc)
@@ -121,25 +141,31 @@ def bumps(x, problem='cap'):
     return B0 * b
 
 # generate first mesh
-printpar(f'generating {args.m} x {args.m} initial mesh for problem {args.prob} ...')
-if args.onelevel:
-    # generate via Firedrake
-    mesh = RectangleMesh(args.m, args.m, L, L)
+if args.data:
+    # FIXME apparently I have to use the technique at
+    #    https://docu.ngsolve.org/latest/netgen_tutorials/manual_mesh_generation.html
+    import sys
+    sys.exit(0)
 else:
-    # prepare for AMR by generating via netgen
-    try:
-        import netgen
-    except ImportError:
-        printpar("ImportError.  Unable to import NetGen.  Exiting.")
-        import sys
-        sys.exit(0)
-    from netgen.geom2d import SplineGeometry
-    geo = SplineGeometry()
-    geo.AddRectangle(p1=(0.0, 0.0), p2=(L, L), bc="rectangle")
-    ngmsh = None
-    trih = L / args.m
-    ngmsh = geo.GenerateMesh(maxh=trih)
-    mesh = Mesh(ngmsh)
+    printpar(f'generating synthetic {args.m} x {args.m} initial mesh for problem {args.prob} ...')
+    if args.onelevel:
+        # generate via Firedrake
+        mesh = RectangleMesh(args.m, args.m, L, L)
+    else:
+        # prepare for AMR by generating via netgen
+        try:
+            import netgen
+        except ImportError:
+            printpar("ImportError.  Unable to import NetGen.  Exiting.")
+            import sys
+            sys.exit(0)
+        from netgen.geom2d import SplineGeometry
+        geo = SplineGeometry()
+        geo.AddRectangle(p1=(0.0, 0.0), p2=(L, L), bc="rectangle")
+        ngmsh = None
+        trih = L / args.m
+        ngmsh = geo.GenerateMesh(maxh=trih)
+        mesh = Mesh(ngmsh)
 
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
@@ -172,19 +198,22 @@ for i in range(args.refine + 1):
         # use NetGen to get next mesh
         mesh = mesh.refine_marked_elements(mark)
 
-    # obstacle
+    # obstacle and source term
     V = FunctionSpace(mesh, "CG", 1)
     x = SpatialCoordinate(mesh)
-    if args.prob == 'dome':
-        lb = Function(V).interpolate(Constant(0))
-        sexact = Function(V).interpolate(dome_exact(x))
-        sexact.rename("s_exact")
+    if args.data:
+        # FIXME cross-mesh interpolate lb_d to lb on current mesh
+        # FIXME plan is to compute a(x,y) from lb(x,y) using lapse rates
+        a = Function(V).interpolate(Constant(0))
     else:
-        lb = Function(V).interpolate(bumps(x, problem=args.prob))
-        lb.rename("lb = bedrock topography")
-
-    # source term
-    a = Function(V).interpolate(accumulation(x, problem=args.prob))
+        if args.prob == 'dome':
+            lb = Function(V).interpolate(Constant(0))
+            sexact = Function(V).interpolate(dome_exact(x))
+            sexact.rename("s_exact")
+        else:
+            lb = Function(V).interpolate(bumps(x, problem=args.prob))
+        a = Function(V).interpolate(accumulation(x, problem=args.prob))
+    lb.rename("lb = bedrock topography")
     a.rename("a = accumulation")
 
     if i == 0:
