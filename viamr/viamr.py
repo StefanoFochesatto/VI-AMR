@@ -52,7 +52,7 @@ class VIAMR(OptionsManager):
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
         z = Function(DG0, name="Element Active Set Indicator")
-        z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
+        z.interpolate(conditional(abs(u - lb) < self.activetol, 1, 0))
         return z
 
     def elemborder(self, nodalactive):
