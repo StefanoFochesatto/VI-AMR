@@ -1,5 +1,7 @@
 # Import Firedrake and Netgen
+from netgen.geom2d import SplineGeometry
 from firedrake import *
+from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 from viamr import VIAMR
 
@@ -17,6 +19,14 @@ class ObstacleProblem(OptionsManager):
             self.width = 1
 
     def getInitialMesh(self):
+        try:
+            import netgen
+
+        except ImportError:
+            print("ImportError.  Unable to import NetGen.  Exiting.")
+            import sys
+            sys.exit(0)
+
         geo = SplineGeometry()
         geo.AddRectangle(p1=(-1*self.width, -1*self.width),
                          p2=(1*self.width, 1*self.width),
@@ -28,7 +38,7 @@ class ObstacleProblem(OptionsManager):
 
         return mesh
 
-    def sphere_problem(mesh, V):
+    def sphere_problem(self, mesh, V):
         # exactly-solvable obstacle problem for spherical obstacle
         # see Chapter 12 of Bueler (2021)
         # obstacle and solution are in function space V
@@ -49,7 +59,7 @@ class ObstacleProblem(OptionsManager):
 
         return psi, psi_ufl, gbdry
 
-    def spiral_problem(mesh, V):
+    def spiral_problem(self, mesh, V):
         # spiral obstacle problem from section 7.1.1 in Graeser & Kornhuber (2009)
         (x, y) = SpatialCoordinate(mesh)
         r = sqrt(x * x + y * y)
@@ -85,7 +95,7 @@ class ObstacleProblem(OptionsManager):
             # use cross mesh interp to ensure solution on current mesh
             u = Function(V, name="u (FE soln)").interpolate(u)
 
-        lb, bcs, _ = getObstacle(V)
+        lb, bcs, _ = self.getObstacle(V)
 
         # weak form problem; F is residual operator in nonlinear system F==0
         v = TestFunction(V)
@@ -111,4 +121,4 @@ class ObstacleProblem(OptionsManager):
         ub = Function(V).interpolate(Constant(PETSc.INFINITY))
         solver.solve(bounds=(lb, ub))
 
-        return u, lb
+        return u, lb, mesh
