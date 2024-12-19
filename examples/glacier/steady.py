@@ -55,90 +55,27 @@ from firedrake.petsc import PETSc
 printpar = PETSc.Sys.Print
 from viamr import VIAMR
 
+from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps
+
 assert args.m >= 1, 'at least one cell in mesh'
 if args.onelevel:
     args.refine = 0
     printpar('not using refinement; uniform mesh generated with Firedrake')
 
-# read data for bed topography into numpy array, from 'topg' variable
+# read data for bed topography into numpy array
+#     (assumes fixed variable names 'x1', 'y1', 'topg'
 if args.data:
     import netCDF4
     data = netCDF4.Dataset(args.data)
     data.set_auto_mask(False)  # otherwise irritating masked arrays
     lb_np = data.variables['topg'][0,:,:]
+    x_np = data.variables['x1']
+    y_np = data.variables['y1']
     if False:  # debug view of data if True
         import matplotlib.pyplot as plt
-        x_d = data.variables['x1']
-        y_d = data.variables['y1']
-        plt.pcolormesh(x_d, y_d, lb_np)
+        plt.pcolormesh(x_np, y_np, lb_np)
         plt.axis('equal')
         plt.show()
-
-# constants (same for all problems)
-L = 1800.0e3        # domain is [0,L]^2, with fields centered at (xc,xc)
-xc = L/2
-secpera = 31556926.0
-n = Constant(3.0)
-p = n + 1
-g = Constant(9.81)
-rho = Constant(910.0)
-A = Constant(1.0e-16) / secpera
-Gamma = 2*A*(rho * g)**n / (n+2)
-aGamma = Gamma   # used in accumulation
-if args.prob == 'range':
-    Gamma *= 10.0
-
-# exact solution to prob=='dome'
-domeL = 750.0e3
-domeH0 = 3600.0
-def dome_exact(x):
-    # https://github.com/bueler/sia-fve/blob/master/petsc/base/exactsia.c#L83
-    r = sqrt(dot(x - as_vector([xc, xc]), x - as_vector([xc, xc])))
-    mm = 1 + 1/n
-    qq = n / (2*n + 2)
-    CC = domeH0 / (1-1/n)**qq
-    z = r / domeL
-    tmp = mm * z - 1/n + (1-z)**mm - z**mm
-    expr = CC * tmp**qq
-    sexact = conditional(lt(r, domeL), expr, 0)
-    return sexact
-
-# accumulation; uses dome parameters
-def accumulation(x, problem='cap'):
-    # https://github.com/bueler/sia-fve/blob/master/petsc/base/exactsia.c#L51
-    R = sqrt(dot(x - as_vector([xc, xc]), x - as_vector([xc, xc])))
-    r = conditional(lt(R, 0.01), 0.01, R)
-    r = conditional(gt(r, domeL - 0.01), domeL - 0.01, r)
-    s = r / domeL
-    C = domeH0**(2*n + 2) * aGamma / (2 * domeL * (1 - 1/n) )**n
-    pp = 1/n
-    tmp1 = s**pp + (1-s)**pp - 1
-    tmp2 = 2*s**pp + (1-s)**(pp-1) * (1-2*s) - 1
-    a0 = (C / r) * tmp1**(n-1) * tmp2
-    if problem == 'range':
-        dxc = x[0] - xc
-        dyc = x[1] - xc
-        dd = L / 30
-        aneg = -3.0e-8  # roughly the min of a0
-        return conditional(gt(R, domeL), a0,
-                           conditional(lt(dxc**2, (1.9 * dd)**2), aneg,
-                                       conditional(lt(dyc**2, (1.1 * dd)**2), aneg, a0)))
-    else:
-        return a0
-
-def bumps(x, problem='cap'):
-    if problem == 'range':
-        B0 = 400.0  # (m); amplitude of bumps
-    else:
-        B0 = 200.0  # (m); amplitude of bumps
-    xx, yy = x[0] / L, x[1] / L
-    b = + 5.0 * sin(pi*xx) * sin(pi*yy) \
-        + sin(pi*xx) * sin(3*pi*yy) - sin(2*pi*xx) * sin(pi*yy) \
-        + sin(3*pi*xx) * sin(3*pi*yy) + sin(3*pi*xx) * sin(5*pi*yy) \
-        + sin(4*pi*xx) * sin(4*pi*yy) - 0.5 * sin(4*pi*xx) * sin(5*pi*yy) \
-        - sin(5*pi*xx) * sin(2*pi*yy) - 0.5 * sin(10*pi*xx) * sin(10*pi*yy) \
-        + 0.5 * sin(19*pi*xx) * sin(11*pi*yy) + 0.5 * sin(12*pi*xx) * sin(17*pi*yy)
-    return B0 * b
 
 # generate first mesh
 if args.data:
@@ -229,6 +166,7 @@ for i in range(args.refine + 1):
     # weak form
     v = TestFunction(V)
     Hreg = s - lb + args.epsH
+    p = n + 1
     Dplap = (args.epsplap**2 + dot(grad(s), grad(s)))**((p-2)/2)
     F = Gamma * Hreg**(p+1) * Dplap * inner(grad(s), grad(v)) * dx(degree=args.qdegree) \
         - inner(a, v) * dx
