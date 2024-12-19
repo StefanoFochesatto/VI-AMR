@@ -1,6 +1,6 @@
 # VI-AMR
 
-This repository contains algorithms for adaptive mesh refinement with a goal of targeting refinement to the free boundary.
+This repository contains algorithms for adaptive mesh refinement for variational inequalities, that is, for free boundary problems.  The goal is to have targeted refinement near a computed free boundary.
 
 There are two element marking methods, Unstructured Dilation Operator (UDO) and Varable Coefficient Elliptic Smoothing (VCES). These are methods of the class `VIAMR`, which is implemented in `viamr/viamr.py`.
 
