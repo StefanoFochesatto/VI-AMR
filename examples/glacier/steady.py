@@ -1,21 +1,23 @@
 # TODO * allow other strategies than alternating AMR & uniform?
+#      * read Greenland data from a .nc file
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description="""
-Solves 2D steady shallow ice approximation obstacle problem on a square [0,L]^2
-where L = 1800.0 km.  By default generates a random, but smooth, bed topography.
+Solves 2D steady shallow ice approximation glacier obstacle problem.
+Synthetic examples are on a square [0,L]^2 where L = 1800.0 km.
+By default generates a random, but smooth, bed topography.
 Option -prob dome solves in a flat bed case where the exact solution is known,
 and -prob range generates a disconnected glacier.  Note
 there is a double regularization in the isothermal, Glen-law diffusivity; see
 options -epsH and -epsplap.  Solver is vinewtonrsls + mumps.  Applies VIAMR
 VCES method (because UD0 is not currently parallel) alternately with uniform
 refinement.  Examples:
-  python3 glacier.py -opvd cap.pvd
-  python3 glacier.py -prob dome -opvd dome.pvd
+  python3 steady.py -opvd cap.pvd
+  python3 steady.py -prob dome -opvd dome.pvd
 Works in serial only:
-  python3 glacier.py -jaccard
+  python3 steady.py -jaccard
 Also runs in parallel:
-  mpiexec -n 4 glacier.py -opvd cap4.pvd
+  mpiexec -n 4 steady.py -opvd cap4.pvd
 """, formatter_class=RawTextHelpFormatter)
 parser.add_argument('-epsH', type=float, default=20.0, metavar='X',
                     help='diffusivity regularization for thickness [default 20.0 m]')

@@ -1,6 +1,6 @@
 # VI-AMR/examples/
 
-For `spherespiral.py` and `glacier.py` there are no additional dependencies.
+For `spherespiral.py` there are no additional dependencies.
 
 However, `metricaveraging.py` uses [animate](https://github.com/mesh-adaptation/animate) to do metric-based AMR.  For this, Ed had to do the following:
 
@@ -19,3 +19,7 @@ However, `metricaveraging.py` uses [animate](https://github.com/mesh-adaptation/
     pip install siphash24
     cd ~/VI-AMR/                  # or similar
     pip install -e .
+
+## glaciers/
+
+See `glaciers/README.md` for how to run this example.
