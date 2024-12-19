@@ -1,12 +1,12 @@
 import numpy as np
+import pytest
 from firedrake import *
 from viamr import VIAMR
 
 
-def get_netgen_mesh(TriHeight=0.4):
+def get_netgen_mesh(TriHeight=0.4, width=2):
     import netgen
     from netgen.geom2d import SplineGeometry
-    width = 2
     geo = SplineGeometry()
     geo.AddRectangle(p1=(-1 * width, -1 * width),
                      p2=(1 * width, 1 * width),
@@ -21,25 +21,27 @@ def test_netgen_mesh_creation():
     assert mesh.num_cells() == 228
 
 
-def test_viamr_spaces():
-    mesh = get_netgen_mesh()
-    V, W = VIAMR(debug=True).spaces(mesh)
-    assert V.dim() == 135
-    assert W.dim() == 228
+def test_spaces():
+    mesh = get_netgen_mesh(TriHeight=1.2)
+    CG1, DG0 = VIAMR(debug=True).spaces(mesh)
+    assert CG1.dim() == 19
+    assert DG0.dim() == 24
 
 
-def test_viamr_mark_none():
-    mesh = get_netgen_mesh()
-    z = VIAMR(debug=True)
-    CG1, _ = z.spaces(mesh)
-    (x, y) = SpatialCoordinate(mesh)
+def get_ball_obstacle(x, y):
     r = sqrt(x * x + y * y)
     r0 = 0.9
     psi0 = np.sqrt(1.0 - r0 * r0)
     dpsi0 = -r0 / psi0
-    psi_ufl = conditional(le(r, r0), sqrt(
-        1.0 - r * r), psi0 + dpsi0 * (r - r0))
-    psi = Function(CG1).interpolate(psi_ufl)
+    return conditional(le(r, r0), sqrt(1.0 - r * r), psi0 + dpsi0 * (r - r0))
+
+
+def test_mark_none():
+    mesh = get_netgen_mesh(TriHeight=1.2)
+    z = VIAMR(debug=True)
+    CG1, _ = z.spaces(mesh)
+    (x, y) = SpatialCoordinate(mesh)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     mark = z.udomark(mesh, psi, psi)  # all active
     assert norm(mark, 'L1') == 0.0
     mark = z.vcesmark(mesh, psi, psi)  # all active
@@ -52,7 +54,7 @@ def test_viamr_mark_none():
 
 
 def test_overlapping_jaccard():
-    mesh = get_netgen_mesh()
+    mesh = get_netgen_mesh(TriHeight=1.2)
     z = VIAMR(debug=True)
     _, DG0 = z.spaces(mesh)
     x, _ = SpatialCoordinate(mesh)
@@ -83,7 +85,6 @@ def test_symmetry_jaccard():
     more = conditional(x < 1, 1, 0)
     active1 = Function(DG0).interpolate(right)
     active2 = Function(DG0).interpolate(more)
-    # FIXME is exact symmetry expected, or just within rounding error?
     assert z.jaccard(active1, active2) == z.jaccard(active2, active1)
 
 
@@ -104,8 +105,8 @@ def test_overlapping_and_nonoverlapping_hausdorff():
 
 if __name__ == "__main__":
     test_netgen_mesh_creation()
-    test_viamr_spaces()
-    test_viamr_mark_none()
+    test_spaces()
+    test_mark_none()
     test_overlapping_jaccard()
     test_nonoverlapping_jaccard()
     test_symmetry_jaccard()

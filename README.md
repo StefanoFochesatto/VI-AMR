@@ -48,8 +48,9 @@ pip install .
 
 ## Usage
 
-A first example compares 3 levels of refinement with UDO and VCES, using default parameters, on two obstacle problems. The sphere problem has a known exact solution while the spiral problem does not. First make sure that the firedrake virtual environment is active.  In `examples/` do
+A first example compares 3 levels of refinement with UDO and VCES, using default parameters, on two obstacle problems. The sphere problem has a known exact solution while the spiral problem does not. First make sure that the firedrake virtual environment is active.  Then do
 ```
+cd examples/
 python3 spherespiral.py
 ```
 View the output fields in `result_PROBLEM_METHOD.pvd` using [Paraview](https://www.paraview.org/). These files contain the obstacle `psi`, the solution `u`, and the gap `u - psi`. The `_sphere` files also contain the numerical error `|u - uexact|`.
@@ -62,7 +63,6 @@ make clean
 ## Testing
 
 Software tests use [pytest](https://docs.pytest.org/en/stable/index.html). In the main directory `VI-AMR/` do
-
 ```
 pytest .
 ```
