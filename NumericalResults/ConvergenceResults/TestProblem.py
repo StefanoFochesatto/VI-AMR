@@ -102,12 +102,13 @@ class ObstacleProblem(OptionsManager):
         # as in Laplace equation:  - div (grad u) = 0
         F = inner(grad(u), grad(v)) * dx
 
-        sp = {"snes_monitor": None,
+        sp = {"snes_vi_monitor": None,
               "snes_type": "vinewtonrsls",
               "snes_converged_reason": None,
               "snes_rtol": 1.0e-8,
               "snes_atol": 1.0e-12,
               "snes_stol": 1.0e-12,
+              "snes_max_it": 100,
               "snes_vi_zero_tolerance": 1.0e-12,
               "snes_linesearch_type": "basic",
               "ksp_type": "preonly",
