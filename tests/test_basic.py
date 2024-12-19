@@ -53,6 +53,40 @@ def test_mark_none():
     assert norm(mark, 'L1') == 0.0
 
 
+def test_refine_vces():
+    mesh = get_netgen_mesh(TriHeight=1.2)
+    z = VIAMR(debug=True)
+    CG1, _ = z.spaces(mesh)
+    assert CG1.dim() == 19
+    (x, y) = SpatialCoordinate(mesh)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
+    unorm0 = norm(u)
+    #from firedrake.output import VTKFile
+    #VTKFile(f"result_refine_0.pvd").write(u)
+    mark = z.vcesmark(mesh, u, psi)
+    rmesh = mesh.refine_marked_elements(mark)
+    rCG1, _ = z.spaces(rmesh)
+    assert rCG1.dim() == 49
+    rV = FunctionSpace(rmesh, "CG", 1)
+    ru = Function(rV).interpolate(u) # cross-mesh interpolation
+    assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
+    #VTKFile(f"result_refine_1.pvd").write(u)
+
+
+@pytest.mark.skip(reason = "refine_marked_elements not working with a Firedrake mesh")
+def test_refine_firedrakemesh():
+    mesh = SquareMesh(6, 6, 4.0)
+    mesh.coordinates.dat.data[:, :] -= 2.0
+    z = VIAMR(debug=True)
+    CG1, _ = z.spaces(mesh)
+    (x, y) = SpatialCoordinate(mesh)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
+    mark = z.vcesmark(mesh, u, psi)
+    rmesh = mesh.refine_marked_elements(mark)
+
+
 def test_overlapping_jaccard():
     mesh = get_netgen_mesh(TriHeight=1.2)
     z = VIAMR(debug=True)
@@ -107,6 +141,7 @@ if __name__ == "__main__":
     test_netgen_mesh_creation()
     test_spaces()
     test_mark_none()
+    test_refine_vces()
     test_overlapping_jaccard()
     test_nonoverlapping_jaccard()
     test_symmetry_jaccard()
