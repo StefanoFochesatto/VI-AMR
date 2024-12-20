@@ -177,7 +177,7 @@ for i in range(args.refine + 1):
     Dplap = (args.epsplap**2 + dot(grad(s), grad(s)))**((p-2)/2)
     F = Gamma * Hreg**(p+1) * Dplap * inner(grad(s), grad(v)) * dx(degree=args.qdegree) \
         - inner(a, v) * dx
-    bcs = DirichletBC(V, 0, "on_boundary")
+    bcs = DirichletBC(V, lb, "on_boundary")
     problem = NonlinearVariationalProblem(F, s, bcs)
 
     # solve
