@@ -59,6 +59,8 @@ from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps
 
 assert args.m >= 1, 'at least one cell in mesh'
 if args.onelevel:
+    if args.data:
+        raise NotImplementedError('incompatible arguments -onelevel -data')
     args.refine = 0
     printpar('not using refinement; uniform mesh generated with Firedrake')
 
@@ -124,8 +126,8 @@ for i in range(args.refine + 1):
         # generate active set indicator so we can evaluate Jaccard index
         eactive = VIAMR(debug=True).elemactive(s, lb)
     if i > 0:
-        # refinement schedule is to alternate: AMR,uniform,AMR,uniform,...
-        if np.mod(i, 2) == 1:
+        # refinement schedule is to alternate: uniform,AMR,uniform,AMR,uniform,...
+        if np.mod(i, 2) == 0:
             mark = VIAMR().vcesmark(mesh, s, lb)
             #mark = VIAMR().udomark(mesh, s, lb, n=1)  # not in parallel, but otherwise great
         else:
