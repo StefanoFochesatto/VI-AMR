@@ -27,8 +27,8 @@ parser.add_argument('-data', metavar='FILE', type=str, default='',
                     help='read "topg" variable from NetCDF file (.nc)')
 parser.add_argument('-epsH', type=float, default=20.0, metavar='X',
                     help='diffusivity regularization for thickness [default 20.0 m]')
-parser.add_argument('-epsplap', type=float, default=1.0e-4, metavar='X',
-                    help='diffusivity regularization for p-Laplacian [default 1.0e-4]')
+parser.add_argument('-epsplap', type=float, default=0.0, metavar='X',
+                    help='diffusivity regularization for p-Laplacian [default 0.0]')
 parser.add_argument('-jaccard', action='store_true', default=False,
                     help='use VIAMR.jaccard() to evaluate glaciated area convergence')
 parser.add_argument('-m', type=int, default=20, metavar='M',
