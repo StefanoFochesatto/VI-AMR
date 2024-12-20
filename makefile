@@ -1,4 +1,4 @@
 .PHONY: clean
 
 clean:
-	@rm -rf __pycache__/ *.egg-info/
+	@rm -rf __pycache__/ .pytest_cache/ *.egg-info/
