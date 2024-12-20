@@ -12,7 +12,7 @@ rect = Solid2d([
     (-2, 2),
     (2, 2),
     (2, -2),
-], mat="rect")
+], mat="rect", bc="boundary")
 
 r = 0.697965148223374
 fbres = .0001
@@ -30,11 +30,15 @@ circle = Solid2d([
 geo.Add(circle)
 geo.Add(rect)
 ngmsh = geo.GenerateMesh(maxh=.02)
-mesh = Mesh(ngmsh)
+labels = [i+1 for i,
+          name in enumerate(ngmsh.GetRegionNames(codim=1)) if name in ["boundary"]]
+ExactMesh = Mesh(ngmsh)
 
 problem_instance = ObstacleProblem()
-u, lb, _ = problem_instance.solveProblem(mesh=mesh, u=None)
+ExactU, lb, _ = problem_instance.solveProblem(
+    mesh=ExactMesh, u=None, bdry=labels)
+ExactU.rename("ExactU")
 
 with CheckpointFile("ExactSolution.h5", 'w') as afile:
-    afile.save_mesh(mesh)
-    afile.save_function(u)
+    afile.save_mesh(ExactMesh)
+    afile.save_function(ExactU)

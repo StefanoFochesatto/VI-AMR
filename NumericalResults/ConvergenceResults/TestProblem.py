@@ -71,19 +71,20 @@ class ObstacleProblem(OptionsManager):
 
         return psi, tmp, gbdry
 
-    def getObstacle(self, V):
+    def getObstacle(self, V, bdry=None):
         mesh = V.mesh()
         if self.problem == "sphere":
             lb, psi_ufl, exact = self.sphere_problem(mesh, V)
         else:
             lb, psi_ufl, exact = self.spiral_problem(mesh, V)
+        if bdry == None:
+            bdry = (1, 2, 3, 4)   # all four sides of boundary
 
-        bdry_ids = (1, 2, 3, 4)   # all four sides of boundary
-        bcs = DirichletBC(V, exact, bdry_ids)
+        bcs = DirichletBC(V, exact, bdry)
 
         return lb, bcs, exact
 
-    def solveProblem(self, mesh=None, u=None):
+    def solveProblem(self, mesh=None, u=None, bdry=None):
         if mesh is None:
             mesh = self.getInitialMesh()
         # Fixme: possibility of higher order
@@ -95,7 +96,7 @@ class ObstacleProblem(OptionsManager):
             # use cross mesh interp to ensure solution on current mesh
             u = Function(V, name="u (FE soln)").interpolate(u)
 
-        lb, bcs, _ = self.getObstacle(V)
+        lb, bcs, _ = self.getObstacle(V, bdry)
 
         # weak form problem; F is residual operator in nonlinear system F==0
         v = TestFunction(V)

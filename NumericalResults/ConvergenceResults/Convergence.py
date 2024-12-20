@@ -3,26 +3,45 @@ from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
 from TestProblem import ObstacleProblem
+import os
 
 if __name__ == "__main__":
     problem_instance = ObstacleProblem(TriHeight=.5)
+    amr_instance = VIAMR()
     solutionHistory = [None]
     meshHistory = [None]
 
+    # Temporary for debugging purposes
+    # os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
     with CheckpointFile("ExactSolution.h5", 'r') as afile:
-        ExactMesh = afile.load_mesh("ExactMesh")
-        ExactU = afile.load_function(ExactMesh, "u")
+        # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh
+        exactMesh = afile.load_mesh('Default')
+        exactU = afile.load_function(exactMesh, "ExactU")
+
+    exactV = FunctionSpace(exactMesh)
+    exactPsi, psiufl, _ = problem_instance.sphere_problem(exactV, exactMesh)
+    exactElementIndicator = amr_instance.elemactive(exactU, exactPsi)
+    _, exactFreeBoundaryEdges = amr_instance.freeboundarygraph(
+        exactU, exactPsi)
 
     for i in range(max_iterations):
-        problem_instance.solveProblem(
+        u, lb, mesh = problem_instance.solveProblem(
             mesh=meshHistory[i], u=solutionHistory[i])
-        amr_instance = VIAMR()
 
+        solElementIndicator = amr_instance.elemactive(u, lb)
         # Compute Jaccard index
+        JError = amr_instance.jaccard(
+            solElementIndicator, exactElementIndicator)
 
+        _, solFreeBoundaryEdges = amr_instance.freeboundarygraph(u, lb)
         # Compute Hausdorff error
+        HError = amr_instance.hausdorff(
+            solFreeBoundaryEdges, exactFreeBoundaryEdges)
 
-        # Compute L2 Error
+        # Compute L2 Error (using conservative projection to finer mesh)
+        proju = Function(exactV).project(u)
+        L2Error = sqrt(
+            assemble(dot((proju - exactU), (proju - exactU)) * dx(exactMesh)))
 
         # Refine
         # Hybrid Refinement Strategy:
@@ -33,10 +52,10 @@ if __name__ == "__main__":
         #        apply AMR
 
         if Refinement == "Hybrid":
-            ratio = HausdorffError/(h**2)
+            ratio = HError/(h**2)
             switch = math.isclose(ratio, 1, rel_tol=.1)
 
-            if HausdorffError < h**2 or switch:
+            if HError < h**2 or switch:
                 mark = MarkUDO(mesh, u, lb, i, Refinement, 0)
                 nextmesh = mesh.refine_marked_elements(mark)
                 meshHierarchy.append(nextmesh)
