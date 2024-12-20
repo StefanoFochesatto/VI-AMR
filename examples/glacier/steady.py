@@ -200,28 +200,49 @@ for i in range(args.refine + 1):
     if i == 0:
         # build pile of ice from accumulation
         pileage = 400.0  # years
-        sinit = lb + pileage * secpera * conditional(a > 0.0, a, 0.0)
-        s = Function(V).interpolate(sinit)
+        sinit_ufl = lb + pileage * secpera * conditional(a > 0.0, a, 0.0)
+        sinit = Function(V).interpolate(sinit_ufl)
     else:
         # use thickness from coarse mesh, added to current bed topography
-        s = Function(V).interpolate(lb + Hinit)
-    s.rename("s = surface elevation")
+        sinit = Function(V).interpolate(lb + Hinit)
 
-    # weak form
-    v = TestFunction(V)
-    Hreg = s - lb + args.epsH
+    # mixed function space and initialization
+    W = FunctionSpace(mesh, "DG", 0)
+    Z = V * W
+    sH5 = Function(Z)
+    sH5.subfunctions[0].interpolate(sinit)
     p = n + 1
+    sH5.subfunctions[1].interpolate(conditional(gt(sinit - lb, args.epsH),
+                                                (sinit - lb)**(p+1),
+                                                args.epsH**(p+1)))
+    s, H5 = split(sH5)  # for UFL expressions
+
+    # mixed weak form
+    r, g5 = TestFunctions(Z)
+    #Hreg = s - lb + args.epsH
     Dplap = (args.epsplap**2 + dot(grad(s), grad(s)))**((p-2)/2)
-    F = Gamma * Hreg**(p+1) * Dplap * inner(grad(s), grad(v)) * dx(degree=args.qdegree) \
-        - inner(a, v) * dx
-    bcs = DirichletBC(V, lb, "on_boundary")
-    problem = NonlinearVariationalProblem(F, s, bcs)
+    scH5 = 500.0**(-p-1)  # scale constant based on removing typical thickness
+    F = Gamma * H5 * Dplap * inner(grad(s), grad(r)) * dx(degree=args.qdegree) \
+        + scH5 * (H5 - (s - lb)**(p+1)) * g5 * dx(degree=args.qdegree) \
+        - a * r * dx
+    bcs = DirichletBC(Z.sub(0), lb, "on_boundary")
+    problem = NonlinearVariationalProblem(F, sH5, bcs)
 
     # solve
     nv, ne, hmin, hmax = VIAMR().meshsizes(mesh)
     printpar(f'solving level {i}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
     solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
-    solver.solve(bounds=(lb, Function(V).interpolate(Constant(PETSc.INFINITY))))
+    mlb = Function(Z, name="mixed-space lower bound")
+    mlb.subfunctions[0].interpolate(lb)
+    mlb.subfunctions[1].interpolate(Constant(args.epsH**(p+1)))
+    mub = Function(Z, name="mixed-space upper bound")
+    mub.subfunctions[0].interpolate(Constant(PETSc.INFINITY))
+    mub.subfunctions[1].interpolate(Constant(PETSc.INFINITY))
+    solver.solve(bounds=(mlb, mub))
+    s = sH5.subfunctions[0]
+    H5 = sH5.subfunctions[1]
+    s.rename("s = surface elevation")
+    H5.rename("H5")
 
     if i > 0 and args.jaccard:
         z = VIAMR(debug=True)
@@ -250,6 +271,6 @@ if args.opvd:
     Q.rename("Q = UH = volume flux (m^2/a)")
     printpar('writing to %s ...' % args.opvd)
     if args.prob == 'dome':
-        VTKFile(args.opvd).write(a,s,H,U,Q,sexact,sdiff)
+        VTKFile(args.opvd).write(a,s,H,H5,U,Q,sexact,sdiff)
     else:
-        VTKFile(args.opvd).write(a,s,H,U,Q,lb)
+        VTKFile(args.opvd).write(a,s,H,H5,U,Q,lb)
