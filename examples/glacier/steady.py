@@ -1,5 +1,7 @@
 # TODO * allow other strategies than alternating AMR & uniform?
-#      * read Greenland data from a .nc file
+
+# finicky convergence but works:
+#    $ python3 steady.py -data eastgr.nc -refine 7 -opvd result_gr7.pvd -snes_rtol 0.5
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description="""
@@ -70,48 +72,78 @@ if args.data:
     import netCDF4
     data = netCDF4.Dataset(args.data)
     data.set_auto_mask(False)  # otherwise irritating masked arrays
-    lb_np = data.variables['topg'][0,:,:]
+    topg_np = data.variables['topg'][0,:,:].T  # transpose immediately
     x_np = data.variables['x1']
     y_np = data.variables['y1']
+    llxy = (min(x_np), min(y_np))  # lower left
+    urxy = (max(x_np), max(y_np))  # upper right
+    llstr = f'({llxy[0]/1000.0:.3f},{llxy[1]/1000.0:.3f})'
+    urstr = f'({urxy[0]/1000.0:.3f},{urxy[1]/1000.0:.3f})'
+    mx_np, my_np = np.shape(topg_np)
+    hx_np, hy_np = x_np[1] - x_np[0], y_np[1] - y_np[0]
+    printpar(f'reading from NetCDF file {args.data} ...')
+    printpar(f'    rectangle {llstr}-->{urstr} km')
+    printpar(f'    {mx_np} x {my_np} grid with {hx_np/1000.0:.3f} x {hx_np/1000.0:.3f} km spacing')
     if False:  # debug view of data if True
         import matplotlib.pyplot as plt
-        plt.pcolormesh(x_np, y_np, lb_np)
+        plt.pcolormesh(x_np, y_np, topg_np)
         plt.axis('equal')
         plt.show()
-
-# generate first mesh
-if args.data:
-    # FIXME apparently I have to use the technique at
-    #    https://docu.ngsolve.org/latest/netgen_tutorials/manual_mesh_generation.html
-    import sys
-    sys.exit(0)
 else:
     printpar(f'generating synthetic {args.m} x {args.m} initial mesh for problem {args.prob} ...')
-    if args.onelevel:
-        # generate via Firedrake
-        mesh = RectangleMesh(args.m, args.m, L, L)
+
+if args.onelevel:
+    # generate via Firedrake
+    mesh = RectangleMesh(args.m, args.m, L, L)
+else:
+    # prepare for AMR by generating via netgen
+    try:
+        import netgen
+    except ImportError:
+        printpar("ImportError.  Unable to import NetGen.  Exiting.")
+        import sys
+        sys.exit(0)
+    from netgen.geom2d import SplineGeometry
+    geo = SplineGeometry()
+    if args.data:
+        geo.AddRectangle(p1=llxy, p2=urxy, bc="rectangle")
+        trih = max(urxy[0] - llxy[0], urxy[1] - llxy[1]) / args.m
     else:
-        # prepare for AMR by generating via netgen
-        try:
-            import netgen
-        except ImportError:
-            printpar("ImportError.  Unable to import NetGen.  Exiting.")
-            import sys
-            sys.exit(0)
-        from netgen.geom2d import SplineGeometry
-        geo = SplineGeometry()
         geo.AddRectangle(p1=(0.0, 0.0), p2=(L, L), bc="rectangle")
-        ngmsh = None
         trih = L / args.m
-        ngmsh = geo.GenerateMesh(maxh=trih)
-        mesh = Mesh(ngmsh)
+    ngmsh = None
+    ngmsh = geo.GenerateMesh(maxh=trih)
+    mesh = Mesh(ngmsh)
+
+if args.data:
+    # read structured-mesh data into Firedrake data mesh
+    dmesh = RectangleMesh(mx_np - 1,
+                          my_np - 1,
+                          urxy[0] - llxy[0],
+                          urxy[1] - llxy[1])
+    dmesh.coordinates.dat.data[:,0] += llxy[0]
+    dmesh.coordinates.dat.data[:,1] += llxy[1]
+    dCG1 = FunctionSpace(dmesh, "CG", 1)
+    topg = Function(dCG1)
+    nearb = Function(dCG1)  # set to zero here
+    delnb = 100.0e3  # within this far of boundary, will apply negative SMB
+    for k in range(len(topg.dat.data)):
+        xk, yk = dmesh.coordinates.dat.data[k]
+        i = int((xk - llxy[0]) / hx_np)
+        j = int((yk - llxy[1]) / hy_np)
+        topg.dat.data[k] = topg_np[i][j]
+        db = min([abs(xk - llxy[0]), abs(xk - urxy[0]), abs(yk - llxy[1]), abs(yk - urxy[1])])
+        if db < delnb:
+            nearb.dat.data[k] = 1.0
+    #VTKFile('topg.pvd').write(topg, nearb)
+    printpar(f'read "topg" from file {args.data} into Q1 data mesh ...')
 
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
     "snes_rtol": 1.0e-4,  # low regularity implies lowered expectations
     "snes_atol": 1.0e-12,
     "snes_stol": 1.0e-5,
-    #"snes_monitor": None,
+    "snes_monitor": None,
     "snes_converged_reason": None,
     "snes_linesearch_type": "bt",
     "snes_linesearch_order": "1",
@@ -137,7 +169,6 @@ for i in range(args.refine + 1):
         # use NetGen to get next mesh
         mesh = mesh.refine_marked_elements(mark)
 
-    # obstacle and source term
     V = FunctionSpace(mesh, "CG", 1)
     # will used cross-mesh interpolation of previous thickness to initialize
     if i > 0:
@@ -146,9 +177,14 @@ for i in range(args.refine + 1):
     # obstacle and source term
     x = SpatialCoordinate(mesh)
     if args.data:
-        # FIXME cross-mesh interpolate lb_d to lb on current mesh
-        # FIXME plan is to compute a(x,y) from lb(x,y) using lapse rates
-        a = Function(V).interpolate(Constant(0))
+        lb = Function(V).project(topg) # cross-mesh projection from data mesh
+        # SMB from linear model based on lapse rate; from linearizing dome case
+        c0 = -3.4e-8
+        #c1 = (6.3e-8 - c0) / 3.6e3
+        c1 = (4.5e-8 - c0) / 3.6e3
+        a_lapse = c0 + c1 * topg
+        a = Function(V).interpolate(conditional(nearb > 0.0, -1.0e-6, a_lapse))
+        #VTKFile('data.pvd').write(lb, a)
     else:
         if args.prob == 'dome':
             lb = Function(V).interpolate(Constant(0))
