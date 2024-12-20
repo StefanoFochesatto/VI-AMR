@@ -1,6 +1,7 @@
 # TODO * allow other strategies than alternating AMR & uniform?
 
 # finicky convergence but works:
+#    $ python3 steady.py -data eastgr.nc -snes_rtol 0.4
 #    $ python3 steady.py -data eastgr.nc -refine 7 -opvd result_gr7.pvd -snes_rtol 0.5
 
 from argparse import ArgumentParser, RawTextHelpFormatter
@@ -44,8 +45,8 @@ parser.add_argument('-prob', type=str, default='cap', metavar='X',
                     help='choose problem from {cap,dome,range}')
 parser.add_argument('-qdegree', type=int, default=4, metavar='DEG',
                     help='quadrature degree used in SIA nonlinear weak form [default 4]')
-parser.add_argument('-refine', type=int, default=3, metavar='R',
-                    help='number of AMR refinements [default 3]')
+parser.add_argument('-refine', type=int, default=2, metavar='R',
+                    help='number of AMR refinements [default 2]')
 args, passthroughoptions = parser.parse_known_args()
 
 import numpy as np
@@ -117,6 +118,7 @@ else:
 
 if args.data:
     # read structured-mesh data into Firedrake data mesh
+    printpar(f'    reading "topg" into Q1 data mesh ...')
     dmesh = RectangleMesh(mx_np - 1,
                           my_np - 1,
                           urxy[0] - llxy[0],
@@ -136,7 +138,6 @@ if args.data:
         if db < delnb:
             nearb.dat.data[k] = 1.0
     #VTKFile('topg.pvd').write(topg, nearb)
-    printpar(f'read "topg" from file {args.data} into Q1 data mesh ...')
 
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
@@ -157,25 +158,23 @@ for i in range(args.refine + 1):
     if i > 0 and args.jaccard:
         # generate active set indicator so we can evaluate Jaccard index
         eactive = VIAMR(debug=True).elemactive(s, lb)
+
     if i > 0:
         # refinement schedule is to alternate: uniform,AMR,uniform,AMR,uniform,...
         if np.mod(i, 2) == 0:
             mark = VIAMR().vcesmark(mesh, s, lb)
             #mark = VIAMR().udomark(mesh, s, lb, n=1)  # not in parallel, but otherwise great
         else:
-            # mark everybody
             W = FunctionSpace(mesh, "DG", 0)
-            mark = Function(W).interpolate(Constant(1.0))
-        # use NetGen to get next mesh
-        mesh = mesh.refine_marked_elements(mark)
+            mark = Function(W).interpolate(Constant(1.0))  # mark everybody
+        mesh = mesh.refine_marked_elements(mark)  # NetGen gives next mesh
 
     V = FunctionSpace(mesh, "CG", 1)
-    # will used cross-mesh interpolation of previous thickness to initialize
     if i > 0:
+        # cross-mesh interpolation of previous thickness to initialize
         Hinit = Function(V).interpolate(s - lb)
 
     # obstacle and source term
-    x = SpatialCoordinate(mesh)
     if args.data:
         lb = Function(V).project(topg) # cross-mesh projection from data mesh
         # SMB from linear model based on lapse rate; from linearizing dome case
@@ -186,6 +185,7 @@ for i in range(args.refine + 1):
         a = Function(V).interpolate(conditional(nearb > 0.0, -1.0e-6, a_lapse))
         #VTKFile('data.pvd').write(lb, a)
     else:
+        x = SpatialCoordinate(mesh)
         if args.prob == 'dome':
             lb = Function(V).interpolate(Constant(0))
             sexact = Function(V).interpolate(dome_exact(x))
@@ -203,6 +203,7 @@ for i in range(args.refine + 1):
         sinit = lb + pileage * secpera * conditional(a > 0.0, a, 0.0)
         s = Function(V).interpolate(sinit)
     else:
+        # use thickness from coarse mesh, added to current bed topography
         s = Function(V).interpolate(lb + Hinit)
     s.rename("s = surface elevation")
 
@@ -218,7 +219,7 @@ for i in range(args.refine + 1):
 
     # solve
     nv, ne, hmin, hmax = VIAMR().meshsizes(mesh)
-    printpar(f'solving level {i}, {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
+    printpar(f'solving level {i}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
     solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
     solver.solve(bounds=(lb, Function(V).interpolate(Constant(PETSc.INFINITY))))
 
