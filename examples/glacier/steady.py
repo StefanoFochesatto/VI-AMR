@@ -139,6 +139,11 @@ for i in range(args.refine + 1):
 
     # obstacle and source term
     V = FunctionSpace(mesh, "CG", 1)
+    # will used cross-mesh interpolation of previous thickness to initialize
+    if i > 0:
+        Hinit = Function(V).interpolate(s - lb)
+
+    # obstacle and source term
     x = SpatialCoordinate(mesh)
     if args.data:
         # FIXME cross-mesh interpolate lb_d to lb on current mesh
@@ -155,14 +160,14 @@ for i in range(args.refine + 1):
     lb.rename("lb = bedrock topography")
     a.rename("a = accumulation")
 
+    # initialize surface elevation
     if i == 0:
-        # initialize as pile of ice, from accumulation
+        # build pile of ice from accumulation
         pileage = 400.0  # years
         sinit = lb + pileage * secpera * conditional(a > 0.0, a, 0.0)
         s = Function(V).interpolate(sinit)
     else:
-        # cross-mesh interpolation of previous solution
-        s = Function(V).interpolate(s)
+        s = Function(V).interpolate(lb + Hinit)
     s.rename("s = surface elevation")
 
     # weak form
