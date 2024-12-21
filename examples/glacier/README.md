@@ -21,11 +21,10 @@ To [read NetCDF files](https://unidata.github.io/netcdf4-python/) do
 ```
 pip install netCDF4
 ```
-
-TODO:  read topg from `eastgr.nc` into numpy arrays
-TODO:  make a mesh and an `lb` CG1 function
-TODO:  choose lapse rates and generate a SMB field
-TODO:  modify `steady.py` to run with this data
+Then do
+```
+python3 steady.py -data eastgr.nc
+```
 
 ### re-generating the NetCDF file
 
