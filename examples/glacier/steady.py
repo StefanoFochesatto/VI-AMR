@@ -32,11 +32,11 @@ parser.add_argument('-onelevel', action='store_true', default=False,
                     help='no AMR refinements; use Firedrake to generate uniform mesh')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
                     help='output file name for Paraview format (.pvd)')
+parser.add_argument('-picard', type=int, default=4, metavar='P',
+                    help='number of Picard iterations in solving SIA [default=4]')
 parser.add_argument('-prob', type=str, default='cap', metavar='X',
                     choices = ['cap','dome','range'],
                     help='choose problem from {cap,dome,range}')
-parser.add_argument('-qdegree', type=int, default=4, metavar='DEG',
-                    help='quadrature degree used in SIA nonlinear weak form [default 4]')
 parser.add_argument('-refine', type=int, default=2, metavar='R',
                     help='number of AMR refinements [default 2]')
 args, passthroughoptions = parser.parse_known_args()
@@ -51,7 +51,7 @@ printpar = PETSc.Sys.Print
 from viamr import VIAMR
 
 from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps
-from readdata import *
+from datanetcdf import DataNetCDF
 
 assert args.m >= 1, 'at least one cell in mesh'
 if args.onelevel:
@@ -62,12 +62,12 @@ if args.onelevel:
 
 # read data for bed topography into numpy array
 if args.data:
-    x_np, y_np, topg_np = readnc(args.data, 'topg')
-    #llstr = f'({llxy[0]/1000.0:.3f},{llxy[1]/1000.0:.3f})'
-    #urstr = f'({urxy[0]/1000.0:.3f},{urxy[1]/1000.0:.3f})'
-    printpar(f'reading topg from NetCDF file {args.data} ...')
-    #printpar(f'    rectangle {llstr}-->{urstr} km')
-    #printpar(f'    {mx_np} x {my_np} grid with {hx_np/1000.0:.3f} x {hx_np/1000.0:.3f} km spacing')
+    printpar(f'reading topg from NetCDF file {args.data} with native data grid:')
+    topg_nc = DataNetCDF(args.data, 'topg')
+    #topg_nc.preview()
+    topg_nc.describe_grid(print=printpar, indent=4)
+    printpar(f'putting topg onto Firedrake structured data mesh matching native grid ...')
+    topg, nearb = topg_nc.function(delnear=100.0e3)
 else:
     printpar(f'generating synthetic {args.m} x {args.m} initial mesh for problem {args.prob} ...')
 
@@ -76,7 +76,9 @@ if args.onelevel:
     mesh = RectangleMesh(args.m, args.m, L, L)
 else:
     if args.data:
-        mesh = fnmesh(args.m, x_np, y_np)
+        # generate netgen mesh compatible with data mesh, but unstructured
+        # and at user (-m) resolution, typically lower
+        mesh = topg_nc.ngmesh(args.m)
     else:
         # prepare for AMR by generating via netgen
         try:
@@ -91,13 +93,6 @@ else:
         trih = L / args.m
         ngmsh = geo.GenerateMesh(maxh=trih)
         mesh = Mesh(ngmsh)
-
-if args.data:
-    # read structured-mesh data into Firedrake data mesh
-    printpar(f'    creating structured data mesh ...')
-    dmesh = datamesh(x_np, y_np)
-    printpar(f'    reading "topg" into data mesh ...')
-    topg, nearb = field_on_datamesh(dmesh, x_np, y_np, topg_np, delnear=100.0e3)
 
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
@@ -154,7 +149,7 @@ for i in range(args.refine + 1):
         #c1 = (6.3e-8 - c0) / 3.6e3
         c1 = (4.5e-8 - c0) / 3.6e3
         a_lapse = c0 + c1 * topg
-        a = Function(V).interpolate(conditional(nearb > 0.0, -1.0e-6, a_lapse))
+        a = Function(V).interpolate(conditional(nearb > 0.0, -1.0e-6, a_lapse)) # also cross-mesh re nearb
         #VTKFile('data.pvd').write(lb, a)
     else:
         x = SpatialCoordinate(mesh)
@@ -186,8 +181,8 @@ for i in range(args.refine + 1):
     printpar(f'solving level {i}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
     v = TestFunction(V)
     bcs = DirichletBC(V, Constant(0.0), "on_boundary")
-    for k in range(4):
-        printpar(f'    Picard iteration {k} ...')
+    for k in range(args.picard):
+        printpar(f'    Picard iteration {k+1} ...')
         Z = Phi(uold, lb)
         F = tranformedweakform(u, v, a, Z)
         problem = NonlinearVariationalProblem(F, u, bcs)
