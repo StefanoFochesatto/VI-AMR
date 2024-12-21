@@ -1,12 +1,9 @@
 # TODO * allow other strategies than alternating AMR & uniform?
-
-# finicky convergence but works:
-#    $ python3 steady.py -data eastgr.nc -snes_rtol 0.4
-#    $ python3 steady.py -data eastgr.nc -refine 7 -opvd result_gr7.pvd -snes_rtol 0.5
+#      * fix -data so it works
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description="""
-Solves 2D steady shallow ice approximation glacier obstacle problem.
+Solves 2D steady, isothermal shallow ice approximation glacier obstacle problem.
 Synthetic problem (default):
     Domain is a square [0,L]^2 where L = 1800.0 km. By default generates
     a random, but smooth, bed topography.  Option -prob dome solves in
@@ -14,10 +11,9 @@ Synthetic problem (default):
     generates a disconnected glacier.
 Data-based problem (-data DATA.nc):
     FIXME WIP
-Note there is a double regularization in the isothermal, Glen-law diffusivity;
-see options -epsH and -epsplap.  Solver is vinewtonrsls + mumps.  Applies VIAMR
-VCES method (because UD0 is not currently parallel) alternately with uniform
-refinement.
+Solver is vinewtonrsls + mumps.
+Applies VIAMR VCES method because UD0 is not currently parallel.
+Refinement schedule is alternation with uniform refinement.
 Examples:
   python3 steady.py -opvd cap.pvd
   python3 steady.py -prob dome -opvd dome.pvd
@@ -28,10 +24,6 @@ Also runs in parallel:
 """, formatter_class=RawTextHelpFormatter)
 parser.add_argument('-data', metavar='FILE', type=str, default='',
                     help='read "topg" variable from NetCDF file (.nc)')
-parser.add_argument('-epsH', type=float, default=20.0, metavar='X',
-                    help='diffusivity regularization for thickness [default 20.0 m]')
-parser.add_argument('-epsplap', type=float, default=0.0, metavar='X',
-                    help='diffusivity regularization for p-Laplacian [default 0.0]')
 parser.add_argument('-jaccard', action='store_true', default=False,
                     help='use VIAMR.jaccard() to evaluate glaciated area convergence')
 parser.add_argument('-m', type=int, default=20, metavar='M',
@@ -142,7 +134,7 @@ if args.data:
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
     "snes_rtol": 1.0e-4,  # low regularity implies lowered expectations
-    "snes_atol": 1.0e-12,
+    "snes_atol": 1.0e-8,
     "snes_stol": 1.0e-5,
     "snes_monitor": None,
     "snes_converged_reason": None,
@@ -152,6 +144,19 @@ sp = {"snes_type": "vinewtonrsls",
     "ksp_type": "preonly",
     "pc_type": "lu",
     "pc_factor_mat_solver_type": "mumps"}
+
+# transformed SIA
+p = n + 1
+omega = (p - 1) / (2*p)
+phi = (p + 1) / (2*p)
+
+def Phi(u, b):
+    return - (1.0 / omega) * u**phi * grad(b)  # FIXME consider further softening grad(b) if real beds are a problem
+
+def tranformedweakform(u, v, a, Z):
+    dstilt = grad(u) - Z
+    Dp = inner(dstilt, dstilt)**((p-2)/2)
+    return Gamma * Dp * inner(dstilt, grad(v)) * dx - a * v * dx
 
 # main loop
 for i in range(args.refine + 1):
@@ -170,9 +175,6 @@ for i in range(args.refine + 1):
         mesh = mesh.refine_marked_elements(mark)  # NetGen gives next mesh
 
     V = FunctionSpace(mesh, "CG", 1)
-    if i > 0:
-        # cross-mesh interpolation of previous thickness to initialize
-        Hinit = Function(V).interpolate(s - lb)
 
     # obstacle and source term
     if args.data:
@@ -196,32 +198,36 @@ for i in range(args.refine + 1):
     lb.rename("lb = bedrock topography")
     a.rename("a = accumulation")
 
-    # initialize surface elevation
+    # initialize transformed thickness variable
     if i == 0:
         # build pile of ice from accumulation
         pileage = 400.0  # years
-        sinit = lb + pileage * secpera * conditional(a > 0.0, a, 0.0)
-        s = Function(V).interpolate(sinit)
+        Hinit = pileage * secpera * conditional(a > 0.0, a, 0.0)
+        uold = Function(V).interpolate(Hinit**omega)
     else:
-        # use thickness from coarse mesh, added to current bed topography
-        s = Function(V).interpolate(lb + Hinit)
-    s.rename("s = surface elevation")
+        # cross-mesh interpolation of previous solution
+        uold = Function(V).interpolate(u)
+        # remove sign flaws from cross-mesh interpolation
+        uold = Function(V).interpolate(conditional(uold < 0.0, 0.0, uold))
+    u = Function(V, name="u = transformed thickness").interpolate(uold)
 
-    # weak form
-    v = TestFunction(V)
-    Hreg = s - lb + args.epsH
-    p = n + 1
-    Dplap = (args.epsplap**2 + dot(grad(s), grad(s)))**((p-2)/2)
-    F = Gamma * Hreg**(p+1) * Dplap * inner(grad(s), grad(v)) * dx(degree=args.qdegree) \
-        - inner(a, v) * dx
-    bcs = DirichletBC(V, lb, "on_boundary")
-    problem = NonlinearVariationalProblem(F, s, bcs)
-
-    # solve
+    # Picard iterate the tilted p-Laplacian problem
     nv, ne, hmin, hmax = VIAMR().meshsizes(mesh)
     printpar(f'solving level {i}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
-    solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
-    solver.solve(bounds=(lb, Function(V).interpolate(Constant(PETSc.INFINITY))))
+    v = TestFunction(V)
+    bcs = DirichletBC(V, Constant(0.0), "on_boundary")
+    for k in range(4):
+        printpar(f'    Picard iteration {k} ...')
+        Z = Phi(uold, lb)
+        F = tranformedweakform(u, v, a, Z)
+        problem = NonlinearVariationalProblem(F, u, bcs)
+        solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
+        lower = Function(V).interpolate(Constant(0.0))
+        upper = Function(V).interpolate(Constant(PETSc.INFINITY))
+        solver.solve(bounds=(lower, upper))
+        uold = Function(V).interpolate(u)
+    H = Function(V, name="H = thickness").interpolate(u**omega)
+    s = Function(V, name="s = surface elevation").interpolate(lb + H)
 
     if i > 0 and args.jaccard:
         z = VIAMR(debug=True)
@@ -239,7 +245,6 @@ for i in range(args.refine + 1):
                  % (err_l2, err_av))
 
 if args.opvd:
-    H = Function(V, name="H = thickness (m)").interpolate(s - lb)
     CU = ((n+2)/(n+1)) * Gamma
     U_ufl = CU * (s - lb)**p * inner(grad(s), grad(s))**((p-2)/2) * grad(s)
     U = Function(VectorFunctionSpace(mesh, 'CG', degree=2))
@@ -250,6 +255,6 @@ if args.opvd:
     Q.rename("Q = UH = volume flux (m^2/a)")
     printpar('writing to %s ...' % args.opvd)
     if args.prob == 'dome':
-        VTKFile(args.opvd).write(a,s,H,U,Q,sexact,sdiff)
+        VTKFile(args.opvd).write(a,u,s,H,U,Q,sexact,sdiff)
     else:
-        VTKFile(args.opvd).write(a,s,H,U,Q,lb)
+        VTKFile(args.opvd).write(a,u,s,H,U,Q,lb)
