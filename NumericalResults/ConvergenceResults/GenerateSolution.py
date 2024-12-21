@@ -39,6 +39,7 @@ ExactU, lb, _ = problem_instance.solveProblem(
     mesh=ExactMesh, u=None, bdry=labels)
 ExactU.rename("ExactU")
 
+# Open issue won't run in parallel: https://github.com/firedrakeproject/firedrake/issues/3783
 with CheckpointFile("ExactSolution.h5", 'w') as afile:
     afile.save_mesh(ExactMesh)
     afile.save_function(ExactU)
