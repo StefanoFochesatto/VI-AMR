@@ -51,6 +51,7 @@ printpar = PETSc.Sys.Print
 from viamr import VIAMR
 
 from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps
+from readdata import *
 
 assert args.m >= 1, 'at least one cell in mesh'
 if args.onelevel:
@@ -60,28 +61,13 @@ if args.onelevel:
     printpar('not using refinement; uniform mesh generated with Firedrake')
 
 # read data for bed topography into numpy array
-#     (assumes fixed variable names 'x1', 'y1', 'topg'
 if args.data:
-    import netCDF4
-    data = netCDF4.Dataset(args.data)
-    data.set_auto_mask(False)  # otherwise irritating masked arrays
-    topg_np = data.variables['topg'][0,:,:].T  # transpose immediately
-    x_np = data.variables['x1']
-    y_np = data.variables['y1']
-    llxy = (min(x_np), min(y_np))  # lower left
-    urxy = (max(x_np), max(y_np))  # upper right
-    llstr = f'({llxy[0]/1000.0:.3f},{llxy[1]/1000.0:.3f})'
-    urstr = f'({urxy[0]/1000.0:.3f},{urxy[1]/1000.0:.3f})'
-    mx_np, my_np = np.shape(topg_np)
-    hx_np, hy_np = x_np[1] - x_np[0], y_np[1] - y_np[0]
-    printpar(f'reading from NetCDF file {args.data} ...')
-    printpar(f'    rectangle {llstr}-->{urstr} km')
-    printpar(f'    {mx_np} x {my_np} grid with {hx_np/1000.0:.3f} x {hx_np/1000.0:.3f} km spacing')
-    if False:  # debug view of data if True
-        import matplotlib.pyplot as plt
-        plt.pcolormesh(x_np, y_np, topg_np)
-        plt.axis('equal')
-        plt.show()
+    x_np, y_np, topg_np = readnc(args.data, 'topg')
+    #llstr = f'({llxy[0]/1000.0:.3f},{llxy[1]/1000.0:.3f})'
+    #urstr = f'({urxy[0]/1000.0:.3f},{urxy[1]/1000.0:.3f})'
+    printpar(f'reading topg from NetCDF file {args.data} ...')
+    #printpar(f'    rectangle {llstr}-->{urstr} km')
+    #printpar(f'    {mx_np} x {my_np} grid with {hx_np/1000.0:.3f} x {hx_np/1000.0:.3f} km spacing')
 else:
     printpar(f'generating synthetic {args.m} x {args.m} initial mesh for problem {args.prob} ...')
 
@@ -89,47 +75,29 @@ if args.onelevel:
     # generate via Firedrake
     mesh = RectangleMesh(args.m, args.m, L, L)
 else:
-    # prepare for AMR by generating via netgen
-    try:
-        import netgen
-    except ImportError:
-        printpar("ImportError.  Unable to import NetGen.  Exiting.")
-        import sys
-        sys.exit(0)
-    from netgen.geom2d import SplineGeometry
-    geo = SplineGeometry()
     if args.data:
-        geo.AddRectangle(p1=llxy, p2=urxy, bc="rectangle")
-        trih = max(urxy[0] - llxy[0], urxy[1] - llxy[1]) / args.m
+        mesh = fnmesh(args.m, x_np, y_np)
     else:
+        # prepare for AMR by generating via netgen
+        try:
+            import netgen
+        except ImportError:
+            printpar("ImportError.  Unable to import NetGen.  Exiting.")
+            import sys
+            sys.exit(0)
+        from netgen.geom2d import SplineGeometry
+        geo = SplineGeometry()
         geo.AddRectangle(p1=(0.0, 0.0), p2=(L, L), bc="rectangle")
         trih = L / args.m
-    ngmsh = None
-    ngmsh = geo.GenerateMesh(maxh=trih)
-    mesh = Mesh(ngmsh)
+        ngmsh = geo.GenerateMesh(maxh=trih)
+        mesh = Mesh(ngmsh)
 
 if args.data:
     # read structured-mesh data into Firedrake data mesh
-    printpar(f'    reading "topg" into Q1 data mesh ...')
-    dmesh = RectangleMesh(mx_np - 1,
-                          my_np - 1,
-                          urxy[0] - llxy[0],
-                          urxy[1] - llxy[1])
-    dmesh.coordinates.dat.data[:,0] += llxy[0]
-    dmesh.coordinates.dat.data[:,1] += llxy[1]
-    dCG1 = FunctionSpace(dmesh, "CG", 1)
-    topg = Function(dCG1)
-    nearb = Function(dCG1)  # set to zero here
-    delnb = 100.0e3  # within this far of boundary, will apply negative SMB
-    for k in range(len(topg.dat.data)):
-        xk, yk = dmesh.coordinates.dat.data[k]
-        i = int((xk - llxy[0]) / hx_np)
-        j = int((yk - llxy[1]) / hy_np)
-        topg.dat.data[k] = topg_np[i][j]
-        db = min([abs(xk - llxy[0]), abs(xk - urxy[0]), abs(yk - llxy[1]), abs(yk - urxy[1])])
-        if db < delnb:
-            nearb.dat.data[k] = 1.0
-    #VTKFile('topg.pvd').write(topg, nearb)
+    printpar(f'    creating structured data mesh ...')
+    dmesh = datamesh(x_np, y_np)
+    printpar(f'    reading "topg" into data mesh ...')
+    topg, nearb = field_on_datamesh(dmesh, x_np, y_np, topg_np, delnear=100.0e3)
 
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
@@ -157,6 +125,8 @@ def tranformedweakform(u, v, a, Z):
     dstilt = grad(u) - Z
     Dp = inner(dstilt, dstilt)**((p-2)/2)
     return Gamma * Dp * inner(dstilt, grad(v)) * dx - a * v * dx
+
+print(mesh)
 
 # main loop
 for i in range(args.refine + 1):

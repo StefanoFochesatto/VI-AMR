@@ -27,7 +27,7 @@ def dome_exact(x, n=3.0):
     return sexact
 
 # accumulation; uses dome parameters
-def accumulation(x, problem='cap'):
+def accumulation(x, n=3.0, problem='cap'):
     # https://github.com/bueler/sia-fve/blob/master/petsc/base/exactsia.c#L51
     R = fd.sqrt(fd.dot(x - fd.as_vector([xc, xc]), x - fd.as_vector([xc, xc])))
     r = fd.conditional(fd.lt(R, 0.01), 0.01, R)
