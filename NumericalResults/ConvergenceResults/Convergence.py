@@ -4,37 +4,41 @@ from firedrake.output import VTKFile
 from viamr import VIAMR
 from TestProblem import ObstacleProblem
 import os
+import math
+
 
 if __name__ == "__main__":
     problem_instance = ObstacleProblem(TriHeight=.5)
     amr_instance = VIAMR()
-    solutionHistory = [None]
     meshHistory = [None]
-
+    u = None
+    Refinement = "Hybrid"
+    max_iterations = 7
     # Temporary for debugging purposes
-    # os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
+    os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
     with CheckpointFile("ExactSolution.h5", 'r') as afile:
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh
         exactMesh = afile.load_mesh('Default')
         exactU = afile.load_function(exactMesh, "ExactU")
 
-    exactV = FunctionSpace(exactMesh)
-    exactPsi, psiufl, _ = problem_instance.sphere_problem(exactV, exactMesh)
+    exactV = FunctionSpace(exactMesh, "CG", 1)
+    exactPsi, psiufl, _ = problem_instance.sphere_problem(exactMesh, exactV)
     exactElementIndicator = amr_instance.elemactive(exactU, exactPsi)
     _, exactFreeBoundaryEdges = amr_instance.freeboundarygraph(
         exactU, exactPsi)
 
     for i in range(max_iterations):
+        # solution gets overwritten; never stored
         u, lb, mesh = problem_instance.solveProblem(
-            mesh=meshHistory[i], u=solutionHistory[i])
+            mesh=meshHistory[i], u=u)
 
-        solElementIndicator = amr_instance.elemactive(u, lb)
         # Compute Jaccard index
+        solElementIndicator = amr_instance.elemactive(u, lb)
         JError = amr_instance.jaccard(
             solElementIndicator, exactElementIndicator)
 
-        _, solFreeBoundaryEdges = amr_instance.freeboundarygraph(u, lb)
         # Compute Hausdorff error
+        _, solFreeBoundaryEdges = amr_instance.freeboundarygraph(u, lb)
         HError = amr_instance.hausdorff(
             solFreeBoundaryEdges, exactFreeBoundaryEdges)
 
@@ -50,24 +54,40 @@ if __name__ == "__main__":
         #       apply uniform
         #    Else:
         #        apply AMR
-
+        h = max(mesh.cell_sizes.dat.data)
+        CG1, DG0 = amr_instance.spaces(mesh)
         if Refinement == "Hybrid":
+            print(f"Running {Refinement} scheme:{i}")
             ratio = HError/(h**2)
             switch = math.isclose(ratio, 1, rel_tol=.1)
 
             if HError < h**2 or switch:
-                mark = MarkUDO(mesh, u, lb, i, Refinement, 0)
+                print("Uniform")
+                mark = Function(DG0).interpolate(Constant(1.0))
                 nextmesh = mesh.refine_marked_elements(mark)
-                meshHierarchy.append(nextmesh)
-                h = h*(1/2)
-                count.append(0)
+                mesh = nextmesh
+                meshHistory.append(mesh)
 
             else:
-                mark = MarkUDO(mesh, u, lb, i, Refinement, n)
+                print("Adaptive")
+                mark = amr_instance.udomark(mesh, u, lb, n=3)
                 nextmesh = mesh.refine_marked_elements(mark)
-                meshHierarchy.append(nextmesh)
-                count.append(1)
-        else:
-            mark = MarkUDO(mesh, u, lb, i, Refinement, n)
+                mesh = nextmesh
+                meshHistory.append(mesh)
+
+        elif Refinement == "Uniform":
+            print(f"Running {Refinement} scheme:{i}")
+            mark = Function(DG0).interpolate(Constant(1.0))
             nextmesh = mesh.refine_marked_elements(mark)
-            meshHierarchy.append(nextmesh)
+            mesh = nextmesh
+            meshHistory.append(mesh)
+
+        elif Refinement == "Adaptive":
+            print(f"Running {Refinement} scheme:{i}")
+            mark = amr_instance.udomark(mesh, u, lb, n=3)
+            nextmesh = mesh.refine_marked_elements(mark)
+            mesh = nextmesh
+            meshHistory.append(mesh)
+
+        else:
+            raise ValueError(f"Unknown refinement type: {Refinement}")
