@@ -114,7 +114,7 @@ omega = (p - 1) / (2*p)
 phi = (p + 1) / (2*p)
 
 def Phi(u, b):
-    return - (1.0 / omega) * u**phi * grad(b)  # FIXME consider further softening grad(b) if real beds are a problem
+    return - (1.0 / omega) * (u + 1.0)**phi * grad(b)  # FIXME the +1 regularization seems needed
 
 def tranformedweakform(u, v, a, Z):
     du_tilt = grad(u) - Z
