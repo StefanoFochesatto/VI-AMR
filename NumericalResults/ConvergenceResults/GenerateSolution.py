@@ -29,7 +29,7 @@ circle = Solid2d([
 
 geo.Add(circle)
 geo.Add(rect)
-ngmsh = geo.GenerateMesh(maxh=.02)
+ngmsh = geo.GenerateMesh(maxh=.001)
 labels = [i+1 for i,
           name in enumerate(ngmsh.GetRegionNames(codim=1)) if name in ["boundary"]]
 ExactMesh = Mesh(ngmsh)

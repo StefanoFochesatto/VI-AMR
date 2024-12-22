@@ -109,7 +109,7 @@ class ObstacleProblem(OptionsManager):
               "snes_rtol": 1.0e-8,
               "snes_atol": 1.0e-12,
               "snes_stol": 1.0e-12,
-              "snes_max_it": 100,
+              "snes_max_it": 10000,
               "snes_vi_zero_tolerance": 1.0e-12,
               "snes_linesearch_type": "basic",
               "ksp_type": "preonly",
