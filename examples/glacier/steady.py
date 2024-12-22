@@ -117,11 +117,9 @@ def Phi(u, b):
     return - (1.0 / omega) * u**phi * grad(b)  # FIXME consider further softening grad(b) if real beds are a problem
 
 def tranformedweakform(u, v, a, Z):
-    dstilt = grad(u) - Z
-    Dp = inner(dstilt, dstilt)**((p-2)/2)
-    return Gamma * Dp * inner(dstilt, grad(v)) * dx - a * v * dx
-
-print(mesh)
+    du_tilt = grad(u) - Z
+    Dp = inner(du_tilt, du_tilt)**((p-2)/2)
+    return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
 
 # main loop
 for i in range(args.refine + 1):
