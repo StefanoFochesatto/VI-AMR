@@ -6,7 +6,7 @@ from TestProblem import ObstacleProblem
 import math
 import argparse
 import pandas as pd
-
+import os
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run convergence script with specified parameters.")
@@ -26,11 +26,12 @@ if __name__ == "__main__":
     meshHistory = [None]
     u = None
 
+    # os.chdir("/home/stefano/Desktop/VIAMR/VI-AMR/NumericalResults/ConvergenceResults")
     with CheckpointFile("ExactSolution.h5", 'r') as afile:
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh
         exactMesh = afile.load_mesh('Default')
         exactU = afile.load_function(exactMesh, "ExactU")
-
+    VTKFile("test.pvd").write(exactU)
     exactV = FunctionSpace(exactMesh, "CG", 1)
     exactPsi, psiufl, _ = problem_instance.sphere_problem(exactMesh, exactV)
     exactElementIndicator = amr_instance.elemactive(exactU, exactPsi)
