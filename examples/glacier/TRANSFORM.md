@@ -49,7 +49,7 @@ $$\begin{equation}
 
 Now define the admissible set
 $$\mathcal{K} = \{v \in W^{1,p}(\Omega) \,:\, v \ge 0\}$$
-The resulting VI weak form is to find $u\in\mathcal{K}$ so that
+The VI weak form corresponding to $(2)$ is to find $u\in\mathcal{K}$ so that
 $$\begin{equation}
 \int_\Omega \Gamma \omega^{p-1} |\nabla u - \Phi(u)|^{p-2} (\nabla u - \Phi(u)) \cdot \nabla(u-v) \ge \int_\Omega a (u-v)
 \end{equation}$$

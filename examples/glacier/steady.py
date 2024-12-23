@@ -32,14 +32,21 @@ parser.add_argument('-onelevel', action='store_true', default=False,
                     help='no AMR refinements; use Firedrake to generate uniform mesh')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
                     help='output file name for Paraview format (.pvd)')
-parser.add_argument('-picard', type=int, default=4, metavar='P',
-                    help='number of Picard iterations in solving SIA [default=4]')
+parser.add_argument('-picard', type=int, default=5, metavar='P',
+                    help='number of Picard iterations in solving SIA [default=5]')
 parser.add_argument('-prob', type=str, default='cap', metavar='X',
                     choices = ['cap','dome','range'],
                     help='choose problem from {cap,dome,range}')
 parser.add_argument('-refine', type=int, default=2, metavar='R',
                     help='number of AMR refinements [default 2]')
 args, passthroughoptions = parser.parse_known_args()
+
+# up to 12 levels of refinement according to schedule
+rdict = {'u': 'uniform',  # each triangle becomes 4
+         'v': 'VCES',     # apply vcesmark() with default parameters
+         'd': 'UDO'}      # apply udomark() with n=1
+rsched = [None, 'u', 'v', 'u', 'v', 'u', 'v', 'u', 'v', 'u', 'v', 'u', 'v']
+# FIXME allow alternative schedules
 
 import numpy as np
 import petsc4py
@@ -96,10 +103,10 @@ else:
 
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
-    "snes_rtol": 1.0e-4,  # low regularity implies lowered expectations
+    "snes_rtol": 1.0e-8,
     "snes_atol": 1.0e-8,
     "snes_stol": 1.0e-5,
-    "snes_monitor": None,
+    #"snes_monitor": None,
     "snes_converged_reason": None,
     "snes_linesearch_type": "bt",
     "snes_linesearch_order": "1",
@@ -114,10 +121,32 @@ omega = (p - 1) / (2*p)
 phi = (p + 1) / (2*p)
 
 def Phi(u, b):
-    return - (1.0 / omega) * (u + 1.0)**phi * grad(b)  # FIXME the +1 regularization seems needed
+    return - (1.0 / omega) * (u + 1.0)**phi * grad(b)  # FIXME the +1 regularization seems needed?
 
-def tranformedweakform(u, v, a, Z):
+# FIXME not currently used
+def weakform(u, v, a, b):
+    du_tilt = grad(u) - Phi(u, b)
+    Dp = inner(du_tilt, du_tilt)**((p-2)/2)
+    return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
+
+# FIXME currently used in Picard ... but I do not like Picard iteration here
+def weakformZ(u, v, a, Z):
     du_tilt = grad(u) - Z
+    Dp = inner(du_tilt, du_tilt)**((p-2)/2)
+    return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
+
+# FIXME trial regularization; not currently used
+def weakformpow(u, v, a, b, pp):
+    PhiPP = - (1.0 / omega) * (u + 1.0)**pp * grad(b)
+    du_tilt = grad(u) - PhiPP
+    Dp = inner(du_tilt, du_tilt)**((p-2)/2)
+    return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
+
+# FIXME trial regularization ... currently used when -picard 0
+def weakformcapped(u, v, a, b, Hcap):
+    ucap = Hcap**(1.0 / omega)
+    Phicapped = - (1.0 / omega) * (conditional(u > ucap, ucap, u) + 1.0)**phi * grad(b)
+    du_tilt = grad(u) - Phicapped
     Dp = inner(du_tilt, du_tilt)**((p-2)/2)
     return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
 
@@ -127,14 +156,17 @@ for i in range(args.refine + 1):
         # generate active set indicator so we can evaluate Jaccard index
         eactive = VIAMR(debug=True).elemactive(s, lb)
 
-    if i > 0:
-        # refinement schedule is to alternate: uniform,AMR,uniform,AMR,uniform,...
-        if np.mod(i, 2) == 0:
-            mark = VIAMR().vcesmark(mesh, s, lb)
-            #mark = VIAMR().udomark(mesh, s, lb, n=1)  # not in parallel, but otherwise great
-        else:
+    # mark and refine according to schedule
+    if rsched[i] is not None:
+        if rsched[i] == 'u':
             W = FunctionSpace(mesh, "DG", 0)
             mark = Function(W).interpolate(Constant(1.0))  # mark everybody
+        elif rsched[i] == 'v':
+            mark = VIAMR().vcesmark(mesh, s, lb)  # good
+        elif rsched[i] == 'd':
+            mark = VIAMR().udomark(mesh, s, lb, n=1)  # not in parallel, but otherwise good
+        else:
+            raise NotImplementedError
         mesh = mesh.refine_marked_elements(mark)  # NetGen gives next mesh
 
     V = FunctionSpace(mesh, "CG", 1)
@@ -176,19 +208,32 @@ for i in range(args.refine + 1):
 
     # Picard iterate the tilted p-Laplacian problem
     nv, ne, hmin, hmax = VIAMR().meshsizes(mesh)
-    printpar(f'solving level {i}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
+    rstr = '' if rsched[i] is None else f' (after refine by {rdict[rsched[i]]})'
+    printpar(f'solving level {i}{rstr}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
     v = TestFunction(V)
     bcs = DirichletBC(V, Constant(0.0), "on_boundary")
-    for k in range(args.picard):
-        printpar(f'    Picard iteration {k+1} ...')
-        Z = Phi(uold, lb)
-        F = tranformedweakform(u, v, a, Z)
-        problem = NonlinearVariationalProblem(F, u, bcs)
-        solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
-        lower = Function(V).interpolate(Constant(0.0))
-        upper = Function(V).interpolate(Constant(PETSc.INFINITY))
-        solver.solve(bounds=(lower, upper))
-        uold = Function(V).interpolate(u)
+    lower = Function(V).interpolate(Constant(0.0))
+    upper = Function(V).interpolate(Constant(PETSc.INFINITY))
+    if args.picard > 0:
+        for k in range(args.picard):
+            printpar(f'  Picard iteration {k+1} ...')
+            Z = Phi(uold, lb)
+            F = weakformZ(u, v, a, Z)
+            problem = NonlinearVariationalProblem(F, u, bcs)
+            solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
+            solver.solve(bounds=(lower, upper))
+            uold = Function(V).interpolate(u)
+    else:
+        #Phipow = [1.0, 7.0/8.0, 6.0/8.0, 5.0/8.0]
+        #Phipow = [2.0/8.0, 3.0/8.0, 4.0/8.0, 5.0/8.0]
+        #Phipow = [2.0/8.0, 3.0/8.0, 3.5/8.0, 4.0/8.0, 4.2/8.0, 4.4/8.0, 4.6/8.0, 4.8/8.0, 5.0/8.0]
+        Hcap = [0.0, 500.0, 1000.0, 1500.0, 2000.0, 2500.0, 3000.0, 3500.0, 4000.0, 4500.0, 7000.0]
+        for k in range(len(Hcap)):
+            printpar(f'  Hcap iteration {k+1} ...')
+            F = weakformcapped(u, v, a, lb, Hcap[k])
+            problem = NonlinearVariationalProblem(F, u, bcs)
+            solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
+            solver.solve(bounds=(lower, upper))
     H = Function(V, name="H = thickness").interpolate(u**omega)
     s = Function(V, name="s = surface elevation").interpolate(lb + H)
 
