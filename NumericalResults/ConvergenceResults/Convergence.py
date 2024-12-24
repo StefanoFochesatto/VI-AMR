@@ -7,6 +7,7 @@ import math
 import argparse
 import pandas as pd
 import os
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run convergence script with specified parameters.")
@@ -33,6 +34,7 @@ if __name__ == "__main__":
         exactU = afile.load_function(exactMesh, "ExactU")
     VTKFile("test.pvd").write(exactU)
     exactV = FunctionSpace(exactMesh, "CG", 1)
+
     exactPsi, psiufl, _ = problem_instance.sphere_problem(exactMesh, exactV)
     exactElementIndicator = amr_instance.elemactive(exactU, exactPsi)
     _, exactFreeBoundaryEdges = amr_instance.freeboundarygraph(
@@ -57,10 +59,17 @@ if __name__ == "__main__":
         HError = amr_instance.hausdorff(
             solFreeBoundaryEdges, exactFreeBoundaryEdges)
 
+        # Compute L2 error
+        _, _, exactU = problem_instance.sphere_problem(
+            mesh, u.function_space())
+        diffu = Function(u.function_space()).interpolate(u - exactU)
+        L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
+
+        # FIXME: investigate this further, this is giving weird results.
         # Compute L2 Error (using conservative projection to finer mesh)
-        proju = Function(exactV).project(u)
-        L2Error = sqrt(
-            assemble(dot((proju - exactU), (proju - exactU)) * dx(exactMesh)))
+        # proju = Function(exactV).project(u)
+        # L2Error = sqrt(
+        #    assemble(dot((proju - exactU), (proju - exactU)) * dx(exactMesh)))
 
         # Refine
         # Hybrid Refinement Strategy:
@@ -124,6 +133,14 @@ if __name__ == "__main__":
             'sizes': (hmin, hmax)
         })
 
-    OutputFile = f"{args.refinement}_{args.amrMethod}_{args.maxIterations}.csv"
+    # Ensure the 'Results' directory exists
+    results_dir = "Results"
+    os.makedirs(results_dir, exist_ok=True)
+
+    # Construct the output file path
+    OutputFile = os.path.join(
+        results_dir, f"{args.refinement}_{args.amrMethod}.csv")
+
+    # Create a DataFrame and save it to the specified path
     df = pd.DataFrame(data)
     df.to_csv(OutputFile, index=False)
