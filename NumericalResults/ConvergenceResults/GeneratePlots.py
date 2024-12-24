@@ -161,9 +161,13 @@ if __name__ == "__main__":
 
     # Example Plot
     getPlot(Convdf, "udo", "Elements", "L2", plottype="loglog")
+    getPlot(Convdf, "vces", "Elements", "L2", plottype="loglog")
+    getPlot(Convdf, "udo", "Elements", "Hausdorff", plottype="loglog")
+    getPlot(Convdf, "vces", "Elements", "Hausdorff", plottype="loglog")
+    getPlot(Convdf, "udo", "Elements", "Jaccard", plottype="loglog")
+    getPlot(Convdf, "vces", "Elements", "Jaccard", plottype="loglog")
 
     # loglog Number of elements vs l2 with convergence rate
     # Number of elements vs Hausdorff distance
     # loglog Number of elements vs Hausdorff distance
     # Number of elements vs IoU
-    # loglog Number of elements vs 1 - IoU
