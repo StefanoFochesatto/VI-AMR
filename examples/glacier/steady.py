@@ -1,5 +1,5 @@
 # TODO * allow other strategies than alternating AMR & uniform?
-#      * fix -data so it works
+#      * implement BDM+DG mixed method
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description="""
