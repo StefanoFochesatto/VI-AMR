@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 from firedrake import *
+from animate import *
 from viamr import VIAMR
 
 

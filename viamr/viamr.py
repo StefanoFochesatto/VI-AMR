@@ -5,6 +5,8 @@ from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 from pyop2.mpi import MPI
+from animate import *   # see README.md regarding this dependency
+
 
 from shapely.geometry import MultiLineString
 import shapely
@@ -152,6 +154,44 @@ class VIAMR(OptionsManager):
         )
         return mark
 
+    def metricfromhessian(self, mesh, u):
+        '''Construct a hessian based metric from a solution'''
+        P1_ten = TensorFunctionSpace(mesh, "CG", 1)
+        metric = RiemannianMetric(P1_ten)
+        metric.set_parameters(metric_params)
+        metric.compute_hessian(u)
+        metric.normalise()
+        return metric
+
+    def metricrefine(self, mesh, u, lb, weights=[.50, .50], mp={
+            "dm_plex_metric": {
+                "target_complexity": 3000.0,
+                "p": 2.0,  # normalisation order
+                "h_min": 1e-07,  # minimum allowed edge length
+                "h_max": 1.0,  # maximum allowed edge length
+            }}):
+        '''Implementation of anisotropic metric based refinement which is free boundary aware. Constructs 
+        average of hessian based metrics of the solution and a free boundary indicator function'''
+        # Pull CG1 space and free boundary vertices
+        CG1, _ = self.spaces(mesh)
+        Vertex, _ = VIAMR().freeboundarygraph(u, lb, 'fd')
+        # Construct freeboundary indicator
+        freeboundaryindicator = Function(CG1)
+        freeboundaryindicator.dat.data[list(Vertex)[:]] = 1
+
+        # Build hessian based metrics and average them
+        solutionMetric = self.metricfromhessian(mesh, u)
+        freeboundaryMetric = self.metricfromhessian(
+            mesh, freeboundaryindicator)
+        VImetric = solutionMetric.copy(deepcopy=True)
+        VImetric.average(freeboundaryMetric, weights=weights)
+
+        # Adapt
+        adaptedMesh = adapt(mesh, VImetric)
+        return adaptedMesh
+
+    # Fixme: maybe move these to another file? utility.py?
+
     def jaccard(self, active1, active2):
         '''Compute the Jaccard metric from two element-wise active
         set indicators.  These indicators must be DG0 functions, but they
@@ -178,7 +218,8 @@ class VIAMR(OptionsManager):
         assert AreaUnion > 0.0
         return AreaIntersection / AreaUnion
 
-    # Fixme: maybe move these to another file? utility.py?
+    def hausdorff(self, E1, E2):
+        return shapely.hausdorff_distance(MultiLineString(E1), MultiLineString(E2), .99)
 
     def meshreport(self, mesh, indent=2):
         '''Print standard mesh report.  Valid in parallel.'''
@@ -256,6 +297,3 @@ class VIAMR(OptionsManager):
                 coordsE = [[[coords[edge[0]][0], coords[edge[0]][1]], [
                     coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
                 return coordsV, coordsE
-
-    def hausdorff(self, E1, E2):
-        return shapely.hausdorff_distance(MultiLineString(E1), MultiLineString(E2), .99)
