@@ -5,8 +5,6 @@ from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 from pyop2.mpi import MPI
-from animate import *   # see README.md regarding this dependency
-
 
 from shapely.geometry import MultiLineString
 import shapely
@@ -156,6 +154,7 @@ class VIAMR(OptionsManager):
 
     def metricfromhessian(self, mesh, u):
         '''Construct a hessian based metric from a solution'''
+        from animate import RiemannianMetric   # see README.md regarding this dependency
         P1_ten = TensorFunctionSpace(mesh, "CG", 1)
         metric = RiemannianMetric(P1_ten)
         metric.set_parameters(metric_params)
