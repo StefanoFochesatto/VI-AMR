@@ -152,12 +152,12 @@ class VIAMR(OptionsManager):
         )
         return mark
 
-    def metricfromhessian(self, mesh, u):
+    def metricfromhessian(self, mesh, u, mp):
         '''Construct a hessian based metric from a solution'''
         from animate import RiemannianMetric   # see README.md regarding this dependency
         P1_ten = TensorFunctionSpace(mesh, "CG", 1)
         metric = RiemannianMetric(P1_ten)
-        metric.set_parameters(metric_params)
+        metric.set_parameters(mp)
         metric.compute_hessian(u)
         metric.normalise()
         return metric
@@ -171,6 +171,7 @@ class VIAMR(OptionsManager):
             }}):
         '''Implementation of anisotropic metric based refinement which is free boundary aware. Constructs 
         average of hessian based metrics of the solution and a free boundary indicator function'''
+        from animate import adapt
         # Pull CG1 space and free boundary vertices
         CG1, _ = self.spaces(mesh)
         Vertex, _ = VIAMR().freeboundarygraph(u, lb, 'fd')
@@ -179,9 +180,9 @@ class VIAMR(OptionsManager):
         freeboundaryindicator.dat.data[list(Vertex)[:]] = 1
 
         # Build hessian based metrics and average them
-        solutionMetric = self.metricfromhessian(mesh, u)
+        solutionMetric = self.metricfromhessian(mesh, u, mp)
         freeboundaryMetric = self.metricfromhessian(
-            mesh, freeboundaryindicator)
+            mesh, freeboundaryindicator, mp)
         VImetric = solutionMetric.copy(deepcopy=True)
         VImetric.average(freeboundaryMetric, weights=weights)
 
