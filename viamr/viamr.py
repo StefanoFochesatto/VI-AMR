@@ -174,8 +174,9 @@ class VIAMR(OptionsManager):
                 "h_min": 1e-07,  # minimum allowed edge length
                 "h_max": 1.0,  # maximum allowed edge length
             }}):
-        '''Implementation of anisotropic metric based refinement which is free boundary aware. Constructs 
-        average of hessian based metrics of the solution and a free boundary indicator function'''
+        '''Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the 
+        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed vces indicator. 
+        these metrics are averaged.'''
         from animate import adapt
         from animate import RiemannianMetric
 
@@ -202,8 +203,6 @@ class VIAMR(OptionsManager):
         # Adapt
         adaptedMesh = adapt(mesh, VImetric)
         return adaptedMesh
-
-    # Fixme: maybe move these to another file? utility.py?
 
     def jaccard(self, active1, active2):
         '''Compute the Jaccard metric from two element-wise active
@@ -241,7 +240,7 @@ class VIAMR(OptionsManager):
             f'current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]')
         return None
 
-    # Fixme: checks for when free boundary is emptyset
+    # FIXME: checks for when free boundary is emptyset
     def freeboundarygraph(self, u, lb, type='coords'):
         ''' pulls the graph for the free boundary, return as dm, fd, or coords'''
         mesh = u.function_space().mesh()

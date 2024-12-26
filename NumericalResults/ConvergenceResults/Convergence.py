@@ -2,7 +2,7 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
-from TestProblem import ObstacleProblem
+from viamr.utility import ObstacleProblem
 import math
 import argparse
 import pandas as pd
@@ -27,7 +27,6 @@ if __name__ == "__main__":
     meshHistory = [None]
     u = None
 
-    # os.chdir("/home/stefano/Desktop/VIAMR/VI-AMR/NumericalResults/ConvergenceResults")
     with CheckpointFile("ExactSolution.h5", 'r') as afile:
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh
         exactMesh = afile.load_mesh('Default')

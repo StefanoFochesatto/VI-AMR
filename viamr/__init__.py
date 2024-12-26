@@ -1,1 +1,2 @@
-from .viamr import VIAMR
+from .viamr import *
+from .utility import *

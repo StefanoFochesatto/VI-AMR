@@ -3,7 +3,7 @@ import numpy as np
 from firedrake import *
 from animate import *   # see README.md regarding this dependency
 from firedrake.output import VTKFile
-from TestProblem import ObstacleProblem
+from viamr.utility import ObstacleProblem
 from viamr import VIAMR
 
 
