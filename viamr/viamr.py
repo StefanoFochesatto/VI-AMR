@@ -116,7 +116,7 @@ class VIAMR(OptionsManager):
         # is to refine only in active or only in inactive set (currently commented out).
         return self.bfs_neighbors(mesh, elemborder, n, elemactive)
 
-    def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8]):
+    def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
         '''Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
         Valid in parallel.'''
 
@@ -139,25 +139,30 @@ class VIAMR(OptionsManager):
         u = Function(CG1, name="Smoothed Nodal Active Indicator")
         solve(a == L, u)
 
-        # Compute average over elements by interpolation into DG0
-        DG0 = FunctionSpace(mesh, "DG", 0)
-        uDG0 = Function(DG0, name="Smoothed Nodal Active Indicator as DG0")
-        uDG0.interpolate(u)
+        if returnSmooth:
+            return u
 
-        # Applying thresholding parameters
-        mark = Function(DG0, name="VCES Marking")
-        mark.interpolate(
-            conditional(uDG0 > bracket[0], conditional(
-                uDG0 < bracket[1], 1, 0), 0)
-        )
-        return mark
+        else:
+            # Compute average over elements by interpolation into DG0
+            DG0 = FunctionSpace(mesh, "DG", 0)
+            uDG0 = Function(DG0, name="Smoothed Nodal Active Indicator as DG0")
+            uDG0.interpolate(u)
 
-    def metricfromhessian(self, mesh, u):
+            # Applying thresholding parameters
+            mark = Function(DG0, name="VCES Marking")
+            mark.interpolate(
+                conditional(uDG0 > bracket[0], conditional(
+                    uDG0 < bracket[1], 1, 0), 0)
+            )
+
+            return mark
+
+    def metricfromhessian(self, mesh, u, mp):
         '''Construct a hessian based metric from a solution'''
         from animate import RiemannianMetric   # see README.md regarding this dependency
         P1_ten = TensorFunctionSpace(mesh, "CG", 1)
         metric = RiemannianMetric(P1_ten)
-        metric.set_parameters(metric_params)
+        metric.set_parameters(mp)
         metric.compute_hessian(u)
         metric.normalise()
         return metric
@@ -171,17 +176,26 @@ class VIAMR(OptionsManager):
             }}):
         '''Implementation of anisotropic metric based refinement which is free boundary aware. Constructs 
         average of hessian based metrics of the solution and a free boundary indicator function'''
-        # Pull CG1 space and free boundary vertices
-        CG1, _ = self.spaces(mesh)
-        Vertex, _ = VIAMR().freeboundarygraph(u, lb, 'fd')
-        # Construct freeboundary indicator
-        freeboundaryindicator = Function(CG1)
-        freeboundaryindicator.dat.data[list(Vertex)[:]] = 1
+        from animate import adapt
+        from animate import RiemannianMetric
 
-        # Build hessian based metrics and average them
-        solutionMetric = self.metricfromhessian(mesh, u)
-        freeboundaryMetric = self.metricfromhessian(
-            mesh, freeboundaryindicator)
+        # Construct isotropic metric from abs(grad(smoothed_vces_indicator))
+        V, _ = self.spaces(mesh)
+        dim = mesh.topological_dimension()
+
+        # Get magnitude of gradients
+        s = self.vcesmark(mesh, u, lb, returnSmooth=True)
+        ags = Function(V).interpolate(sqrt(dot(grad(s), grad(s))))
+
+        # Constructing metric. Basically "L2" option in metric.compute_isotropic_metric, however we already have a P1 indicator
+        P1_ten = TensorFunctionSpace(mesh, "CG", 1)
+        freeboundaryMetric = RiemannianMetric(P1_ten)
+        freeboundaryMetric.set_parameters(mp)
+        freeboundaryMetric.interpolate(ags * ufl.Identity(dim))
+        freeboundaryMetric.normalise()
+
+        # Build hessian based metric for interpolation error and average
+        solutionMetric = self.metricfromhessian(mesh, u, mp)
         VImetric = solutionMetric.copy(deepcopy=True)
         VImetric.average(freeboundaryMetric, weights=weights)
 
