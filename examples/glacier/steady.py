@@ -28,6 +28,9 @@ parser.add_argument('-jaccard', action='store_true', default=False,
                     help='use VIAMR.jaccard() to evaluate glaciated area convergence')
 parser.add_argument('-m', type=int, default=20, metavar='M',
                     help='number of cells in each direction [default=20]')
+parser.add_argument('-method', type=str, default='picard', metavar='X',
+                    choices = ['picard','direct'],
+                    help='choose FE method from {picard,direct}')
 parser.add_argument('-onelevel', action='store_true', default=False,
                     help='no AMR refinements; use Firedrake to generate uniform mesh')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
@@ -123,34 +126,20 @@ phi = (p + 1) / (2*p)
 def Phi(u, b):
     return - (1.0 / omega) * (u + 1.0)**phi * grad(b)  # FIXME the +1 regularization seems needed?
 
-# FIXME not currently used
+# -method direct
 def weakform(u, v, a, b):
     du_tilt = grad(u) - Phi(u, b)
     Dp = inner(du_tilt, du_tilt)**((p-2)/2)
     return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
 
-# FIXME currently used in Picard ... but I do not like Picard iteration here
+# -method picard
 def weakformZ(u, v, a, Z):
     du_tilt = grad(u) - Z
     Dp = inner(du_tilt, du_tilt)**((p-2)/2)
     return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
 
-# FIXME trial regularization; not currently used
-def weakformpow(u, v, a, b, pp):
-    PhiPP = - (1.0 / omega) * (u + 1.0)**pp * grad(b)
-    du_tilt = grad(u) - PhiPP
-    Dp = inner(du_tilt, du_tilt)**((p-2)/2)
-    return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
 
-# FIXME trial regularization ... currently used when -picard 0
-def weakformcapped(u, v, a, b, Hcap):
-    ucap = Hcap**(1.0 / omega)
-    Phicapped = - (1.0 / omega) * (conditional(u > ucap, ucap, u) + 1.0)**phi * grad(b)
-    du_tilt = grad(u) - Phicapped
-    Dp = inner(du_tilt, du_tilt)**((p-2)/2)
-    return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
-
-# main loop
+# outer mesh refinement loop
 for i in range(args.refine + 1):
     if i > 0 and args.jaccard:
         # generate active set indicator so we can evaluate Jaccard index
@@ -169,6 +158,7 @@ for i in range(args.refine + 1):
             raise NotImplementedError
         mesh = mesh.refine_marked_elements(mark)  # NetGen gives next mesh
 
+    # primal function space on current mesh
     V = FunctionSpace(mesh, "CG", 1)
 
     # obstacle and source term
@@ -206,7 +196,7 @@ for i in range(args.refine + 1):
         uold = Function(V).interpolate(conditional(uold < 0.0, 0.0, uold))
     u = Function(V, name="u = transformed thickness").interpolate(uold)
 
-    # Picard iterate the tilted p-Laplacian problem
+    # set-up for solve on current mesh
     nv, ne, hmin, hmax = VIAMR().meshsizes(mesh)
     rstr = '' if rsched[i] is None else f' (after refine by {rdict[rsched[i]]})'
     printpar(f'solving level {i}{rstr}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
@@ -214,7 +204,9 @@ for i in range(args.refine + 1):
     bcs = DirichletBC(V, Constant(0.0), "on_boundary")
     lower = Function(V).interpolate(Constant(0.0))
     upper = Function(V).interpolate(Constant(PETSc.INFINITY))
-    if args.picard > 0:
+
+    if args.method == 'picard':
+        # Picard iterate the tilted p-Laplacian problem
         for k in range(args.picard):
             printpar(f'  Picard iteration {k+1} ...')
             Z = Phi(uold, lb)
@@ -223,27 +215,19 @@ for i in range(args.refine + 1):
             solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
             solver.solve(bounds=(lower, upper))
             uold = Function(V).interpolate(u)
+    elif args.method == 'direct':
+        F = weakform(u, v, a, lb)
+        problem = NonlinearVariationalProblem(F, u, bcs)
+        solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
+        solver.solve(bounds=(lower, upper))
     else:
-        #Phipow = [1.0, 7.0/8.0, 6.0/8.0, 5.0/8.0]
-        #Phipow = [2.0/8.0, 3.0/8.0, 4.0/8.0, 5.0/8.0]
-        #Phipow = [2.0/8.0, 3.0/8.0, 3.5/8.0, 4.0/8.0, 4.2/8.0, 4.4/8.0, 4.6/8.0, 4.8/8.0, 5.0/8.0]
-        Hcap = [0.0, 500.0, 1000.0, 1500.0, 2000.0, 2500.0, 3000.0, 3500.0, 4000.0, 4500.0, 7000.0]
-        for k in range(len(Hcap)):
-            printpar(f'  Hcap iteration {k+1} ...')
-            F = weakformcapped(u, v, a, lb, Hcap[k])
-            problem = NonlinearVariationalProblem(F, u, bcs)
-            solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
-            solver.solve(bounds=(lower, upper))
+        raise NotImplementedError('unknown option to -method')
+
+    # update true geometry variables
     H = Function(V, name="H = thickness").interpolate(u**omega)
     s = Function(V, name="s = surface elevation").interpolate(lb + H)
 
-    if i > 0 and args.jaccard:
-        z = VIAMR(debug=True)
-        neweactive = z.elemactive(s, lb)
-        jac = z.jaccard(eactive, neweactive)
-        printpar(f'  glaciated areas Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]' )
-        eactive = neweactive
-
+    # report numerical errors if exact solution known
     if args.prob == 'dome':
         sdiff = Function(V).interpolate(s - dome_exact(x))
         sdiff.rename("sdiff = s - s_exact")
@@ -252,6 +236,15 @@ for i in range(args.refine + 1):
         printpar('    |s-s_exact|_2 = %.3f m,  |s-s_exact|_av = %.3f m' \
                  % (err_l2, err_av))
 
+    # report active set agreement between consecutive meshes using Jaccard index
+    if i > 0 and args.jaccard:
+        z = VIAMR(debug=True)
+        neweactive = z.elemactive(s, lb)
+        jac = z.jaccard(eactive, neweactive)
+        printpar(f'  glaciated areas Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]' )
+        eactive = neweactive
+
+# on final, finest mesh, save results
 if args.opvd:
     CU = ((n+2)/(n+1)) * Gamma
     U_ufl = CU * (s - lb)**p * inner(grad(s), grad(s))**((p-2)/2) * grad(s)
