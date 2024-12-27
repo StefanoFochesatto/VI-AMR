@@ -1,5 +1,4 @@
 # TODO * allow other strategies than alternating AMR & uniform?
-#      * implement BDM+DG mixed method
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description="""
@@ -30,7 +29,7 @@ parser.add_argument('-m', type=int, default=20, metavar='M',
                     help='number of cells in each direction [default=20]')
 parser.add_argument('-method', type=str, default='picard', metavar='X',
                     choices = ['picard','direct'],
-                    help='choose FE method from {picard,direct}')
+                    help='choose primal FE method from {picard,direct}')
 parser.add_argument('-onelevel', action='store_true', default=False,
                     help='no AMR refinements; use Firedrake to generate uniform mesh')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
@@ -72,6 +71,7 @@ if args.onelevel:
 
 # read data for bed topography into numpy array
 if args.data:
+    printpar('ignoring -prob choice ...')
     printpar(f'reading topg from NetCDF file {args.data} with native data grid:')
     topg_nc = DataNetCDF(args.data, 'topg')
     #topg_nc.preview()
@@ -166,8 +166,7 @@ for i in range(args.refine + 1):
         lb = Function(V).project(topg) # cross-mesh projection from data mesh
         # SMB from linear model based on lapse rate; from linearizing dome case
         c0 = -3.4e-8
-        #c1 = (6.3e-8 - c0) / 3.6e3
-        c1 = (4.5e-8 - c0) / 3.6e3
+        c1 = (6.3e-8 - c0) / 3.6e3
         a_lapse = c0 + c1 * topg
         a = Function(V).interpolate(conditional(nearb > 0.0, -1.0e-6, a_lapse)) # also cross-mesh re nearb
         #VTKFile('data.pvd').write(lb, a)
@@ -258,4 +257,7 @@ if args.opvd:
     if args.prob == 'dome':
         VTKFile(args.opvd).write(a,u,s,H,U,Q,sexact,sdiff)
     else:
-        VTKFile(args.opvd).write(a,u,s,H,U,Q,lb)
+        Gb = Function(VectorFunctionSpace(mesh, 'DG', degree=0))
+        Gb.interpolate(grad(lb))
+        Gb.rename('Gb = grad(b)')
+        VTKFile(args.opvd).write(a,u,s,H,U,Q,lb,Gb)
