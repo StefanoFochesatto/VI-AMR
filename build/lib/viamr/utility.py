@@ -3,7 +3,9 @@ from netgen.geom2d import SplineGeometry
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
-from viamr import VIAMR
+from .viamr import VIAMR
+
+# FIXME: rewrite using ABC
 
 
 class ObstacleProblem(OptionsManager):

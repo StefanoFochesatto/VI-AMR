@@ -1,7 +1,7 @@
 # Import necessary modules from Firedrake
 from firedrake import *
 from firedrake.output import VTKFile
-from TestProblem import ObstacleProblem
+from viamr.utility import ObstacleProblem
 from netgen.geom2d import CSG2d, EdgeInfo as EI, Solid2d
 from viamr import VIAMR
 

@@ -2,6 +2,9 @@
 # Modified from: https://github.com/mesh-adaptation/docs/blob/main/docker/Dockerfile.firedrake-parmmg
 # Thanks Davor!
 
+# Dockerfile for installing Firedrake with mesh adaptation support via Mmg and ParMmg,
+# as well as Animate, Goalie, and Movement
+
 # First stage: Build MPICH and PETSc. Based off
 # https://github.com/firedrakeproject/firedrake/blob/master/docker/Dockerfile.env
 FROM ubuntu:24.04 AS petscbuild
@@ -139,17 +142,17 @@ ENV HDF5_MPI=ON
 ENV OMP_NUM_THREADS=1
 ENV OPENBLAS_NUM_THREADS=1
 
-# Install Firedrake and Animate, Movement, Goalie, and Netgen
+# Install Firedrake and Animate, Movement, Goalie
 RUN curl -O https://raw.githubusercontent.com/firedrakeproject/firedrake/master/scripts/firedrake-install && \
     bash -c "python3 firedrake-install \
 		--no-package-manager \
 		--disable-ssh \
 		--honour-petsc-dir \
+		--mpihome=${MPICH_DIR} \
 		--mpicc=${MPICH_DIR}/mpicc \
 		--mpicxx=${MPICH_DIR}/mpicxx \
 		--mpif90=${MPICH_DIR}/mpif90 \
 		--mpiexec=${MPICH_DIR}/mpiexec \
-        --mpihome=${MPICH_DIR}/.. \
         --netgen \
 		--install thetis && \
     source firedrake/bin/activate && \
