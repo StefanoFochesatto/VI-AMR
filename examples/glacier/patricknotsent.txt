@@ -1,0 +1,7 @@
+First, Merry Christmas!  Hope you and your family are well!
+
+You have thought about mixed methods with inequality bounds in Firedrake, I believe.  (https://bitbucket.org/pefarrell/fascd/pull-requests/11)   I know that in FASCD there are some manually-applied bounds, and these handle mixed spaces, i.e. apply bounds to all subfunctions.  (https://bitbucket.org/pefarrell/fascd/src/master/fascd/fascd.py#lines-21)
+
+However, I am really confused about what vinewtonrsls is doing when called from Firedrake on a mixed-space problem.  The attached `obsmix.py` is a simple modification of the Firedrake mixed Poisson example.  (https://www.firedrakeproject.org/demos/poisson_mixed.py.html)  It looks like the Newton steps just ignore the bounds ... sort of.  E.g. run python3 obsmix.py -snes_rtol 0.8 and then python3 obsmix.py -snes_rtol 0.4  and compare the results from 1 and then 2 Newton steps.
+
+Any thoughts?
