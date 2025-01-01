@@ -72,7 +72,7 @@ Our primary goal is an accurate finite element (FE) solution of problem $(2)$.  
 
 The most direct method of solving $(3)$ by an FE method is to use $u\in CG_1$ and apply a Newton iteration to handle the nonlinearity.  This often works, but it becomes very fragile, with regard to Newton convergence, when the bed elevation has large gradient.  In the same case it seems to make bad mass-conservation errors, of the type discussed in [JAS13].  The goals of the different/novel FE methods considered below are to address the fragility and conservation issues.
 
-### tilted $p$-Laplacian form
+### tilted $p$-Laplacian form, and Picard iteration
 
 Supposing $\nabla b\ne 0$, then VI $(3)$ is _not_ the first-order condition for minimizing any functional.  We can abstract and simplify $(3)$, to give the _tilted $p$-Laplacian obstacle problem_ [JB12].  Let $Z(x,y)$ be a fixed vector field.  Consider:
 
@@ -88,9 +88,7 @@ over $\mathcal{K}$ [JB12].  Thus $(4)$ modifies the original $p$-Laplacian diffu
 
 Theorem 3.3 in [JB12] shows that the VI problem $(4)$ and the minimization of $J(u)$ are equivalent and well-posed.  However, VI problem $(3)$ is not in form $(4)$ because of the solution-dependent vector field $Z=\Phi(u)$.  Only existence is known for $(3)$ [JB12].
 
-### Picard iteration
-
-As just noted, in the SIA VI problem $(3)$ the tilt field $Z=\Phi(u)$ is $u$-dependent.  An option for solving the SIA, which sort of works, is to Picard iterate on solving $(4)$, with this dependence.  That is, we may put an iterative wrapper around $(4)$, updating the $Z$ field with each iteration:
+In the VI problem $(3)$ the tilt field $Z=\Phi(u)$ is $u$-dependent.  Thus an option for solving the SIA, which sort-of works, is to Picard iterate on solving $(4)$, with this dependence [JB12].  That is, we may put an iterative wrapper around $(4)$, updating the $Z$ field with each iteration:
 
 ```math
 \begin{align*}
@@ -103,7 +101,7 @@ This method of solution seems to generally converge when solved as a primal prob
 
 ## mixed primal/dual SIA model
 
-Acknowledging the above theory, and that I am not certain it will all work out, the goal now is to build a mass-conserving mixed method for the SIA, in a form which (I hope!) can handle steep bed slopes.
+Acknowledging the above theory, and acknowledging that I am not certain that the following will all work out, the goal now is to build a mass-conserving mixed method for the SIA, in a form which can, I hope, handle steep bed slopes.
 
 To address conservation, the function space for the vertically-integrated mass flux $\mathbf{q}$ will be continuous.  The function space for the transformed thickness $u$ will be discontinuous, for stability [F24].  (_There is much here which I do not understand_.)
 
@@ -116,11 +114,11 @@ Perhaps the easiest starting point is from the "mixed" NCP form of equation $(2)
 \end{align*}
 ```
 
-First we need to remove the derivative from $u$, by integration by parts, because it will be discontinuous.  The first step is to relate magnitudes in the flux equation.  By taking magnitudes in $(5a)$, we have $|\mathbf{q}| = \gamma |\nabla u - \Phi(u)|^{p-1}$.  This is equivalent to
+First we need to remove the derivative from $u$, by integration by parts, because it will be discontinuous.  To do this, we relate magnitudes in the flux equation $(5a)$.  We have $|\mathbf{q}| = \gamma |\nabla u - \Phi(u)|^{p-1}$, equivalently
 
 $$|\nabla u - \Phi(u)| = \frac{|\mathbf{q}|^{1/(p-1)}}{\gamma^{1/(p-1)}}$$
 
-thus, again by $(5a)$,
+Thus, again by $(5a)$,
 
 ```math
 \begin{align*}
@@ -132,7 +130,7 @@ thus, again by $(5a)$,
 
 where $C=\gamma^{-1/(p-1)}$ and $r=p/(p-1)$  Typically, $r=4/3$ since $p=4$.
 
-The new NCP form of $(5)$ is:
+The new form of $(5)$, again as an NCP strong form, is:
 
 ```math
 \begin{align*}
@@ -141,20 +139,18 @@ The new NCP form of $(5)$ is:
 \end{align*}
 ```
 
-Now we find the weak form of $(6)$ by multiplying by test functions and integrating by parts, so as to remove the derivative from $u$.  First define function spaces, as motivated by a mixed FE method for the Poisson problem [F24]:
+Now we find the weak form of $(6)$ by multiplying by test functions, and integrating by parts to remove the derivative from $u$.  First define function spaces, as motivated by a mixed FE method for the Poisson problem [F24]:
 
 ```math
 \begin{align*}
-\mathcal{K}_m &= \left\{u \in L^p(\Omega)\,:\, u\ge 0 \text{ a.e.}\right\} \\
+\mathcal{K}_m &= \left\{v \in L^p(\Omega)\,:\, v\ge 0 \text{ a.e.}\right\} \\
 \mathcal{W}_m &= \left\{\mathbf{w} \in L^r(\Omega)^2 \,:\, \nabla \cdot \mathbf{w} \in L^r(\Omega)\right\}
 \end{align*}
 ```
 
-It is reasonable to denote $\mathcal{W}_m$ as $W^r(div,\Omega)$.
+(It would be reasonable to denote $\mathcal{W}_m$ also as $W^r(div,\Omega)$.)
 
-The weak form is a mixed-space VI.  One derives part of it it by multiplying $(6a)$ by a test function $\mathbf{w} \in \mathcal{W}_m$, and integrating by parts to replace $\nabla u \cdot \mathbf{w}$ by $- u \nabla \cdot \mathbf{w}$.  Another portion follows the usual VI derivation from $(6b)$, with a test function $u-v$, where $v\in\mathcal{K}_m$.
-
-Let $\mathcal{Z} = \mathcal{K}_m \times \mathcal{W}_m$.  Define
+The upcoming weak form is a mixed-space VI.  To derive it, assume $u\in\mathcal{K}_m$ and $\mathbf{q}\in\mathcal{W}_m$.  Multiply $(6a)$ by a test function $\mathbf{w} \in \mathcal{W}_m$, and integrate by parts to replace $\nabla u \cdot \mathbf{w}$ by $- u \nabla \cdot \mathbf{w}$.  Then follow the usual VI derivation from $(6b)$, with a test function $u-v$, where $v\in\mathcal{K}_m$.  To write the result in a compact manner, let $\mathcal{Z} = \mathcal{K}_m \times \mathcal{W}_m$.  Define
 
 ```math
 \begin{align*}
@@ -165,11 +161,11 @@ B\left((u,\mathbf{q}),(v,\mathbf{w})\right) &= \int_\Omega -u \nabla\cdot \mathb
 
 Now the VI problem is to find $(u,\mathbf{q})\in\mathcal{Z}$ so that
 
-$$\boxed{B\left((u,\mathbf{q}),(u-v,\mathbf{q} - \mathbf{w})\right) \ge 0} \qquad (8)$$
+$$\boxed{B\left((u,\mathbf{q}),(v-u,\mathbf{w} - \mathbf{q})\right) \ge 0} \qquad (8)$$
 
 for all $(v,\mathbf{w})\in\mathcal{Z}$.
 
-The definitions of spaces $\mathcal{K}_m$ and $\mathcal{W}_m$, given above, are really just a guess.  However, notice that they are sufficient for defining the weak form $(7)$.  In fact, by Holder's inequality, and the fact that $p^{-1} + r^{-1} = 1$, the integral expressions defining $B$, at least those which do not involve $a$ or $\nabla b$, are finite.  The expressions which use the data $a$, $\nabla b$ should finite if this data is assumed to be in $L^\infty$?
+The definitions of spaces $\mathcal{K}_m$ and $\mathcal{W}_m$, given above, are really just a guess.  Observe that in $(7)$ the only spatial derivatives are divergences of elements of $\mathcal{W}_m$, which are therefore well-defined.  The function space choices are sufficient for defining the weak form $(7)$ because, by Holder's inequality and the fact that $p^{-1} + r^{-1} = 1$, the integral expressions defining $B$, at least those which do not involve $a$ or $\nabla b$, are finite.  (The expressions which use the data $a$, $\nabla b$ should finite if this data is assumed to be in $L^\infty$?)
 
 #### mixed FE method
 
