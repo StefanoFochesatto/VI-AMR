@@ -1,128 +1,128 @@
-# Import Firedrake and Netgen
+from abc import ABC, abstractmethod
 from netgen.geom2d import SplineGeometry
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
-from .viamr import VIAMR
-
-# FIXME: rewrite using ABC
+import numpy as np
 
 
-class ObstacleProblem(OptionsManager):
-
+class BaseObstacleProblem(ABC, OptionsManager):
     def __init__(self, **kwargs):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
-        self.TriHeight = kwargs.pop("TriHeight", .45)
-        self.problem = kwargs.pop("Problem", "sphere")
+        self.TriHeight = kwargs.pop("TriHeight", 0.45)
         self.debug = kwargs.pop('debug', False)
-        if self.problem == "sphere":
-            self.width = 2
-        else:
-            self.width = 1
 
-    def getInitialMesh(self):
-        try:
-            import netgen
+    @abstractmethod
+    def setInitialMesh(self):
+        pass
 
-        except ImportError:
-            print("ImportError.  Unable to import NetGen.  Exiting.")
-            import sys
-            sys.exit(0)
+    @abstractmethod
+    def setBoundaryConditionsUFL(self, V, bdry=None):
+        pass
 
-        geo = SplineGeometry()
-        geo.AddRectangle(p1=(-1*self.width, -1*self.width),
-                         p2=(1*self.width, 1*self.width),
-                         bc="rectangle")
+    @abstractmethod
+    def setObstacleUFL(self, V, bdry=None):
+        pass
 
-        ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
-        mesh = Mesh(ngmsh)
-        mesh.topology_dm.viewFromOptions('-dm_view')
+    def getObstacle(self, V):
+        obsUFL = self.setObstacleUFL(V)
+        return Function(V).interpolate(obsUFL)
 
-        return mesh
+    def getBoundaryConditions(self, V):
+        bdryUFL, bdryID = self.setBoundaryConditionsUFL(V)
+        bdry = Function(V).interpolate(bdryUFL)
+        bcs = DirichletBC(V, bdry, bdryID)
 
-    def sphere_problem(self, mesh, V):
-        # exactly-solvable obstacle problem for spherical obstacle
-        # see Chapter 12 of Bueler (2021)
-        # obstacle and solution are in function space V
-        (x, y) = SpatialCoordinate(mesh)
-        r = sqrt(x * x + y * y)
-        r0 = 0.9
-        psi0 = np.sqrt(1.0 - r0 * r0)
-        dpsi0 = -r0 / psi0
-        psi_ufl = conditional(le(r, r0), sqrt(
-            1.0 - r * r), psi0 + dpsi0 * (r - r0))
-        psi = Function(V).interpolate(psi_ufl)
-        # exact solution is known (and it determines Dirichlet boundary)
-        afree = 0.697965148223374
-        A = 0.680259411891719
-        B = 0.471519893402112
-        gbdry_ufl = conditional(le(r, afree), psi_ufl, -A * ln(r) + B)
-        gbdry = Function(V).interpolate(gbdry_ufl)
+        return bcs, bdry
 
-        return psi, psi_ufl, gbdry
-
-    def spiral_problem(self, mesh, V):
-        # spiral obstacle problem from section 7.1.1 in Graeser & Kornhuber (2009)
-        (x, y) = SpatialCoordinate(mesh)
-        r = sqrt(x * x + y * y)
-        theta = atan2(y, x)
-        tmp = sin(2.0*pi/r + pi/2.0 - theta) + r * \
-            (r+1) / (r - 2.0) - 3.0 * r + 3.6
-        psi = Function(V).interpolate(conditional(le(r, 1.0e-8), 3.6, tmp))
-        gbdry = Constant(0.0)
-
-        return psi, tmp, gbdry
-
-    def getObstacle(self, V, bdry=None):
-        mesh = V.mesh()
-        if self.problem == "sphere":
-            lb, psi_ufl, exact = self.sphere_problem(mesh, V)
-        else:
-            lb, psi_ufl, exact = self.spiral_problem(mesh, V)
-        if bdry == None:
-            bdry = (1, 2, 3, 4)   # all four sides of boundary
-
-        bcs = DirichletBC(V, exact, bdry)
-
-        return lb, bcs, exact
-
-    def solveProblem(self, mesh=None, u=None, bdry=None):
+    def solveProblem(self, mesh=None, u=None, bdry=None,  sp={
+        "snes_vi_monitor": None,
+        "snes_type": "vinewtonrsls",
+        "snes_converged_reason": None,
+        "snes_rtol": 1.0e-8,
+        "snes_atol": 1.0e-12,
+        "snes_stol": 1.0e-12,
+        "snes_max_it": 10000,
+        "snes_vi_zero_tolerance": 1.0e-12,
+        "snes_linesearch_type": "basic",
+        "ksp_type": "preonly",
+        "pc_type": "lu",
+        "pc_factor_mat_solver_type": "mumps"
+    }):
         if mesh is None:
-            mesh = self.getInitialMesh()
-        # FIXME: possibility of higher order
+            mesh = self.setInitialMesh()
+
         V = FunctionSpace(mesh, "CG", 1)
 
         if u is None:
             u = Function(V, name="u (FE soln)")
         else:
-            # use cross mesh interp to ensure solution on current mesh
             u = Function(V, name="u (FE soln)").interpolate(u)
 
-        lb, bcs, _ = self.getObstacle(V, bdry)
+        lb = self.getObstacle(V)
+        bcs, _ = self.getBoundaryConditions(V)
 
-        # weak form problem; F is residual operator in nonlinear system F==0
         v = TestFunction(V)
-        # as in Laplace equation:  - div (grad u) = 0
         F = inner(grad(u), grad(v)) * dx
 
-        sp = {"snes_vi_monitor": None,
-              "snes_type": "vinewtonrsls",
-              "snes_converged_reason": None,
-              "snes_rtol": 1.0e-8,
-              "snes_atol": 1.0e-12,
-              "snes_stol": 1.0e-12,
-              "snes_max_it": 10000,
-              "snes_vi_zero_tolerance": 1.0e-12,
-              "snes_linesearch_type": "basic",
-              "ksp_type": "preonly",
-              "pc_type": "lu",
-              "pc_factor_mat_solver_type": "mumps"}
         problem = NonlinearVariationalProblem(F, u, bcs)
         solver = NonlinearVariationalSolver(
             problem, solver_parameters=sp, options_prefix="")
 
-        # No upper obstacle
         ub = Function(V).interpolate(Constant(PETSc.INFINITY))
         solver.solve(bounds=(lb, ub))
 
         return u, lb, mesh
+
+
+class SphereObstacleProblem(BaseObstacleProblem):
+    '''
+    Example for constructing an obstacle problem using abstract base classes to simplify usage.
+    All that is needed is to specify the initial mesh, obstacle UFL, and boundary conditions UFL expressions. 
+    '''
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def setInitialMesh(self):
+        geo = SplineGeometry()
+        geo.AddRectangle(p1=(-2, -2),
+                         p2=(2, 2), bc="rectangle")
+        ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
+        mesh = Mesh(ngmsh)
+        return mesh
+
+    def setObstacleUFL(self, V):
+        mesh = V.mesh()
+        (x, y) = SpatialCoordinate(mesh)
+        r = sqrt(x * x + y * y)
+        r0 = 0.9
+        psi0 = np.sqrt(1.0 - r0 * r0)
+        dpsi0 = -r0 / psi0
+        obsUFL = conditional(le(r, r0), sqrt(
+            1.0 - r * r), psi0 + dpsi0 * (r - r0))
+        return obsUFL
+
+    def setBoundaryConditionsUFL(self, V, bdryID=None):
+        mesh = V.mesh()
+        (x, y) = SpatialCoordinate(mesh)
+        r = sqrt(x * x + y * y)
+        afree = 0.697965148223374
+        A = 0.680259411891719
+        B = 0.471519893402112
+
+        obsUFL = self.setObstacleUFL(V)
+        bdryUFL = conditional(le(r, afree), obsUFL, -A * ln(r) + B)
+
+        if bdryID is None:
+            bdryID = (1, 2, 3, 4)
+
+        return bdryUFL, bdryID
+
+
+# Example usage
+# if __name__ == '__main__':
+#    problem = SphereObstacleProblem()  # Instantiate your problem
+#    # Pass initial iterate, refined mesh, or solver parameter dictionary.
+#    solution, lower_bound, mesh = problem.solveProblem()
+#    print("Solution obtained successfully.")

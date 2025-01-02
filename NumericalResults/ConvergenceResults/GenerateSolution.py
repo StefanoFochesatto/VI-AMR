@@ -1,7 +1,7 @@
 # Import necessary modules from Firedrake
 from firedrake import *
 from firedrake.output import VTKFile
-from viamr.utility import ObstacleProblem
+from viamr.utility import SphereObstacleProblem
 from netgen.geom2d import CSG2d, EdgeInfo as EI, Solid2d
 from viamr import VIAMR
 
@@ -35,7 +35,7 @@ labels = [i+1 for i,
           name in enumerate(ngmsh.GetRegionNames(codim=1)) if name in ["boundary"]]
 ExactMesh = Mesh(ngmsh)
 
-problem_instance = ObstacleProblem()
+problem_instance = SphereObstacleProblem()
 amr_instance = VIAMR()
 
 ExactU = None

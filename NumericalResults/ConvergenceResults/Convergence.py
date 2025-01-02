@@ -2,7 +2,7 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
-from viamr.utility import ObstacleProblem
+from viamr.utility import SphereObstacleProblem
 import math
 import argparse
 import pandas as pd
@@ -22,11 +22,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    problem_instance = ObstacleProblem(TriHeight=args.initTriHeight)
+    problem_instance = SphereObstacleProblem(TriHeight=args.initTriHeight)
     amr_instance = VIAMR()
     meshHistory = [None]
     u = None
 
+    os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
     with CheckpointFile("ExactSolution.h5", 'r') as afile:
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh
         exactMesh = afile.load_mesh('Default')
@@ -34,7 +35,7 @@ if __name__ == "__main__":
     VTKFile("test.pvd").write(exactU)
     exactV = FunctionSpace(exactMesh, "CG", 1)
 
-    exactPsi, psiufl, _ = problem_instance.sphere_problem(exactMesh, exactV)
+    exactPsi = problem_instance.getObstacle(exactV)
     exactElementIndicator = amr_instance.elemactive(exactU, exactPsi)
     _, exactFreeBoundaryEdges = amr_instance.freeboundarygraph(
         exactU, exactPsi)
@@ -59,8 +60,7 @@ if __name__ == "__main__":
             solFreeBoundaryEdges, exactFreeBoundaryEdges)
 
         # Compute L2 error
-        _, _, exactU = problem_instance.sphere_problem(
-            mesh, u.function_space())
+        _, exactU = problem_instance.getBoundaryConditions(u.function_space())
         diffu = Function(u.function_space()).interpolate(u - exactU)
         L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
 
