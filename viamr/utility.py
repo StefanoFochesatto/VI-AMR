@@ -17,15 +17,16 @@ class BaseObstacleProblem(ABC, OptionsManager):
         pass
 
     @abstractmethod
-    def setBoundaryConditionsUFL(self, V, bdry=None):
+    def setBoundaryConditionsUFL(self, V, bdryID=None):
         pass
 
     @abstractmethod
-    def setObstacleUFL(self, V, bdry=None):
+    def setObstacleUFL(self, V):
         pass
 
     def getObstacle(self, V):
         obsUFL = self.setObstacleUFL(V)
+
         return Function(V).interpolate(obsUFL)
 
     def getBoundaryConditions(self, V):
