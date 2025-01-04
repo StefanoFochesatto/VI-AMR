@@ -121,9 +121,39 @@ class SphereObstacleProblem(BaseObstacleProblem):
         return bdryUFL, bdryID
 
 
-# Example usage
+class SpiralObstacleProblem(BaseObstacleProblem):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def setInitialMesh(self):
+        geo = SplineGeometry()
+        geo.AddRectangle(p1=(-1, -1),
+                         p2=(1, 1), bc="rectangle")
+        ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
+        mesh = Mesh(ngmsh)
+        return mesh
+
+    def setObstacleUFL(self, V):
+        mesh = V.mesh()
+        (x, y) = SpatialCoordinate(mesh)
+        r = sqrt(x * x + y * y)
+        theta = atan2(y, x)
+        tmp = sin(2.0*pi/r + pi/2.0 - theta) + r * \
+            (r+1) / (r - 2.0) - 3.0 * r + 3.6
+        obsUFL = conditional(le(r, 1.0e-8), 3.6, tmp)
+        return obsUFL
+
+    def setBoundaryConditionsUFL(self, V, bdryID=None):
+        bdryUFL = Constant(0.0)
+        if bdryID is None:
+            bdryID = (1, 2, 3, 4)
+
+        return bdryUFL, bdryID
+
+
+# # Example usage
 # if __name__ == '__main__':
-#    problem = SphereObstacleProblem()  # Instantiate your problem
-#    # Pass initial iterate, refined mesh, or solver parameter dictionary.
-#    solution, lower_bound, mesh = problem.solveProblem()
-#    print("Solution obtained successfully.")
+#     problem = SpiralObstacleProblem(TriHeight=.05)  # Instantiate your problem
+#     # Pass initial iterate, refined mesh, or solver parameter dictionary.
+#     solution, lower_bound, mesh = problem.solveProblem()
+#     print("Solution obtained successfully.")
