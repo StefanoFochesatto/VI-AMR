@@ -15,19 +15,22 @@ except ImportError:
 from netgen.geom2d import SplineGeometry
 
 refinements = 3
-debugoutputs = False
+debugoutputs = True
 
 problems = ['sphere', 'spiral']
 widths = [2.0, 1.0]
 TriHeights = [0.4, 0.1]
 
+
 def get_mesh(width, TriHeight):
     # re-generate initial mesh using netgen
     geo = SplineGeometry()
-    geo.AddRectangle(p1=(-1 * width, -1 * width), p2=(1 * width, 1 * width), bc="rectangle")
+    geo.AddRectangle(p1=(-1 * width, -1 * width),
+                     p2=(1 * width, 1 * width), bc="rectangle")
     ngmsh = None
     ngmsh = geo.GenerateMesh(maxh=TriHeight)
     return Mesh(ngmsh)
+
 
 def sphere_problem(mesh, V):
     # exactly-solvable obstacle problem for spherical obstacle
@@ -38,7 +41,8 @@ def sphere_problem(mesh, V):
     r0 = 0.9
     psi0 = np.sqrt(1.0 - r0 * r0)
     dpsi0 = -r0 / psi0
-    psi_ufl = conditional(le(r, r0), sqrt(1.0 - r * r), psi0 + dpsi0 * (r - r0))
+    psi_ufl = conditional(le(r, r0), sqrt(
+        1.0 - r * r), psi0 + dpsi0 * (r - r0))
     psi = Function(V).interpolate(psi_ufl)
     # exact solution is known (and it determines Dirichlet boundary)
     afree = 0.697965148223374
@@ -48,6 +52,7 @@ def sphere_problem(mesh, V):
     gbdry = Function(V).interpolate(gbdry_ufl)
     uexact = gbdry
     return psi, gbdry, uexact
+
 
 def spiral_problem(mesh, V):
     # spiral obstacle problem from section 7.1.1 in Graeser & Kornhuber (2009)
@@ -113,7 +118,8 @@ for prob in range(2):
             solver = NonlinearVariationalSolver(
                 problem, solver_parameters=sp, options_prefix=""
             )
-            ubound = Function(V).interpolate(Constant(PETSc.INFINITY))  # no upper obstacle
+            ubound = Function(V).interpolate(
+                Constant(PETSc.INFINITY))  # no upper obstacle
             solver.solve(bounds=(lbound, ubound))
             if uexact is not None:
                 print(f"  L2 error norm = {errornorm(u, uexact):.3e}")
@@ -124,9 +130,11 @@ for prob in range(2):
             if method == 'udo':
                 mark = VIAMR().udomark(mesh, u, lbound)
             else:
-                mark = VIAMR().vcesmark(mesh, u, lbound, bracket=[0.06, 0.94])  # more refinement
+                mark = VIAMR().vcesmark(mesh, u, lbound, bracket=[
+                    0.06, 0.94])  # more refinement
             if debugoutputs:
-                VTKFile(f"result_{problems[prob]}_{method}{i}.pvd").write(u, lbound, mark)
+                VTKFile(f"result_{problems[prob]}_{method}{i}.pvd").write(
+                    u, lbound, mark)
 
             # use NetGen to get next mesh
             mesh = mesh.refine_marked_elements(mark)
@@ -136,6 +144,8 @@ for prob in range(2):
         ugap.rename('gap u - psi')
         if uexact is not None:
             uerror = Function(V, name="u error").interpolate(abs(u - uexact))
-            VTKFile(f"result_{problems[prob]}_{method}.pvd").write(u, lbound, ugap, uerror)
+            VTKFile(f"result_{problems[prob]}_{method}.pvd").write(
+                u, lbound, ugap, uerror)
         else:
-            VTKFile(f"result_{problems[prob]}_{method}.pvd").write(u, lbound, ugap)
+            VTKFile(f"result_{problems[prob]}_{method}.pvd").write(
+                u, lbound, ugap)

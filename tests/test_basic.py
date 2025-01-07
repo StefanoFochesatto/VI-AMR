@@ -62,16 +62,16 @@ def test_refine_udo():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    #from firedrake.output import VTKFile
-    #VTKFile(f"result_refine_0.pvd").write(u)
+    # from firedrake.output import VTKFile
+    # VTKFile(f"result_refine_0.pvd").write(u)
     mark = z.udomark(mesh, u, psi)
     rmesh = mesh.refine_marked_elements(mark)
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 61
     rV = FunctionSpace(rmesh, "CG", 1)
-    ru = Function(rV).interpolate(u) # cross-mesh interpolation
-    assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
-    #VTKFile(f"result_refine_1.pvd").write(ru)
+    ru = Function(rV).interpolate(u)  # cross-mesh interpolation
+    assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
+    # VTKFile(f"result_refine_1.pvd").write(ru)
 
 
 def test_refine_vces():
@@ -83,19 +83,19 @@ def test_refine_vces():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    #from firedrake.output import VTKFile
-    #VTKFile(f"result_refine_0.pvd").write(u)
+    # from firedrake.output import VTKFile
+    # VTKFile(f"result_refine_0.pvd").write(u)
     mark = z.vcesmark(mesh, u, psi)
     rmesh = mesh.refine_marked_elements(mark)
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 49
     rV = FunctionSpace(rmesh, "CG", 1)
-    ru = Function(rV).interpolate(u) # cross-mesh interpolation
-    assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
-    #VTKFile(f"result_refine_1.pvd").write(ru)
+    ru = Function(rV).interpolate(u)  # cross-mesh interpolation
+    assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
+    # VTKFile(f"result_refine_1.pvd").write(ru)
 
 
-@pytest.mark.skip(reason = "refine_marked_elements not working with a Firedrake mesh")
+@pytest.mark.skip(reason="refine_marked_elements not working with a Firedrake mesh")
 def test_refine_firedrakemesh():
     mesh = SquareMesh(6, 6, 4.0)
     mesh.coordinates.dat.data[:, :] -= 2.0

@@ -103,18 +103,50 @@ class VIAMR(OptionsManager):
     def udomark(self, mesh, u, lb, n=2):
         '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
         Warning: Not valid in parallel.'''
+        # pull dm
+        dm = mesh.topology_dm
 
         # generate element-wise and nodal-wise indicators for active set
         _, DG0 = self.spaces(mesh)
         nodalactive = self.nodalactive(u, lb)
-        elemactive = self.elemactive(u, lb)
-
         # generate border element indicator
         elemborder = self.elemborder(nodalactive)
 
-        # bfs_neighbors() constructs N^n(B) indicator.  Last argument
-        # is to refine only in active or only in inactive set (currently commented out).
-        return self.bfs_neighbors(mesh, elemborder, n, elemactive)
+        # generate map from dm to fd indices
+        plexelementlist = mesh.cell_closure[:, -1]
+        dm_to_fd = {number: index for index,
+                    number in enumerate(plexelementlist)}
+
+        for i in range(n):
+            # Pull border elements cell with dmplex cell indices
+            BorderSetElementsIndices = [mesh.cell_closure[:, -1][i] for i, value in enumerate(
+                elemborder.dat.data_ro_with_halos) if value != 0]
+
+            # Pull indices of vertices which are incident to said border elements
+            incidentVertices = [dm.getTransitiveClosure(
+                i)[0][4:7] for i in BorderSetElementsIndices]
+
+            # Flatten the list of lists and remove duplicates
+            flat_list = [
+                vertex for sublist in incidentVertices for vertex in sublist]
+            incidentVertices = list(set(flat_list))
+
+            # Pull all elements which are neighbor to the incidentVertices. This produces the set N(B)
+            NeighborSet = set()
+            for i in incidentVertices:
+                for entity in dm.getTransitiveClosure(i, useCone=False)[0]:
+                    if dm.getDepthStratum(2)[0] <= entity < dm.getDepthStratum(2)[1]:
+                        NeighborSet.add(entity)
+
+            NeighborSet = list(NeighborSet)
+
+            # Create new elemborder function
+            elemborder = Function(DG0).interpolate(Constant(0.0))
+
+            for j in NeighborSet:
+                elemborder.dat.data_wo_with_halos[dm_to_fd[j]] = 1
+
+        return elemborder
 
     def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
         '''Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
