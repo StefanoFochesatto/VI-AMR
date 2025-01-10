@@ -40,7 +40,7 @@ amr_instance = VIAMR()
 
 ExactU = None
 for i in range(10):
-    ExactU, lb, ExactMesh = problem_instance.solveProblem(
+    ExactU, lb = problem_instance.solveProblem(
         mesh=ExactMesh, u=ExactU, bdry=labels)
     ExactU.rename("ExactU")
     DG0 = FunctionSpace(ExactMesh, "DG", 0)
@@ -50,7 +50,7 @@ for i in range(10):
         mark = amr_instance.vcesmark(ExactMesh, ExactU, lb)
     ExactMesh = ExactMesh.refine_marked_elements(mark)
 
-ExactU, lb, ExactMesh = problem_instance.solveProblem(
+ExactU, lb = problem_instance.solveProblem(
     mesh=ExactMesh, u=ExactU, bdry=labels)
 ExactU.rename("exactU")
 

@@ -1,9 +1,16 @@
 from abc import ABC, abstractmethod
-from netgen.geom2d import SplineGeometry
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 import numpy as np
+from viamr import VIAMR
+try:
+    import netgen
+except ImportError:
+    print("ImportError.  Unable to import NetGen.  Exiting.")
+    import sys
+    sys.exit(0)
+from netgen.geom2d import SplineGeometry
 
 
 class BaseObstacleProblem(ABC, OptionsManager):
@@ -73,7 +80,7 @@ class BaseObstacleProblem(ABC, OptionsManager):
         ub = Function(V).interpolate(Constant(PETSc.INFINITY))
         solver.solve(bounds=(lb, ub))
 
-        return u, lb, mesh
+        return u, lb
 
 
 class SphereObstacleProblem(BaseObstacleProblem):
@@ -153,7 +160,14 @@ class SpiralObstacleProblem(BaseObstacleProblem):
 
 # # Example usage
 # if __name__ == '__main__':
-#     problem = SpiralObstacleProblem(TriHeight=.05)  # Instantiate your problem
-#     # Pass initial iterate, refined mesh, or solver parameter dictionary.
-#     solution, lower_bound, mesh = problem.solveProblem()
-#     print("Solution obtained successfully.")
+#     u = None
+#     problem = SpiralObstacleProblem(TriHeight=.05)
+#     amr = VIAMR()
+#     mesh = problem.setInitialMesh()
+#     meshHist = [mesh]
+#     for i in range(3):
+#         u, lb = problem.solveProblem(mesh=meshHist[i], u=u)
+#         mark = amr.udomark(meshHist[i], u, lb, n=1)
+#         mesh = meshHist[i].refine_marked_elements(mark)
+#         meshHist.append(mesh)
+#     print('done')

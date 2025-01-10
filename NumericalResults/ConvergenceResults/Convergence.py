@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     problem_instance = SphereObstacleProblem(TriHeight=args.initTriHeight)
     amr_instance = VIAMR()
-    meshHistory = [None]
+    meshHistory = [problem_instance.setInitialMesh()]
     u = None
 
     os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
@@ -32,7 +32,6 @@ if __name__ == "__main__":
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh
         exactMesh = afile.load_mesh('Default')
         exactU = afile.load_function(exactMesh, "ExactU")
-    VTKFile("test.pvd").write(exactU)
     exactV = FunctionSpace(exactMesh, "CG", 1)
 
     exactPsi = problem_instance.getObstacle(exactV)
@@ -42,9 +41,9 @@ if __name__ == "__main__":
 
     data = []
     for i in range(args.maxIterations):
+        mesh = meshHistory[i]
         # solution gets overwritten; never stored
-        u, lb, mesh = problem_instance.solveProblem(
-            mesh=meshHistory[i], u=u)
+        u, lb = problem_instance.solveProblem(mesh=mesh, u=u)
 
         # Get Mesh details
         nv, ne, hmin, hmax = amr_instance.meshsizes(mesh)
