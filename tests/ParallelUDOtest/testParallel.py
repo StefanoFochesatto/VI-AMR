@@ -1,14 +1,15 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from mpi4py import MPI
-
+import numpy as np
 from viamr import VIAMR
-from viamr import SphereObstacleProblem
+from viamr import SpiralObstacleProblem
 
 
 initTriHeight = .05
-problem_instance = SphereObstacleProblem(TriHeight=initTriHeight)
-u, lb, meshp = problem_instance.solveProblem(mesh=None, u=None)
+problem_instance = SpiralObstacleProblem(TriHeight=initTriHeight)
+meshp = problem_instance.setInitialMesh()
+u, lb = problem_instance.solveProblem(mesh=meshp, u=None)
 z = VIAMR()
 markp = z.udomarkParallel(meshp, u, lb, n=3)
 markp.rename('markp')

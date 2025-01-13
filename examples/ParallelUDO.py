@@ -16,7 +16,8 @@ n = 3
 # Instantiate obstacle problem and solution
 initTriHeight = .05
 problem_instance = SphereObstacleProblem(TriHeight=initTriHeight)
-u, lb, mesh = problem_instance.solveProblem(mesh=None, u=None)
+mesh = problem_instance.setInitialMesh()
+u, lb = problem_instance.solveProblem(mesh=mesh, u=None)
 dm = mesh.topology_dm
 
 z = VIAMR()
