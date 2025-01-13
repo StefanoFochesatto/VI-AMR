@@ -1,9 +1,16 @@
 from abc import ABC, abstractmethod
-from netgen.geom2d import SplineGeometry
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 import numpy as np
+from viamr import VIAMR
+try:
+    import netgen
+except ImportError:
+    print("ImportError.  Unable to import NetGen.  Exiting.")
+    import sys
+    sys.exit(0)
+from netgen.geom2d import SplineGeometry
 
 
 class BaseObstacleProblem(ABC, OptionsManager):
@@ -73,7 +80,7 @@ class BaseObstacleProblem(ABC, OptionsManager):
         ub = Function(V).interpolate(Constant(PETSc.INFINITY))
         solver.solve(bounds=(lb, ub))
 
-        return u, lb, mesh
+        return u, lb
 
 
 class SphereObstacleProblem(BaseObstacleProblem):
@@ -121,9 +128,96 @@ class SphereObstacleProblem(BaseObstacleProblem):
         return bdryUFL, bdryID
 
 
+class SpiralObstacleProblem(BaseObstacleProblem):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def setInitialMesh(self):
+        geo = SplineGeometry()
+        geo.AddRectangle(p1=(-1, -1),
+                         p2=(1, 1), bc="rectangle")
+        ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
+        mesh = Mesh(ngmsh)
+        return mesh
+
+    def setObstacleUFL(self, V):
+        mesh = V.mesh()
+        (x, y) = SpatialCoordinate(mesh)
+        r = sqrt(x * x + y * y)
+        theta = atan2(y, x)
+        tmp = sin(2.0*pi/r + pi/2.0 - theta) + r * \
+            (r+1) / (r - 2.0) - 3.0 * r + 3.6
+        obsUFL = conditional(le(r, 1.0e-8), 3.6, tmp)
+        return obsUFL
+
+    def setBoundaryConditionsUFL(self, V, bdryID=None):
+        bdryUFL = Constant(0.0)
+        if bdryID is None:
+            bdryID = (1, 2, 3, 4)
+
+        return bdryUFL, bdryID
+
+
+class LShapedDomainProblem(BaseObstacleProblem):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def setInitialMesh(self):
+        # L shaped domain, missing 4th quadrant
+        geo = SplineGeometry()
+        pnts = [(0, 0), (1, 0), (1, 1),
+                (0, 1), (-1, 1), (-1, 0),
+                (-1, -1), (0, -1)]
+        p1, p2, p3, p4, p5, p6, p7, p8 = [
+            geo.AppendPoint(*pnt) for pnt in pnts]
+        curves = [[["line", p1, p2], "line"],
+                  [["line", p2, p3], "line"],
+                  [["line", p3, p4], "line"],
+                  [["line", p4, p5], "line"],
+                  [["line", p5, p6], "line"],
+                  [["line", p6, p7], "line"],
+                  [["line", p7, p8], "line"],
+                  [["line", p8, p1], "line"]]
+        [geo.Append(c, bc=bc) for c, bc in curves]
+        ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
+        mesh = Mesh(ngmsh)
+        return mesh
+
+    def setObstacleUFL(self, V):
+        # Bump function parameters
+        center = [-.5, .5]
+        width = .5,
+        height = .25
+
+        mesh = V.mesh()
+        (x, y) = SpatialCoordinate(mesh)
+        dsqr = (x + .5)**2 + (y - .5)**2
+        obsUFL = (1.5*exp(-2.5*dsqr))-1
+        return obsUFL
+
+    def setBoundaryConditionsUFL(self, V, bdryID=None):
+        bdryUFL = Constant(0.0)
+        # Pull ngmsh from V.mesh() and get the boundary IDs for the boundary conditions
+        ngmsh = V.mesh().netgen_mesh
+        bdryID = [
+            i+1 for i, name in enumerate(ngmsh.GetRegionNames(codim=1)) if name in ["line"]]
+        if bdryID is None:
+            bdryID = (1, 2, 3, 4)
+
+        return bdryUFL, bdryID
+
+
 # Example usage
 # if __name__ == '__main__':
-#    problem = SphereObstacleProblem()  # Instantiate your problem
-#    # Pass initial iterate, refined mesh, or solver parameter dictionary.
-#    solution, lower_bound, mesh = problem.solveProblem()
-#    print("Solution obtained successfully.")
+#    u = None
+#    problem = LShapedDomainProblem(TriHeight=.05)
+#    amr = VIAMR()
+#    mesh = problem.setInitialMesh()
+#    meshHist = [mesh]
+#    for i in range(3):
+#        u, lb = problem.solveProblem(mesh=meshHist[i], u=u)
+#        mark = amr.udomark(meshHist[i], u, lb, n=1)
+#        mesh = meshHist[i].refine_marked_elements(mark)
+#        meshHist.append(mesh)
+#   VTKFile('lshape.pvd').write(u)
+#
