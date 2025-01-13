@@ -32,7 +32,6 @@ if __name__ == "__main__":
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh
         exactMesh = afile.load_mesh('Default')
         exactU = afile.load_function(exactMesh, "ExactU")
-    VTKFile("test.pvd").write(exactU)
     exactV = FunctionSpace(exactMesh, "CG", 1)
 
     exactPsi = problem_instance.getObstacle(exactV)

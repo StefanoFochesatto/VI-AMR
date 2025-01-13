@@ -103,6 +103,22 @@ class VIAMR(OptionsManager):
     def udomark(self, mesh, u, lb, n=2):
         '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
         Warning: Not valid in parallel.'''
+
+        # generate element-wise and nodal-wise indicators for active set
+        _, DG0 = self.spaces(mesh)
+        nodalactive = self.nodalactive(u, lb)
+        elemactive = self.elemactive(u, lb)
+
+        # generate border element indicator
+        elemborder = self.elemborder(nodalactive)
+
+        # bfs_neighbors() constructs N^n(B) indicator.  Last argument
+        # is to refine only in active or only in inactive set (currently commented out).
+        return self.bfs_neighbors(mesh, elemborder, n, elemactive)
+
+    def udomarkParallel(self, mesh, u, lb, n=2):
+        '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
+        Warning: Not valid in parallel.'''
         # pull dm
         dm = mesh.topology_dm
 
