@@ -45,6 +45,10 @@ class BaseObstacleProblem(ABC, OptionsManager):
         bcs = DirichletBC(V, bdry, bdryID)
         return bcs, bdry
 
+    def getExactSolution(self, V):
+        uexact = None
+        return uexact
+
     def solveProblem(
         self,
         mesh=None,
@@ -132,6 +136,9 @@ class SphereObstacleProblem(BaseObstacleProblem):
             bdryID = (1, 2, 3, 4)
 
         return bdryUFL, bdryID
+
+# FIXME implement
+#    def getExactSolution(self, V):
 
 
 class SpiralObstacleProblem(BaseObstacleProblem):

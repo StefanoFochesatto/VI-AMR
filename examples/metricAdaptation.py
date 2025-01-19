@@ -7,12 +7,16 @@ from viamr.utility import SphereObstacleProblem
 from viamr import VIAMR
 
 
-initTriHeight = .1
+problem = SphereObstacleProblem(TriHeight=0.1)
+mesh = problem.setInitialMesh()
+u, lb = problem.solveProblem(mesh=mesh, u=None)
 
-problem_instance = SphereObstacleProblem(TriHeight=initTriHeight)
-u, lb, mesh = problem_instance.solveProblem(mesh=None, u=None)
 viamr = VIAMR()
 adaptedMesh = viamr.metricrefine(mesh, u, lb)
+u, lb = problem.solveProblem(mesh=adaptedMesh, u=u)
+gap = Function(u.function_space(), name="gap = u - lb")
+gap.interpolate(u - lb)
 
+# FIXME evaluate exact solution
 
-VTKFile("results.pvd").write(adaptedMesh)
+VTKFile("results.pvd").write(u, lb, gap)
