@@ -46,8 +46,7 @@ class BaseObstacleProblem(ABC, OptionsManager):
         return bcs, bdry
 
     def getExactSolution(self, V):
-        uexact = None
-        return uexact
+        return None
 
     def solveProblem(
         self,
@@ -137,8 +136,9 @@ class SphereObstacleProblem(BaseObstacleProblem):
 
         return bdryUFL, bdryID
 
-# FIXME implement
-#    def getExactSolution(self, V):
+    def getExactSolution(self, V):
+        gbdryUFL, _ = self.setBoundaryConditionsUFL(V)
+        return Function(V).interpolate(gbdryUFL)
 
 
 class SpiralObstacleProblem(BaseObstacleProblem):

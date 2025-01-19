@@ -1,12 +1,12 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
-from viamr.utility import SpiralObstacleProblem
+from viamr.utility import SphereObstacleProblem
 
 levels = 4
-outfile = "result_spiral.pvd"
+outfile = "result_sphere.pvd"
 
-problem = SpiralObstacleProblem(TriHeight=.10)
+problem = SphereObstacleProblem(TriHeight=.10)
 amr = VIAMR()
 mesh = problem.setInitialMesh()
 meshHist = [mesh]
@@ -22,6 +22,10 @@ for i in range(levels + 1):
 
 V = u.function_space()
 gap = Function(V, name="gap = u-lb").interpolate(u - lb)
+uexact = problem.getExactSolution(V)
+uexact.rename("u_exact")
+error = Function(V, name="error = |u - u_exact|")
+error.interpolate(abs(u - uexact))
 
 print(f'done: {V.dim()} nodes ... writing to {outfile} ...')
-VTKFile(outfile).write(u, lb, gap)
+VTKFile(outfile).write(u, lb, gap, uexact, error)
