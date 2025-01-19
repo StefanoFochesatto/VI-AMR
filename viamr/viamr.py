@@ -11,35 +11,31 @@ import shapely
 
 
 class VIAMR(OptionsManager):
-
     def __init__(self, **kwargs):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
         # if True, add (slow) extra checking
         self.debug = kwargs.pop("debug", False)
 
     def spaces(self, mesh, p=1):
-        '''Return CG{p} and DG{p-1} spaces.'''
-        if self.debug:
-            assert isinstance(p, int)
-            assert p >= 1
-        return FunctionSpace(mesh, "CG", p), FunctionSpace(mesh, "DG", p-1)
+        """Return CG{p} and DG{p-1} spaces."""
+        assert isinstance(p, int)
+        assert p >= 1
+        return FunctionSpace(mesh, "CG", p), FunctionSpace(mesh, "DG", p - 1)
 
     def meshsizes(self, mesh):
-        '''Compute number of vertices, number of elements, and range of
-        mesh diameters.  Valid in parallel.'''
+        """Compute number of vertices, number of elements, and range of
+        mesh diameters.  Valid in parallel."""
         CG1, DG0 = self.spaces(mesh, p=1)
         nvertices = CG1.dim()
         nelements = DG0.dim()
-        hmin = float(mesh.comm.allreduce(
-            min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
-        hmax = float(mesh.comm.allreduce(
-            max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
+        hmin = float(mesh.comm.allreduce(min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
+        hmax = float(mesh.comm.allreduce(max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
         return nvertices, nelements, hmin, hmax
 
     def nodalactive(self, u, lb):
-        '''Compute nodal active set indicator in same function space as u.
+        """Compute nodal active set indicator in same function space as u.
         Applies to unilateral obstacle problems with u >= lb.  The active
-        set is {x : u(x) == lb(x)}, within activetol.'''
+        set is {x : u(x) == lb(x)}, within activetol."""
         if self.debug:
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         z = Function(u.function_space(), name="Nodal Active Set Indicator")
@@ -47,7 +43,7 @@ class VIAMR(OptionsManager):
         return z
 
     def elemactive(self, u, lb):
-        '''Compute element active set indicator in DG0.'''
+        """Compute element active set indicator in DG0."""
         if self.debug:
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
@@ -56,19 +52,19 @@ class VIAMR(OptionsManager):
         return z
 
     def elemborder(self, nodalactive):
-        '''From nodal activeset indicator compute bordering element indicator.'''
+        """From nodal activeset indicator compute bordering element indicator."""
         if self.debug:
             assert min(nodalactive.dat.data_ro) >= 0.0
             assert max(nodalactive.dat.data_ro) <= 1.0
         _, DG0 = self.spaces(nodalactive.function_space().mesh())
         z = Function(DG0, name="Border Elements")
-        z.interpolate(conditional(nodalactive > 0,
-                                  conditional(nodalactive < 1, 1, 0),
-                                  0))
+        z.interpolate(
+            conditional(nodalactive > 0, conditional(nodalactive < 1, 1, 0), 0)
+        )
         return z
 
     def bfs_neighbors(self, mesh, border, levels, active):
-        '''element-wise Fast Multi Neighbor Lookup BFS can Avoid Active Set'''
+        """element-wise Fast Multi Neighbor Lookup BFS can Avoid Active Set"""
 
         # dictionary to map each vertex to the cells that contain it
         vertex_to_cells = {}
@@ -83,7 +79,7 @@ class VIAMR(OptionsManager):
 
         # Loop over all cells to mark neighbors
         # Create a new DG0 function to store the result
-        result = Function(border.function_space(), name='nNeighbors')
+        result = Function(border.function_space(), name="nNeighbors")
         for i in range(mesh.num_cells()):
             # If the function value is 1 and the cell is in the active set
             if border.dat.data[i] == 1 and active.dat.data[i] == 0:
@@ -101,8 +97,8 @@ class VIAMR(OptionsManager):
         return result
 
     def udomark(self, mesh, u, lb, n=2):
-        '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
-        Warning: Not valid in parallel.'''
+        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
+        Warning: Not valid in parallel."""
 
         # generate element-wise and nodal-wise indicators for active set
         _, DG0 = self.spaces(mesh)
@@ -117,8 +113,8 @@ class VIAMR(OptionsManager):
         return self.bfs_neighbors(mesh, elemborder, n, elemactive)
 
     def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
-        '''Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
-        Valid in parallel.'''
+        """Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
+        Valid in parallel."""
 
         # Compute nodal active set indicator within some tolerance
         CG1, DG0 = self.spaces(mesh)
@@ -151,15 +147,15 @@ class VIAMR(OptionsManager):
             # Applying thresholding parameters
             mark = Function(DG0, name="VCES Marking")
             mark.interpolate(
-                conditional(uDG0 > bracket[0], conditional(
-                    uDG0 < bracket[1], 1, 0), 0)
+                conditional(uDG0 > bracket[0], conditional(uDG0 < bracket[1], 1, 0), 0)
             )
 
             return mark
 
     def metricfromhessian(self, mesh, u, mp):
-        '''Construct a hessian based metric from a solution'''
-        from animate import RiemannianMetric   # see README.md regarding this dependency
+        """Construct a hessian based metric from a solution"""
+        from animate import RiemannianMetric  # see README.md regarding this dependency
+
         P1_ten = TensorFunctionSpace(mesh, "CG", 1)
         metric = RiemannianMetric(P1_ten)
         metric.set_parameters(mp)
@@ -167,16 +163,24 @@ class VIAMR(OptionsManager):
         metric.normalise()
         return metric
 
-    def metricrefine(self, mesh, u, lb, weights=[.50, .50], mp={
+    def metricrefine(
+        self,
+        mesh,
+        u,
+        lb,
+        weights=[0.50, 0.50],
+        mp={
             "dm_plex_metric": {
                 "target_complexity": 3000.0,
                 "p": 2.0,  # normalisation order
                 "h_min": 1e-07,  # minimum allowed edge length
                 "h_max": 1.0,  # maximum allowed edge length
-            }}):
-        '''Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the 
-        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed vces indicator. 
-        these metrics are averaged.'''
+            }
+        },
+    ):
+        """Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the
+        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed vces indicator.
+        these metrics are averaged."""
         from animate import adapt
         from animate import RiemannianMetric
 
@@ -205,20 +209,21 @@ class VIAMR(OptionsManager):
         return adaptedMesh
 
     def jaccard(self, active1, active2):
-        '''Compute the Jaccard metric from two element-wise active
+        """Compute the Jaccard metric from two element-wise active
         set indicators.  These indicators must be DG0 functions, but they
         can be on different meshes.  By definition, the Jaccard metric of
         two sets is
             J(S,T) = |S cap T| / |S cup T|,
         that is, the ratio of the area (measure) of the intersection
         divided by the area of the union.
-        Warning: Not valid in parallel.'''
+        Warning: Not valid in parallel."""
         # FIXME how to check that active1, active2 are in DG0 spaces?
         # FIXME fails in parallel; the line generating proj2 will throw
         #     AssertionError: Whoever made mesh_B should explicitly mark
         #     mesh_A as having a compatible parallel layout.
-        assert active1.function_space().mesh()._comm.size == 1, \
-            'jaccard() not valid in parallel'
+        assert (
+            active1.function_space().mesh()._comm.size == 1
+        ), "jaccard() not valid in parallel"
         if self.debug:
             for a in [active1, active2]:
                 assert min(a.dat.data_ro) >= 0.0
@@ -231,18 +236,21 @@ class VIAMR(OptionsManager):
         return AreaIntersection / AreaUnion
 
     def hausdorff(self, E1, E2):
-        return shapely.hausdorff_distance(MultiLineString(E1), MultiLineString(E2), .99)
+        return shapely.hausdorff_distance(
+            MultiLineString(E1), MultiLineString(E2), 0.99
+        )
 
     def meshreport(self, mesh, indent=2):
-        '''Print standard mesh report.  Valid in parallel.'''
+        """Print standard mesh report.  Valid in parallel."""
         nv, ne, hmin, hmax = self.meshsizes(mesh)
         PETSc.Sys.Print(
-            f'current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]')
+            f"current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]"
+        )
         return None
 
     # FIXME: checks for when free boundary is emptyset
-    def freeboundarygraph(self, u, lb, type='coords'):
-        ''' pulls the graph for the free boundary, return as dm, fd, or coords'''
+    def freeboundarygraph(self, u, lb, type="coords"):
+        """pulls the graph for the free boundary, return as dm, fd, or coords"""
         mesh = u.function_space().mesh()
         CellVertexMap = mesh.topology.cell_closure
 
@@ -252,10 +260,12 @@ class VIAMR(OptionsManager):
         elemborder = self.elemborder(nodalactive)  # bordering cell
 
         # Pull Indices
-        ActiveSetElementsIndices = [i for i, value in enumerate(
-            elemactive.dat.data) if value != 0]
-        BorderElementsIndices = [i for i, value in enumerate(
-            elemborder.dat.data) if value != 0]
+        ActiveSetElementsIndices = [
+            i for i, value in enumerate(elemactive.dat.data) if value != 0
+        ]
+        BorderElementsIndices = [
+            i for i, value in enumerate(elemborder.dat.data) if value != 0
+        ]
 
         # Create sets for vertices related to BorderElements and ActiveSet
         BorderVertices = set()
@@ -286,7 +296,7 @@ class VIAMR(OptionsManager):
             vertices = CellVertexMap[cellIdx][:3]
             # Check all pairs of vertices in the element
             for i in range(len(vertices)):
-                for j in range(i+1, len(vertices)):
+                for j in range(i + 1, len(vertices)):
                     v1 = vertices[i]
                     v2 = vertices[j]
                     # Add edge if both vertices are part of the free boundary
@@ -297,15 +307,27 @@ class VIAMR(OptionsManager):
         if type == "dm":
             return FreeBoundaryVertices, EdgeSet
         else:
-            fdV = [mesh.topology._vertex_numbering.getOffset(
-                vertex) for vertex in list(FreeBoundaryVertices)]
-            fdE = [[mesh.topology._vertex_numbering.getOffset(
-                edge[0]), mesh.topology._vertex_numbering.getOffset(edge[1])] for edge in list(EdgeSet)]
+            fdV = [
+                mesh.topology._vertex_numbering.getOffset(vertex)
+                for vertex in list(FreeBoundaryVertices)
+            ]
+            fdE = [
+                [
+                    mesh.topology._vertex_numbering.getOffset(edge[0]),
+                    mesh.topology._vertex_numbering.getOffset(edge[1]),
+                ]
+                for edge in list(EdgeSet)
+            ]
             if type == "fd":
                 return fdV, fdE
             elif type == "coords":
                 coords = mesh.coordinates.dat.data_ro_with_halos
                 coordsV = [coords[vertex] for vertex in fdV]
-                coordsE = [[[coords[edge[0]][0], coords[edge[0]][1]], [
-                    coords[edge[1]][0], coords[edge[1]][1]]] for edge in fdE]
+                coordsE = [
+                    [
+                        [coords[edge[0]][0], coords[edge[0]][1]],
+                        [coords[edge[1]][0], coords[edge[1]][1]],
+                    ]
+                    for edge in fdE
+                ]
                 return coordsV, coordsE
