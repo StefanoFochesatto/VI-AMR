@@ -35,7 +35,9 @@ class BaseObstacleProblem(ABC, OptionsManager):
 
     def getObstacle(self, V):
         obsUFL = self.setObstacleUFL(V)
-        return Function(V).interpolate(obsUFL)
+        lb = Function(V).interpolate(obsUFL)
+        lb.rename("lb (lower bound obstacle)")
+        return lb
 
     def getBoundaryConditions(self, V):
         bdryUFL, bdryID = self.setBoundaryConditionsUFL(V)
