@@ -2,6 +2,8 @@
 
 For `spherespiral.py` there are no additional dependencies.
 
+## animate dependency
+
 However, `metricaveraging.py` uses [animate](https://github.com/mesh-adaptation/animate) to do metric-based AMR.  For this, Ed had to do the following:
 
     git clone https://github.com/mesh-adaptation/animate.git
@@ -13,11 +15,10 @@ However, `metricaveraging.py` uses [animate](https://github.com/mesh-adaptation/
     #      FIREDRAKE_CONFIGURE_OPTIONS += "--netgen"
     unset PETSC_DIR; unset PYTHONPATH
     make install
-    source bin/activate           # or similar; activate the new (animate) venv
-    make -f Makefile2 install     # uses "pip install -e ."
-    pip install shapely
-    pip install siphash24
-    cd ~/VI-AMR/                  # or similar
+    source firedrake-jan25/bin/activate   # or similar; activate the new (animate) venv
+    make -f Makefile2 install             # uses "pip install -e ."
+    pip install shapely siphash24
+    cd ~/VI-AMR/                          # or similar
     pip install -e .
 
 ## glaciers/
