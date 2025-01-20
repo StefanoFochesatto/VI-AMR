@@ -15,6 +15,7 @@ class VIAMR(OptionsManager):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
         # if True, add (slow) extra checking
         self.debug = kwargs.pop("debug", False)
+        self.metricparameters = None
 
     def spaces(self, mesh, p=1):
         """Return CG{p} and DG{p-1} spaces."""
@@ -152,37 +153,44 @@ class VIAMR(OptionsManager):
 
             return mark
 
-    def metricfromhessian(self, mesh, u, mp):
+    def setmetricparameters(self, **kwargs):
+        self.target_complexity = kwargs.pop("target_complexity", 3000.0)
+        self.h_min = kwargs.pop("h_min", 1.0e-7)
+        self.h_max = kwargs.pop("h_max", 1.0)
+        mp = {
+            "target_complexity": self.target_complexity,  # target number of nodes
+            "p": 2.0,  # normalisation order
+            "h_min": self.h_min,  # minimum allowed edge length
+            "h_max": self.h_max,  # maximum allowed edge length
+        }
+        self.metricparameters = {"dm_plex_metric": mp}
+        return None
+
+    def metricfromhessian(self, mesh, u):
         """Construct a hessian based metric from a solution"""
-        from animate import RiemannianMetric  # see README.md regarding this dependency
+
+        assert (
+            self.metricparameters is not None
+        ), "call setmetricparameters() before calling metricfromhessian()"
+
+        from animate import RiemannianMetric
 
         P1_ten = TensorFunctionSpace(mesh, "CG", 1)
         metric = RiemannianMetric(P1_ten)
-        metric.set_parameters(mp)
+        metric.set_parameters(self.metricparameters)
         metric.compute_hessian(u)
         metric.normalise()
         return metric
 
-    def metricrefine(
-        self,
-        mesh,
-        u,
-        lb,
-        weights=[0.50, 0.50],
-        mp={
-            "dm_plex_metric": {
-                "target_complexity": 3000.0,
-                "p": 2.0,  # normalisation order
-                "h_min": 1e-07,  # minimum allowed edge length
-                "h_max": 1.0,  # maximum allowed edge length
-            }
-        },
-    ):
+    def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50]):
         """Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the
-        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed vces indicator.
-        these metrics are averaged."""
-        from animate import adapt
-        from animate import RiemannianMetric
+        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed vces indicator.  These metrics are averaged using the weights."""
+
+        assert (
+            self.metricparameters is not None
+        ), "call setmetricparameters() before calling metricrefine()"
+
+        from animate import adapt, RiemannianMetric
 
         # Construct isotropic metric from abs(grad(smoothed_vces_indicator))
         V, _ = self.spaces(mesh)
@@ -195,12 +203,12 @@ class VIAMR(OptionsManager):
         # Constructing metric. Basically "L2" option in metric.compute_isotropic_metric, however we already have a P1 indicator
         P1_ten = TensorFunctionSpace(mesh, "CG", 1)
         freeboundaryMetric = RiemannianMetric(P1_ten)
-        freeboundaryMetric.set_parameters(mp)
+        freeboundaryMetric.set_parameters(self.metricparameters)
         freeboundaryMetric.interpolate(ags * ufl.Identity(dim))
         freeboundaryMetric.normalise()
 
         # Build hessian based metric for interpolation error and average
-        solutionMetric = self.metricfromhessian(mesh, u, mp)
+        solutionMetric = self.metricfromhessian(mesh, u)
         VImetric = solutionMetric.copy(deepcopy=True)
         VImetric.average(freeboundaryMetric, weights=weights)
 

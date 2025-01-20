@@ -16,6 +16,7 @@ spmore = {
 }
 u0, lb0 = problem.solveProblem(mesh=mesh0, u=None, moreparams=spmore)
 
+amr.setmetricparameters(target_complexity=3000.0, h_min=1.0e-4, h_max=1.0)
 mesh = amr.metricrefine(mesh0, u0, lb0)
 amr.meshreport(mesh)
 u, lb = problem.solveProblem(mesh=mesh, u=u0, moreparams=spmore)
