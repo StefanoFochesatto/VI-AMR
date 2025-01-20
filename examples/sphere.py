@@ -13,6 +13,8 @@ meshHist = [mesh]
 u = None
 for i in range(levels + 1):
     mesh = meshHist[i]
+    print(f'solving on mesh {i} ...')
+    amr.meshreport(mesh)
     u, lb = problem.solveProblem(mesh=mesh, u=u)
     if i == levels:
         break
@@ -28,5 +30,6 @@ uexact.rename("u_exact")
 error = Function(V, name="error = |u - u_exact|")
 error.interpolate(abs(u - uexact))
 
-print(f'done: {V.dim()} nodes ... writing to {outfile} ...')
+print(f'|u - u_exact|_2 = {errornorm(u, uexact):.3e}')
+print(f'done ... writing to {outfile} ...')
 VTKFile(outfile).write(u, lb, gap, uexact, error)

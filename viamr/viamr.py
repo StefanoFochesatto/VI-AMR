@@ -240,7 +240,7 @@ class VIAMR(OptionsManager):
             MultiLineString(E1), MultiLineString(E2), 0.99
         )
 
-    def meshreport(self, mesh, indent=2):
+    def meshreport(self, mesh):
         """Print standard mesh report.  Valid in parallel."""
         nv, ne, hmin, hmax = self.meshsizes(mesh)
         PETSc.Sys.Print(

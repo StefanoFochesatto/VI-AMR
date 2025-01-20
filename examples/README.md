@@ -32,3 +32,11 @@ The short programs `spiral.py`, `sphere.py`, and `metric.py` show the core abili
 ## glaciers/
 
 See `glaciers/README.md` for how to run this example.
+
+### cleaning up
+
+Clean up all `result*` files and subdirectories with
+
+```
+make clean
+```

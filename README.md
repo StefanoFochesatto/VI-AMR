@@ -83,12 +83,6 @@ python3 spherespiral.py
 
 View the output fields in `result_PROBLEM_METHOD.pvd` using [Paraview](https://www.paraview.org/). These files contain the obstacle `psi`, the solution `u`, and the gap `u - psi`. The `_sphere` files also contain the numerical error `|u - uexact|`.
 
-Clean up all `results*` files and subdirectories with
-
-```
-make clean
-```
-
 ## Testing
 
 Software tests use [pytest](https://docs.pytest.org/en/stable/index.html). In the main directory `VI-AMR/` do

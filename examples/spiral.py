@@ -13,6 +13,8 @@ meshHist = [mesh]
 u = None
 for i in range(levels + 1):
     mesh = meshHist[i]
+    print(f'solving on mesh {i} ...')
+    amr.meshreport(mesh)
     u, lb = problem.solveProblem(mesh=mesh, u=u)
     if i == levels:
         break
@@ -24,5 +26,5 @@ for i in range(levels + 1):
 V = u.function_space()
 gap = Function(V, name="gap = u-lb").interpolate(u - lb)
 
-print(f'done: {V.dim()} nodes ... writing to {outfile} ...')
+print(f'done ... writing to {outfile} ...')
 VTKFile(outfile).write(u, lb, gap)
