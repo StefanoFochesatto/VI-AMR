@@ -38,7 +38,7 @@
 
 %\articletype{ARTICLE TEMPLATE}% Specify the article type or omit as appropriate
 
-\title{Free-boundary oriented adaptive mesh refinement for obstacle problems}
+\title{Adaptive mesh refinement for locating free boundaries in obstacle problems}
 
 \author{
 \name{G.~Stefano Fochesatto\thanks{CONTACT G.~Stefano Fochesatto Email: gsfochesatto@alaska.edu} and Ed Bueler}
@@ -48,16 +48,7 @@
 \maketitle
 
 \begin{abstract}
-FIXME SHORTER, START MORE GENERAL, EMPHASIZE FREE BOUNDARY FOCUS
-
-Variational inequalities play a pivotal role in a wide array of scientific and engineering
-applications. This project presents two techniques for adaptive mesh refinement (AMR) in the context of variational inequalities, with a specific focus on the classical obstacle problem. 
-
-We propose two distinct AMR strategies: Variable Coefficient Elliptic Smoothing (VCES) and Unstructured Dilation Operator (UDO). VCES uses a nodal active set indicator function as the initial iterate to a time-dependent heat equation problem. Solving a single step of this problem has the effect of smoothing the indicator about the free boundary. We threshold this smoothed indicator function to identify elements near the free boundary. Key parameters such as timestep and threshold values significantly influence the efficacy of this method.
-
-The second strategy, UDO, focuses on the discrete identification of elements adjacent to the free boundary, employing a graph-based approach to mark neighboring elements for refinement. This technique resembles the dilation morphological operation in image processing, but tailored for unstructured meshes.
-
-We also examine the theory of variational inequalities, the convergence behavior of finite element solutions, and implementation in the Firedrake finite element library. Convergence analysis reveals that accurate free boundary estimation is pivotal for solver performance. Numerical experiments demonstrate the effectiveness of the proposed methods in dynamically enhancing mesh resolution around free boundaries, thereby improving the convergence rates and computational efficiency of variational inequality solvers. Our approach integrates seamlessly with existing Firedrake numerical solvers, and it is promising for solving more complex free boundary problems.
+Free-boundary problems posed as variational inequalities, such as unilateral obstacle problems, play a pivotal role in many scientific and engineering applications.  The finite element solution of these problems involves geometrical errors in approximating the location of the unknown free boundary, and of the active/inactive sets.  In this paper we propose, and implement in the Firedrake finite element library, adaptive mesh refinement (AMR) strategies which dynamically-enhance the mesh resolution around the free boundary, reducing both geometrical and norm errors while controlling the growth of mesh complexity.  Each of the following three methods marks elements for refinement based on a computed coarser-mesh solution: (i) an unstructured dilation operator based on discrete adjacency to the computed free-boundary, which generalizes image-processing dilation to unstructured meshes; (ii) a variable-coefficient diffusion method which marks elements based on a single heat equation step, by thresholding a diffused active set indicator function; and (iii) a metric-based method which averages an anisotropic (Riemannian) metric, computed from the solution Hessian, with an isotropic metric computed from the gradient of the diffused active set indicator.  The geometric errors committed by these methods are compared, in cases where an exact solution is available, using Jaccard and Hausdorff distance methods.  The methods are also evaluated by the behavior of norm error and mesh complexity under iterated refinement.  Certain hybrid strategies are considered which combine these methods, and even stages of uniform refinement.  Applications are shown for cases of the classical Poisson obstacle problem, and for a shallow ice flow problem seeking precise prediction of the glaciated region.
 \end{abstract}
 
 %\begin{keywords}
