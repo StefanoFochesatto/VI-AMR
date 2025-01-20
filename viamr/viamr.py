@@ -200,9 +200,9 @@ class VIAMR(OptionsManager):
         s = self.vcesmark(mesh, u, lb, returnSmooth=True)
         ags = Function(V).interpolate(sqrt(dot(grad(s), grad(s))))
 
-        # Constructing metric. Basically "L2" option in metric.compute_isotropic_metric, however we already have a P1 indicator
-        P1_ten = TensorFunctionSpace(mesh, "CG", 1)
-        freeboundaryMetric = RiemannianMetric(P1_ten)
+        # Constructing metric. Basically "L2" option in metric.compute_isotropic_metric,
+        # however we already have a P1 indicator
+        freeboundaryMetric = RiemannianMetric(TensorFunctionSpace(mesh, "CG", 1))
         freeboundaryMetric.set_parameters(self.metricparameters)
         freeboundaryMetric.interpolate(ags * ufl.Identity(dim))
         freeboundaryMetric.normalise()
