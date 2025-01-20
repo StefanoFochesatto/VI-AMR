@@ -59,13 +59,7 @@ class BaseObstacleProblem(ABC, OptionsManager):
     def getExactSolution(self, V):
         return None
 
-    def solveProblem(
-        self,
-        mesh=None,
-        u=None,
-        bdry=None,
-        moreparams=None
-    ):
+    def solveProblem(self, mesh=None, u=None, bdry=None, moreparams=None):
         if mesh is None:
             mesh = self.setInitialMesh()
 
