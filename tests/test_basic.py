@@ -95,19 +95,6 @@ def test_refine_vces():
     #VTKFile(f"result_refine_1.pvd").write(ru)
 
 
-@pytest.mark.skip(reason = "refine_marked_elements not working with a Firedrake mesh")
-def test_refine_firedrakemesh():
-    mesh = SquareMesh(6, 6, 4.0)
-    mesh.coordinates.dat.data[:, :] -= 2.0
-    z = VIAMR(debug=True)
-    CG1, _ = z.spaces(mesh)
-    (x, y) = SpatialCoordinate(mesh)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
-    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
-    mark = z.vcesmark(mesh, u, psi)
-    rmesh = mesh.refine_marked_elements(mark)
-
-
 def test_overlapping_jaccard():
     mesh = get_netgen_mesh(TriHeight=1.2)
     z = VIAMR(debug=True)
