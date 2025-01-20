@@ -15,7 +15,11 @@ for i in range(levels + 1):
     mesh = meshHist[i]
     print(f'solving on mesh {i} ...')
     amr.meshreport(mesh)
-    u, lb = problem.solveProblem(mesh=mesh, u=u)
+    spmore = {
+        "snes_converged_reason": None,
+        "snes_vi_monitor": None,
+    }
+    u, lb = problem.solveProblem(mesh=mesh, u=u, moreparams=spmore)
     if i == levels:
         break
     mark = amr.udomark(mesh, u, lb, n=2)

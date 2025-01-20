@@ -20,6 +20,17 @@ from netgen.geom2d import SplineGeometry
 class BaseObstacleProblem(ABC, OptionsManager):
     def __init__(self, **kwargs):
         self.TriHeight = kwargs.pop("TriHeight", 0.45)
+        sp_default = {
+            "snes_type": "vinewtonrsls",
+            "snes_rtol": 1.0e-8,
+            "snes_atol": 1.0e-12,
+            "snes_stol": 1.0e-12,
+            "snes_vi_zero_tolerance": 1.0e-12,
+            "ksp_type": "preonly",
+            "pc_type": "lu",
+            "pc_factor_mat_solver_type": "mumps",
+        }
+        self.sp = kwargs.pop("sp", sp_default)
 
     @abstractmethod
     def setInitialMesh(self):
@@ -53,20 +64,7 @@ class BaseObstacleProblem(ABC, OptionsManager):
         mesh=None,
         u=None,
         bdry=None,
-        sp={
-            "snes_vi_monitor": None,
-            "snes_type": "vinewtonrsls",
-            "snes_converged_reason": None,
-            "snes_rtol": 1.0e-8,
-            "snes_atol": 1.0e-12,
-            "snes_stol": 1.0e-12,
-            "snes_max_it": 10000,
-            "snes_vi_zero_tolerance": 1.0e-12,
-            "snes_linesearch_type": "basic",
-            "ksp_type": "preonly",
-            "pc_type": "lu",
-            "pc_factor_mat_solver_type": "mumps",
-        },
+        moreparams=None
     ):
         if mesh is None:
             mesh = self.setInitialMesh()
@@ -85,8 +83,10 @@ class BaseObstacleProblem(ABC, OptionsManager):
         F = inner(grad(u), grad(v)) * dx
 
         problem = NonlinearVariationalProblem(F, u, bcs)
+        if moreparams is not None:
+            self.sp.update(moreparams)
         solver = NonlinearVariationalSolver(
-            problem, solver_parameters=sp, options_prefix=""
+            problem, solver_parameters=self.sp, options_prefix=""
         )
 
         ub = Function(V).interpolate(Constant(PETSc.INFINITY))
