@@ -83,10 +83,11 @@ class BaseObstacleProblem(ABC, OptionsManager):
         F = inner(grad(u), grad(v)) * dx
 
         problem = NonlinearVariationalProblem(F, u, bcs)
+        params = self.sp.copy()
         if moreparams is not None:
-            self.sp.update(moreparams)
+            params.update(moreparams)
         solver = NonlinearVariationalSolver(
-            problem, solver_parameters=self.sp, options_prefix=""
+            problem, solver_parameters=params, options_prefix=""
         )
 
         ub = Function(V).interpolate(Constant(PETSc.INFINITY))
