@@ -19,7 +19,7 @@ from netgen.geom2d import SplineGeometry
 
 class BaseObstacleProblem(ABC, OptionsManager):
     def __init__(self, **kwargs):
-        self.TriHeight = kwargs.pop("TriHeight", 0.45)
+        self.TriHeight = kwargs.pop("TriHeight", 0.1)
         sp_default = {
             "snes_type": "vinewtonrsls",
             "snes_rtol": 1.0e-8,
