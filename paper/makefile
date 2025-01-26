@@ -1,11 +1,11 @@
 all: viamr.pdf
 
 viamr.pdf: viamr.tex viamr.aux viamr.bbl
-	pdflatex viamr
-	pdflatex viamr
+	pdflatex -shell-escape viamr
+	pdflatex -shell-escape viamr
 
 viamr.aux: viamr.tex
-	pdflatex viamr
+	pdflatex -shell-escape viamr
 	bibtex viamr
 
 viamr.bbl: viamr.aux viamr.bib

@@ -55,7 +55,7 @@
 \maketitle
 
 \begin{abstract}
-Free-boundary problems posed as variational inequalities, such as unilateral obstacle problems, play a pivotal role in many scientific and engineering applications.  The finite element solution of these problems causes geometrical errors in approximating the location of the unknown free boundary, and of the active/inactive sets.  In this paper we propose, and implement in the Firedrake finite element library, adaptive mesh refinement (AMR) strategies which dynamically-enhance the mesh resolution around the free boundary, reducing both geometrical and norm errors while controlling the growth of mesh complexity.  Each method marks elements for refinement based on a computed coarser-mesh solution.  We consider three methods: (i) an unstructured dilation operator based on discrete adjacency to the computed free-boundary, which generalizes the bitmap image processing operation of dilation to unstructured meshes; (ii) a variable-coefficient diffusion method which marks elements based on a single heat equation step, by thresholding a diffused active set indicator function; and (iii) a metric-based method which averages an anisotropic (Riemannian) metric, computed from the solution Hessian, with an isotropic metric computed from the gradient of the diffused active set indicator.  The geometric errors committed by these methods are compared, in cases where an exact solution is available, using Jaccard and Hausdorff distance methods.  The methods are also evaluated by the behavior of norm error and mesh complexity under iterated refinement.  Certain hybrid strategies are considered which combine these methods with each other, and with stages of uniform refinement.  Demonstrated applications include the classical Poisson obstacle problem and a shallow ice flow problem seeking precise prediction of a glaciated region.
+Free-boundary problems posed as variational inequalities, such as obstacle problems, appear in scientific and engineering applications.  The geometrical error in the finite element (FE) solution of these problems, especially in locating the unknown free boundary and active/inactive sets, often dominates the overall numerical error.  In this paper we propose, and implement using the Firedrake FE library, adaptive mesh refinement (AMR) strategies which dynamically-enhance the mesh resolution around the free boundary.  These methods, which mark element for refinement based on a computed solution, reduce both geometrical and norm errors while controlling the growth of mesh complexity.  We consider three AMR methods: (i) an unstructured dilation operator based on discrete adjacency to the computed free-boundary; (ii) a variable-coefficient diffusion method which thresholds a diffused active set indicator function; and (iii) a metric-based method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the same diffused active set indicator.  The methods are evaluated by norm error decay, against mesh complexity and time, but geometric errors are also compared using Jaccard and Hausdorff distance methods.  Certain hybrid strategies are considered, combining these methods together, or with stages of uniform refinement.  Demonstrated applications include the classical Poisson obstacle problem and a shallow ice flow problem wherein one seeks a precise prediction of a glaciated region.
 \end{abstract}
 
 %\begin{keywords}
@@ -65,49 +65,60 @@ Free-boundary problems posed as variational inequalities, such as unilateral obs
 
 \section{Introduction} \label{sec:intro}
 
-FIXME MAKE BROADER I THINK
+The classical obstacle problem \cite{KinderlehrerStampacchia1980} finds the equilibrium position (vertical displacement) $u$ of an elastic membrane, attached to a fixed boundary, with some applied force $f$, but where the membrane is constrained to lie above some obstacle $\psi$.  Let $\Omega \subset \RR^d$ be a bounded domain, with the data $f$ and $\psi$ given on $\Omega$.  The strong formulation, a complementarity problem (CP), gives conditions satisfied by the solution $u$ almost everywhere in $\Omega$:
+\begin{subequations} \label{eq:classical:ncp}
+\begin{align}
+  -\nabla^2 u - f \geq 0 \\
+  u - \psi \geq 0\\
+  (-\nabla^2u - f)(u - \psi) = 0
+\end{align}
+\end{subequations}
+From a solution to \eqref{eq:classical:ncp} we may identify the inactive and active sets,
+\begin{equation}
+  I_u = \{x \in \Omega \,:\, u(x) > \psi(x)\}, \quad A_u = \Omega \setminus I_u, \label{eq:classical:sets}
+\end{equation}
+and the free boundary, which is where $I_u$ meets $A_u$ within $\Omega$:
+\begin{equation}
+  \Gamma_u = \Omega \cap \partial I_u. \label{eq:classical:free}
+\end{equation}
+From \eqref{eq:classical:ncp}, $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$.  An example is shown in Figure \ref{fig:ball}, in which $A_u$ is the closed disc of contact ($u=\psi$), and $\Gamma_u$ is a circle.
 
-The goal of this project is to introduce two techniques for adaptive mesh refinement for free boundary problems (variational inequalities). We will consider only the classical obstacle problem as an example of a variational inequality. 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{static/obstacle65.pdf}
+\caption{Solution $u$ of a classical obstacle problem; the obstacle $\psi$ is the upper hemisphere of a ball \cite[used by permission]{Bueler2021}.}
+\label{fig:ball}
+\end{figure}
+
+As is well-known, such free-boundary problems have weak formulations which are variational inequalities (VIs) over Sobolev spaces.  Section \ref{sec:vifem} starts by stating this form.  In the case of the classical obstacle problem, and certain other cases, such VIs are equivalent to constrained minimization of a functional, but we will not need to consider that form, and for a later glacier example no such optimization form exists (Section \ref{sec:app}).
+
+The finite element (FE) approximation of free-boundary problems necessitates such a VI form.  As in the case of PDEs \cite{ElmanSilvesterWathen2014}, if one describes both the exact solution $u$ by a VI, and its FE solution $u_h$, computed on some finite mesh with characteristic size $h>0$, then the norm errors $\|u-u_h\|$ can be computed in certain norms, and related to the approximation properties of the FE space.  For FE approximations of VIs there is a (now classical) framework for such \emph{a priori} norm error estimation \cite{Falk1974}; this theory is recalled in Section \ref{sec:vifem}.  Note that the current paper considers only meshs of triangles in dimension $d=2$, and one case with tetrahedra for $d=3$ (Section \ref{sec:results}), but VIs can be solved with higher-order elements as well \cite{KeithSurowiec2024}. 
+
+However, a point that is weakly acknowledged, in the PDE-motivated FE literature for VIs \cite[for example]{Suttmeier2008}, regarding free-boundary problems, is that the geometrical mesh error in locating the free-boundary $\Gamma_u$ is, by itself, explanatory regarding the numerical error.  This situation is particularly clear in one dimension.  Consider, for example, the case where $\Omega = (-1,1)$ and the obstacle is a parabola, $\psi(x)=0.5 - x^2$.  With zero Dirichlet boundary conditions, the exact solution of the obstacle problem is easily calculated, with free boundaries at exact locations $x_*=\pm(2-\sqrt{2})/2$ (Figure \ref{fig:parabola}).  Now solve the FE approximation of this problem, using piecewise-linear elements and uniform meshes.  Since the exact free boundary is irrational, the mesh nodes will never coincide exactly.  Let $\Delta_h$ be defined as the minimum distance between the nodal coordinate and $x_*$, over a uniform mesh of elements of size $h$.  Figure \ref{fig:parabola} (right) shows the $H^1$ and $L^2$ norm errors $\|u-u_h\|$, computed in the usual manner, along with $\Delta_h$.  We see that the purely geometrical error $\Delta_h$, i.e.~the error in approximating $x_*$, and not other aspects of the error, fully explains the otherwise erratic behavior in norm errors.
+
+\begin{figure}[H]
+
+\mbox{
+\begin{minipage}[t]{0.45\textwidth}
+\input{tikz/parabola.tex}
+\end{minipage}
+\quad
+\begin{minipage}[t]{0.55\textwidth}
+\includegraphics[width=0.9\textwidth]{static/VIConvergence.png}
+% FIXME regenerate with labels ||u-u_h||_{H^1} = O(h^1.09), ||u-u_h||_{L^2} = O(h^1.57), \Delta_h
+\end{minipage}
+}
+\caption{Left:  A one-dimensional obstacle problem with a parabolic obstacle, for which the exact free boundary location $x_*$ is known.  Right:  Using uniform meshes, the geometrical error $\Delta_h$ in locating $x_*$ explains the erratic error norm $\|u-u_h\|$ reduction.}
+\label{fig:parabola}
+\end{figure}
+
+FIXME of course more complicated when $d\ge 2$, but this justifies heuristic AMR just to pin down the free boundary, in addition to traditional VI AMR which will involve increasing the accuracy of $u_h$ over $I_h$
+
+FIXME OLD STUFF FROM HERE The goal of this project is to introduce two techniques for adaptive mesh refinement for free boundary problems (variational inequalities).
 
 In the context of the finite element method (FEM), the discretization of a partial differential equation (PDE) is described by a partition of its domain into a finite number of elements (i.e a mesh) and a finite dimensional function space (i.e a finite element space). In a two dimensional domain, these elements are usually triangles or rectangles and the basis of the finite element space is composed of hat functions over vertices in the mesh, with support over neighboring elements. 
 
 The convergence of finite element solutions is most commonly achieved via approximating on increasingly refined meshes by the use of a finite basis of piecewise polynomials of low degree; this method of convergence is often referred to as $h$-refinement. We also see convergence achieved by approximating via increasingly higher degree basis of piecewise polynomials over a coarse mesh; this is referred to as $p$-refinement. Several schema have been explored that take advantage of both methods of convergence, so-called $hp$-refinement finite elements, further discussion of such methods can be found in \cite{Demkowicz2007}.
-
-The classical obstacle problem consists of finding the equilibrium position of an elastic membrane with a fixed boundary after some force is applied, where the membrane is constrained to lie above some obstacle. Let $\Omega \subset \RR$ be a bounded domain. The problem is then formulated as a constrained minimization problem where we seek to find the position of the membrane $u(x)$, with fixed valued $u(x) = g_D(x)$ on $\partial \Omega$ with a load $f$ applied, and where $u(x)$ is constrained to be above an obstacle $\psi(x)$, 
-\begin{align}
-    \underset{u}{\text{ minimize: }}  &I(u) = \int_\Omega \frac{1}{2} \abs{\nabla u}^2 - fu \\
-  \text{ subject to: } v &\geq \psi, \\
-    u |_{\partial\Omega} &= g_D. 
-  \end{align}
-  The admissable set for such a problem can be described by 
-  \begin{equation}
-    K_\psi = \{u \in X| u \geq \psi \}
-  \end{equation}
-  where $X$ is a Sobolev space with boundary conditions $g_D$ enforced. 
-  
-  We can describe another, equivalent, variational inequality (VI) formulation of the obstacle problem 
-  \begin{equation}
-    \int_\Omega \nabla u \cdot \nabla(v - u) \geq \int_\Omega f(v - u), \quad \text{ for all } v \in K_\psi.
-  \end{equation} 
-  Equivalence of these formulations is proven in Chapter 3. From a solution to (1.1)-(1.3) or (1.5) we may identify the inactive and active sets $I_u$ and $A_u$,
-\begin{equation}
-  I_u = \{x \in \Omega | u(x) > \psi(x)\} \quad A_u = \Omega \setminus I_u.
-\end{equation} 
-With these definitions of the inactive and active set we can also define the free boundary $\Gamma_u = \partial I_u \cap \Omega$.
-
-The same problem can also be defined by its strong form formulation
-\begin{align}
-  -\nabla^2 u &= f \quad \text{ on } I_u,\\
-  u &= \psi \quad \text{ on } A_u,\\
-  u &= g_D \quad \text{ on } \partial \Omega.
-\end{align}
- Observe that this 'naive' strong form is not sufficient to describe the problem as neither $A_u$ or $I_u$ are known a priori. A better strong formulation is as a complementarity problem (CP). In this form each statement holds over the entire domain $\Omega$. A solution $u$ satisfies the following, 
-\begin{align}
-  -\nabla^2 u - f \geq 0\\
-  u - \psi \geq 0\\
-  (-\nabla^2u - f)(u - \psi) = 0
-\end{align}
-Each of these formulations are instrumental in our understanding of the problem. The constrained energy minimization formulation can be helpful for understanding the physics of the problem. The class of problems described by the VI and CP formulations is a superset of the minimization formulation \citep[page 319]{Bueler2021}. As we will see, the CP formulation is also instrumental in the implementation of numerical solvers.
 
 In terms of numerics, the constraint of $u \geq \psi$ makes this problem nonlinear so we are required to use an iterative solver. In this project our main solver will be VI-adapted Newton with Reduced-Space Line Search (VINEWTONRSLS). In Chapter 3 we will show that numerical methods will not converge until the active and inactive sets stabilize and the free boundary is identified. For solvers like VINEWTONRSLS which employ a Newton iteration, we find that they can only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009} and therefore convergence is tied to mesh resolution and is proportional to the number of grid spaces between initial iterate free boundary and discrete solution free boundary \citep[page 324]{Bueler2021}. 
 
@@ -120,7 +131,7 @@ The techniques outlined above are referred to as tagging methods, in which the e
 As we will see in Chapter 3, convergence of VI problems is dominated by the error in approximating the free boundary. An adaptive refinement scheme that is able to concentrate effort around the solution free boundary will both, enhance convergence properties and reduce unnecessary computation in the active set.
 
 
-In this project we will introduce two adaptive refinement schemes which can identify the free boundary to a high degree of accuracy and permit the user to vary the spread of the refinement area. In the first strategy we compute a node-wise indicator function for the active set for use as an initial iterate in a time-dependent heat equation problem. Solving a single step of this problem has the effect of smoothing the indicator about the free boundary. The result of this smoothing is then averaged over each element and thresholded for refinement. The second strategy focuses on the discrete identification of elements adjacent to the free boundary, employing a graph-based approach to mark neighboring elements for refinement.
+In this project we will introduce two adaptive refinement schemes which can identify the free boundary to a high degree of accuracy and permit the user to vary the spread of the refinement area. In the first strategy we compute a node-wise indicator function for the active set for use as an initial iterate in a single step of a time-dependent heat equation problem. Solving a single step of this problem has the effect of smoothing the indicator about the free boundary. The result of this smoothing is then averaged over each element and thresholded for refinement.  The second strategy focuses on the discrete identification of elements adjacent to the free boundary, employing a graph-based approach to mark neighboring elements for refinement.  This generalizes the bitmap image processing operation of dilation [cite] to unstructured meshes.
 
 Our implementations of these methods are written using the Firedrake finite element library and produce conforming meshes with no hanging nodes. These high quality meshes are suitable for various VI solvers, including as coarse grids for the FASCD multilevel solver in \cite{BuelerFarrell2024}
 
@@ -129,37 +140,20 @@ FIXME The remaining material is organized as follows.  We give a brief backgroun
 
 \section{Variational inequalities and their finite element errors} \label{sec:vifem}
 
-Obstacle problems have several different formulations which are well-known.
-
-\begin{theorem}[\cite{KinderlehrerStampacchia1980}] Fix $f \in L^2(\Omega)$, $\psi \in C(\overline{\Omega})$, $g_D \in C(\overline{\Omega})$, $g_D \geq \psi$, $X = H^1(\Omega)$, and
+We seek to find the position of the membrane $u(x)$, with fixed valued $u(x) = g_D(x)$ on $\partial \Omega$ with a load $f$ applied, and where $u(x)$ is constrained to be above an obstacle $\psi(x)$, 
+The admissable set for such a problem can be described by 
   \begin{equation}
-    K_\psi = \{v \in X| v \geq \psi\}
+    K_\psi = \{u \in X| u \geq \psi \}
   \end{equation}
-   where $X$ is a Sobolev space with boundary conditions equal to $g$ as before. Then the following statements are equivalent for a solution $u \in K_\psi$, 
-  \begin{enumerate}
-    \item[(a)] $u$ is a solution to the energy minimization formulation, 
-\begin{align}
-    \underset{u \in K_\psi}{\text{ minimize: }}  &I(u) = \int_\Omega \frac{1}{2} \abs{\nabla u}^2 - fu 
-  \end{align}
-    \item[(b)] $u$ is a solution to the variational inequality formulation,
-      \begin{equation}
+  where $X$ is a Sobolev space with boundary conditions $g_D$ enforced. 
+  
+  We can describe another, equivalent, variational inequality (VI) formulation of the obstacle problem 
+  \begin{equation}
     \int_\Omega \nabla u \cdot \nabla(v - u) \geq \int_\Omega f(v - u), \quad \text{ for all } v \in K_\psi.
   \end{equation} 
-If also $u \in C(\overline{\Omega}) \cap C^2(\Omega)$ (is a classical solution), then (a) or (b) implies
-    \item[(c)] $u$ is a solution to the complementarity problem formulation, for which the following hold over $\Omega$ a.e.
-    \begin{subequations}
-      \label{ncp}
-      \begin{align}
-        -\nabla^2 u - f \geq 0\label{ncp:1}\\
-        u - \psi \geq 0\label{ncp:2}\\
-        (-\nabla^2u - f)(u - \psi) = 0\label{ncp:3}
-      \end{align}
-    \end{subequations}
-  \end{enumerate}
-\end{theorem}
+Sets $I_u$, $A_u$, and $\Gamma_u$ are defined in the Introduction.
 
-The equivalence of these formulations is key to becoming familiar with free boundary problems. The energy minimization formulation is ideal for understanding the physical framework of the problem. The variational inequality formulation is necessary for defining the more broader class of free boundary problems whose solutions may not be derived from a potential function. The complementarity formulation reframes the problem in a way which can be solved using a variety of iterative methods.
-
+FIXME Cea's lemma and Falk technique
 
 %FIXME \cite{ElmanSilvesterWathen2014} \cite{Suttmeier2008}
 %FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
@@ -544,9 +538,12 @@ FIXME
 
 FIXME
 
-\section*{Acknowledgements}
+\section{Application to determining glaciated areas} \label{sec:app}
 
 
+FIXME
+
+%\section*{Acknowledgements}
 
 %\section*{Notes on contributor(s)}
 %An unnumbered section, e.g.\ \verb"\section*{Notes on contributors}", may be included \emph{in the non-anonymous version} if required. A photograph may be added if requested.
