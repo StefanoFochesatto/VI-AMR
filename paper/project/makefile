@@ -15,4 +15,3 @@ viamr.bbl: viamr.aux viamr.bib
 
 clean:
 	@rm -f *~ *.out *.aux *.lo? *.blg *.snm *.toc *.nav *.vrb *.bbl *.synctex.gz *.thm *.dvi
-	@rm -rf result* _minted*

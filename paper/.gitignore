@@ -1,9 +1,11 @@
 /viamr.pdf
 #/publish*
-/*.log
+/*.lo?
 /*.aux
 /*.out
 /*.blg
 /*.vrb
 /*.bbl
 /*.synctex.gz
+/result*
+/_minted*
