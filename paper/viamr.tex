@@ -1,6 +1,6 @@
 \documentclass[]{interact}
 
-\usepackage[caption=false]{subfig}% Support for small, `sub' figures and tables
+%\usepackage[caption=false]{subfig}% Support for small, `sub' figures and tables
 %\usepackage[nolists,tablesfirst]{endfloat}% To `separate' figures and tables from text if required
 %\usepackage[doublespacing]{setspace}% To produce a `double spaced' document if required
 %\setlength\parindent{24pt}% To increase paragraph indentation when line spacing is doubled
@@ -11,8 +11,15 @@
 \renewcommand\bibfont{\fontsize{10}{12}\selectfont}% Bibliography support using natbib.sty
 
 \usepackage{amsmath}
-
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage[T1]{fontenc}
+\usepackage{pgfplots}
+\usetikzlibrary{arrows}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{minted}
+
 \usepackage[hidelinks]{hyperref}
 
 \theoremstyle{plain}% Theorem-like structures provided by amsthm.sty
@@ -48,7 +55,7 @@
 \maketitle
 
 \begin{abstract}
-Free-boundary problems posed as variational inequalities, such as unilateral obstacle problems, play a pivotal role in many scientific and engineering applications.  The finite element solution of these problems involves geometrical errors in approximating the location of the unknown free boundary, and of the active/inactive sets.  In this paper we propose, and implement in the Firedrake finite element library, adaptive mesh refinement (AMR) strategies which dynamically-enhance the mesh resolution around the free boundary, reducing both geometrical and norm errors while controlling the growth of mesh complexity.  Each of the following three methods marks elements for refinement based on a computed coarser-mesh solution: (i) an unstructured dilation operator based on discrete adjacency to the computed free-boundary, which generalizes image-processing dilation to unstructured meshes; (ii) a variable-coefficient diffusion method which marks elements based on a single heat equation step, by thresholding a diffused active set indicator function; and (iii) a metric-based method which averages an anisotropic (Riemannian) metric, computed from the solution Hessian, with an isotropic metric computed from the gradient of the diffused active set indicator.  The geometric errors committed by these methods are compared, in cases where an exact solution is available, using Jaccard and Hausdorff distance methods.  The methods are also evaluated by the behavior of norm error and mesh complexity under iterated refinement.  Certain hybrid strategies are considered which combine these methods, and even stages of uniform refinement.  Applications are shown for cases of the classical Poisson obstacle problem, and for a shallow ice flow problem seeking precise prediction of the glaciated region.
+Free-boundary problems posed as variational inequalities, such as unilateral obstacle problems, play a pivotal role in many scientific and engineering applications.  The finite element solution of these problems causes geometrical errors in approximating the location of the unknown free boundary, and of the active/inactive sets.  In this paper we propose, and implement in the Firedrake finite element library, adaptive mesh refinement (AMR) strategies which dynamically-enhance the mesh resolution around the free boundary, reducing both geometrical and norm errors while controlling the growth of mesh complexity.  Each method marks elements for refinement based on a computed coarser-mesh solution.  We consider three methods: (i) an unstructured dilation operator based on discrete adjacency to the computed free-boundary, which generalizes the bitmap image processing operation of dilation to unstructured meshes; (ii) a variable-coefficient diffusion method which marks elements based on a single heat equation step, by thresholding a diffused active set indicator function; and (iii) a metric-based method which averages an anisotropic (Riemannian) metric, computed from the solution Hessian, with an isotropic metric computed from the gradient of the diffused active set indicator.  The geometric errors committed by these methods are compared, in cases where an exact solution is available, using Jaccard and Hausdorff distance methods.  The methods are also evaluated by the behavior of norm error and mesh complexity under iterated refinement.  Certain hybrid strategies are considered which combine these methods with each other, and with stages of uniform refinement.  Demonstrated applications include the classical Poisson obstacle problem and a shallow ice flow problem seeking precise prediction of a glaciated region.
 \end{abstract}
 
 %\begin{keywords}
@@ -120,7 +127,7 @@ Our implementations of these methods are written using the Firedrake finite elem
 FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCES and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries. 
 
 
-\section{Variational inequalities and obstacle problems} \label{sec:vi}
+\section{Variational inequalities and their finite element errors} \label{sec:vifem}
 
 Obstacle problems have several different formulations which are well-known.
 
@@ -154,21 +161,388 @@ If also $u \in C(\overline{\Omega}) \cap C^2(\Omega)$ (is a classical solution),
 The equivalence of these formulations is key to becoming familiar with free boundary problems. The energy minimization formulation is ideal for understanding the physical framework of the problem. The variational inequality formulation is necessary for defining the more broader class of free boundary problems whose solutions may not be derived from a potential function. The complementarity formulation reframes the problem in a way which can be solved using a variety of iterative methods.
 
 
-
-\section{Finite element methods and adaptive mesh refinement} \label{sec:fem}
-
-FIXME \cite{ElmanSilvesterWathen2014} \cite{Suttmeier2008}
+%FIXME \cite{ElmanSilvesterWathen2014} \cite{Suttmeier2008}
+%FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
 
 
-\section{Geometric error measures for free boundaries} \label{sec:geometric}
+\section{New adaptive mesh refinement strategies} \label{sec:viamr}
 
-FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
+To explain our methods for adaptive mesh refinement for VIs, we will first review certain methods for adaptive mesh refinement from the literature for PDEs.  Tagging methods, are a class of adaptive methods which assess the suitability of a mesh element-by-element in computing a Quantity of Interest (QoI) like $L_2$ error or another post computation functional like drag or lift \cite{bangerth_adaptive_2003}. The main idea behind most tagging methods is the refinement loop:
 
-\section{Implementation} \label{sec:implementation}
+\begin{algorithm}
+  \caption{Tag and refine}
+  \begin{algorithmic}
+    \State Solve: Solve the PDE on the current mesh. 
+    \State Estimate: Estimate the error in the QoI element-by-element.
+    \State Tag: Tag elements for refinement based on the error estimate.
+    \State Refine: Refine or coarsen the mesh maintaining the minimum angle criteria.
+  \end{algorithmic}
+\end{algorithm}
+
+Throughout the literature (\citet{becker_feed-back_1996}, \citet{bangerth_adaptive_2003}, \citet{suttmeier_numerical_2008}) one finds a variety of ways to perform the "Estimate" step. As we mentioned in the Introduction a common way is by the Dual Weighted Residual (DWR) method introduced in \citet{becker_feed-back_1996}. For further details see \citet[Chapter 3]{bangerth_adaptive_2003}. A general approach for extending the DWR method to variational inequalities can be found in \citet{suttmeier_numerical_2008}.  However, the methods proposed here are not based on the DWR method. 
+
+There are also several ways to perform the "Tag" step. Consider the following fixed-rate strategy found in \citet[Chapter 4]{bangerth_adaptive_2003}. For fractions $X, Y$ with $1 - X > Y$ and a mesh with $N$ elements, refine the $X\cdot N$ elements with the largest error indicator and coarsen the $Y\cdot N$ elements with the smallest error indicator. For appropriate choices of $X$ and $Y$ this has the effect of keeping the degrees of freedom almost constant. There are other more exotic solutions which accomplish different goals. For example there is a fairly impractical "error-balancing" strategy also described in \citet[Chapter 4]{bangerth_adaptive_2003} which seeks to equilibrate the error indicators across the mesh.
+
+The "Refine" step in Algorithm 2 addresses to refine cells once they have been selected for refinement. This process involves two considerations: maintaining the minimum angle condition and managing hanging nodes. As illustrated in Figure 2.4, elements can be refined in such a way that the minimum angle condition is violated, leading to poor convergence properties. The second issue concerns hanging nodes, which are nodes that do not have a "covering" relation to all neighboring elements; this concept will be elaborated on further.
+
+A tagging strategy like the one above can be implemented in Firedrake using Netgen/NGSolve integration \citep{zerbinati_ngspetsc_nodate}.  This integration brings several new features to Firedrake, but for our purposes the most important is the \texttt{refine\_marked\_elements()} method.  This method resides inside of a netgen mesh object and takes an indicator function over the domain representing which elements are marked for refinement. This method is capable of dealing with hanging nodes by use of transition cells
+
+The operation of interpolating a function into a DG0 space is central to our proposed methods for adaptive refinement. Conceptually this operation allows us to compute estimators (Estimate step of Algorithim 2) which take on a single value over vertices and then convert them, by averaging over an element into an estimator which takes on a single value over the element. Averaging a function over elements is equivalent to interpolation into a DG0 space. To see this, consider the definition of the interpolation operation given in the Firedrake user manual \citep{ham_firedrake_2023}. 
+Let $u$ be a function over some domain $\Omega$ and $V$ be a finite element space defined on $\Omega$ with basis $\{\phi_i\}_{i = 1}^N$. Then $interpolate(u, V)$ is given by $\sum_{i = 1}^N v_i \phi_i$ where $v_i = \phi^*_i$ and $\phi^*_i$ is an element of the dual basis of $V$. (Recall that the dual basis of $V_\Omega$ is given by the vector $\{\phi^*_i\}$, such that $\phi^*_i(\phi_j) = \delta_{ij}$). The corresponding dual basis vector of a DG0 space is the following average
+\begin{equation}
+  \phi_j^*(f) = \frac{1}{area(\triangle_j)}\int_{\triangle_j} f\, dx.
+\end{equation}
+Note that this choice of functional has the property that $\phi^*_i(\phi_j) = \delta_{ij}$. Now $interpolate(u, V) = \sum_{i = 1}^n v_i\theta_i$ where
+\begin{equation}
+  v_i = \frac{1}{area(\triangle_i)}\int_{\triangle_i} u \, dx.
+\end{equation}
+
+We propose two strategies for adaptive refinement of variational inequalities, which we call Variable Coefficient Elliptic Smoothing (VCES) and Unstructured Dilation Operator (UDO). These methods are designed to enhance mesh resolution at the free boundary found when solving the VI. These methods are the Estimate and Tag steps in Algorithm 2. They effectively control the error associated with approximating the free boundary, as observed in Section 3.3 and illustrated in Figure 3.4. Note that Firedrake/Netgen is used for the Solve and Refine steps in Algorithim 2.
+
+The first strategy is called Variable Coefficient Elliptic Smoothing (VCES). The idea is to use the residual $u^k - \psi$ and a positive tolerance to construct $s_0$, a node-wise indicator function for the active set. This indicator function is used as the initial condition of a variable-coefficient and time-dependent heat equation problem which has the effect of smoothing this indicator near the free boundary. This heat equation problem is solved for a single timestep via implicit Euler, the result of which, we'll call $s_1$. This problem is a linear elliptic PDE, hence "elliptic smoothing"
+\begin{equation}
+  \frac{1}{\Delta t}(s_1 - s_0) = \nabla^2 s_1.
+\end{equation}
+Our choice of timestep $\Delta t_i = \frac{1}{2}(\text{avg}(\text{diam}(\triangle_i)))^2$ where $\triangle_i$ is the set of all elements incident to vertex $i$. This choice depends on the element, thus "variable coefficient". Varying the timestep based off of neighboring element diameter has the effect of applying the same amount diffusion across all elements regardless of size. The result is then interpolated into a DG0 space and thresholded to produce the refinement indicator, as in Algorithim 2. There are various parameters to consider with this technique. The choice of timestep and thresholding parameters will substantially affect the "distance" about which the free boundary is resolved. 
+
+\begin{algorithm}[H]
+	\caption{Variable Coefficient Elliptic Smoothing Element Tagging for VIs}\label{alg:cap}
+	\begin{algorithmic}[1]
+		\Require $tol \in \mathbb{R}$, $u^k \in K_\psi, \psi \in V$, $W$ is DG0 FE space.
+		\Require Threshold parameters $0\leq \alpha < \beta \leq 1$.
+		\State Compute the nodal active set indicator function $s_0$
+		  \begin{equation*}
+			s_0 = \begin{cases}
+			  1 & \text{ if } u^k - \psi < tol\\
+			  0 & \text{ otherwise}
+			\end{cases}
+		  \end{equation*}
+		\State Let $\Delta t_i = \frac{1}{2}(\text{avg}(\text{diam}(\triangle_i)))^2$, a CG1 field.
+	  
+		\State Solve $\frac{1}{\Delta t}(s_1 - s_0) = \nabla^2 s_1$ with $g_D = s_0|_{\partial\Omega}$ impliclty with Firedrake defaults settings. 
+		\State Let $s_W = interpolate(s_1, W)$.
+		\State Define the refinement indicator $I \in W$ as follows:
+		\begin{equation*}
+		  I(\triangle) = \begin{cases}
+			1 & \text{ if } \alpha < s_W(\triangle) < \beta\\
+			0 & \text{ otherwise}
+		  \end{cases}
+		\end{equation*}\\
+		\Return $I$
+	\end{algorithmic}
+	\end{algorithm}
+
+Figure 5.1 illustrates the VCES algorithm applied to a one-dimensional obstacle problem.
+
+\begin{figure}[H]
+  \captionsetup[subfigure]{justification=centering}
+  \centering
+  \null\hfill
+  \begin{subfigure}[b]{.35\textwidth}
+    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
+      \clip(-2.25,-0.5) rectangle (2.25,1.25);
+      \draw (0.4,0.9) -- (0.8,0.6);
+      \draw (0.8,0.6) -- (1.2,0.4);
+      \draw (1.2,0.4) -- (1.6,0.2);
+      \draw (-0.4,0.9) -- (-0.8,0.6);
+      \draw (-0.8,0.6) -- (-1.2,0.4);
+      \draw (-1.2,0.4) -- (-1.6,0.2);
+      \draw (-1.6,0.2) -- (-2,0);
+      \draw (1.6,0.2) -- (2,0);
+      \draw (-0.4,0.9) -- (0,1);
+      \draw (0,1) -- (0.4,0.9);
+
+      % New red curve aligning with black nodes
+      \draw[red] (1.6,-.2) -- (2,-.6);
+      \draw[red] (1.2,0.2) -- (1.6,-.2);
+      \draw[red] (0.8,0.6) -- (1.2,0.2);
+      \draw[red] (0.4,0.9) -- (0.8,0.6);
+      \draw[red] (0,1) -- (0.4,0.9);
+      \draw[red] (-0.4,0.9) -- (0,1);
+      \draw[red] (-0.4,0.9) -- (-0.8,0.6);
+      \draw[red] (-0.8,0.6) -- (-1.2,.2);
+      \draw[red] (-1.2, .2) -- (-1.6,-.2);
+      \draw[red] (-1.6,-.2) -- (-2,-.6);
+
+      \begin{scriptsize}
+        \fill [color=black] (-0.4,0.9) circle (1.5pt);
+        \fill [color=black] (0.4,0.9) circle (1.5pt);
+        \fill [color=black] (0.8,0.6) circle (1.5pt);
+        \fill [color=black] (1.2,0.4) circle (1.5pt);
+        \fill [color=black] (1.6,0.2) circle (1.5pt);
+        \fill [color=black] (-0.8,0.6) circle (1.5pt);
+        \fill [color=black] (-1.2,0.4) circle (1.5pt);
+        \fill [color=black] (-1.6,0.2) circle (1.5pt);
+        \fill [color=black] (-2,0) circle (1.5pt);
+        \fill [color=black] (2,0) circle (1.5pt);
+        \fill [color=black] (0,1) circle (1.5pt);
+      \end{scriptsize}
+
+      % Add Axes
+      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+      \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+    \end{tikzpicture}
+    \caption{Iterate $u^k$(black) and obstacle $\psi$(red).}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{.35\textwidth}
+    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
+      \clip(-2.25,-0.5) rectangle (2.25,1.25);
+      \draw (1.6,0) -- (2,0);
+      \draw (1.2,0) -- (1.6,0);
+      \draw (0.8,1) -- (1.2,0);
+      \draw (0.4,1) -- (0.8,1);
+      \draw (0,1) -- (0.4,1);
+      \draw (-0.4,1) -- (0,1);
+      \draw (-0.4,1) -- (-0.8,1);
+      \draw (-0.8,1) -- (-1.2,0);
+      \draw (-1.2,0) -- (-1.6,0);
+      \draw (-1.6,0) -- (-2,0);
+
+      % Add black vertices
+      \begin{scriptsize}
+        \fill [color=black] (1.6,0) circle (1.5pt);
+        \fill [color=black] (2,0) circle (1.5pt);
+        \fill [color=black] (1.2,0) circle (1.5pt);
+        \fill [color=black] (0.8,1) circle (1.5pt);
+        \fill [color=black] (1.2,0) circle (1.5pt);
+        \fill [color=black] (0.4,1) circle (1.5pt);
+        \fill [color=black] (0.8,1) circle (1.5pt);
+        \fill [color=black] (0,1) circle (1.5pt);
+        \fill [color=black] (0.4,1) circle (1.5pt);
+        \fill [color=black] (-0.4,1) circle (1.5pt);
+        \fill [color=black] (0,1) circle (1.5pt);
+        \fill [color=black] (-0.4,1) circle (1.5pt);
+        \fill [color=black] (-0.8,1) circle (1.5pt);
+        \fill [color=black] (-1.2,0) circle (1.5pt);
+        \fill [color=black] (-1.6,0) circle (1.5pt);
+        \fill [color=black] (-2,0) circle (1.5pt);
+      \end{scriptsize}
+      
+      % Add Axes
+      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+      \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+  
+      % Label y=1
+      \node at (-0.1,1.15) [left] {1};
+      \draw[dashed] (-0.1,1) -- (0,1);
+    \end{tikzpicture}
+    \caption{Nodal active set indicator $s_0$.}
+  \end{subfigure}
+  \null\hfill
+  \medskip
+
+  \null\hfill
+  \begin{subfigure}[b]{.35\textwidth}
+    \centering
+    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
+      \clip(-2.25,-0.5) rectangle (2.25,1.25);
+      
+      % Draw the smoothed curve
+      \draw (1.6, 0.1) -- (2,0);      
+      \draw (1.2, 0.33) -- (1.6, 0.1);
+      \draw (0.8, 0.66) -- (1.2, 0.33);
+      \draw (0.4, 0.95) -- (0.8, 0.66);
+      \draw (0,1) -- (0.4, 0.95);
+      \draw (-0.4, 0.95) -- (0,1);
+      \draw (-0.4, 0.95) -- (-0.8, 0.66);
+      \draw (-0.8, 0.66) -- (-1.2, 0.33);
+      \draw (-1.2, 0.33) -- (-1.6, 0.1);
+      \draw (-1.6, 0.1) -- (-2,0);
+  
+      % Add black vertices
+      \begin{scriptsize}
+        \fill [color=black] (1.6, 0.1) circle (1.5pt);
+        \fill [color=black] (2,0) circle (1.5pt);
+        \fill [color=black] (1.2, 0.33) circle (1.5pt);
+        \fill [color=black] (0.8, 0.66) circle (1.5pt);
+        \fill [color=black] (0.4, 0.95) circle (1.5pt);
+        \fill [color=black] (0,1) circle (1.5pt);
+        \fill [color=black] (-0.4, 0.95) circle (1.5pt);
+        \fill [color=black] (-0.8, 0.66) circle (1.5pt);
+        \fill [color=black] (-1.2, 0.33) circle (1.5pt);
+        \fill [color=black] (-1.6, 0.1) circle (1.5pt);
+        \fill [color=black] (-2,0) circle (1.5pt);
+      \end{scriptsize}
+  
+      % Add Axes
+      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+      \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+  
+      % Label y=1
+      \node at (-0.1,1.15) [left] {1};
+      \draw[dashed] (-0.1,1) -- (0,1);
+    \end{tikzpicture}
+    \caption{Smoothed $s_1$.}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{.35\textwidth}
+    \centering
+    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
+      \clip(-2.25,-0.5) rectangle (2.25,1.25);
+
+      % Draw horizontal segments at the heights of the calculated midpoints
+      \draw (-2, 0.05) -- (-1.6, 0.05);
+      \draw (-1.6, 0.215) -- (-1.2, 0.215);
+      \draw (-1.2, 0.495) -- (-0.8, 0.495);
+      \draw (-0.8, 0.75) -- (-0.4, 0.75);
+      \draw (-0.4, 0.9) -- (0, 0.9);
+      \draw (0, 0.9) -- (0.4, 0.9);
+      \draw (0.4, 0.75) -- (0.8, 0.75);
+      \draw (0.8, 0.495) -- (1.2, 0.495);
+      \draw (1.2, 0.215) -- (1.6, 0.215);
+      \draw (1.6, 0.05) -- (2, 0.05);
+
+      % Add black vertices
+      \begin{scriptsize}
+        \fill [color=black] (-2, 0.05) circle (1pt);
+        \fill [color=black] (-1.6, 0.05) circle (1pt);
+        \fill [color=black] (-1.6, 0.215) circle (1pt);
+        \fill [color=black] (-1.2, 0.215) circle (1pt);
+        \fill [color=black] (-1.2, 0.495) circle (1pt);
+        \fill [color=black] (-0.8, 0.495) circle (1pt);
+        \fill [color=black] (-0.8, 0.75) circle (1pt);
+        \fill [color=black] (-0.4, 0.75) circle (1pt);
+        \fill [color=black] (-0.4, 0.9) circle (1pt);
+        \fill [color=black] (0, 0.9) circle (1pt);
+        \fill [color=black] (0, 0.9) circle (1pt);
+        \fill [color=black] (0.4, 0.9) circle (1pt);
+        \fill [color=black] (0.4, 0.75) circle (1pt);
+        \fill [color=black] (0.8, 0.75) circle (1pt);
+        \fill [color=black] (0.8, 0.495) circle (1pt);
+        \fill [color=black] (1.2, 0.495) circle (1pt);
+        \fill [color=black] (1.2, 0.215) circle (1pt);
+        \fill [color=black] (1.6, 0.215) circle (1pt);
+        \fill [color=black] (1.6, 0.05) circle (1pt);
+        \fill [color=black] (2, 0.05) circle (1pt);
+      \end{scriptsize}
+
+      % Add Axes
+      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+      \draw[-] (0,-0.5) -- (0,1.25); % y-axis
+
+      % Label y=1
+      \node at (-0.1, 1) [left] {1};
+      \draw[dashed] (-0.1, 1) -- (0, 1);
+
+      % Add red horizontal lines at heights 0.8 and 0.4
+      \draw[red] (-2.5, 0.8) -- (2.5, 0.85); % red line at y = 0.8
+      \draw[red] (-2.5, 0.4) -- (2.5, 0.38);  % red line at y = 0.4
+      % Label the heights of the red lines
+      \node[red] at (2, 1) {0.8};
+      \node[red] at (2, 0.2) {0.4};
+    \end{tikzpicture}
+    \caption{$interpolate(s_1,W)$. Threshold values in red.}
+  \end{subfigure}
+  \null\hfill
+  \medskip
+
+  \begin{subfigure}[b]{0.9\textwidth}
+    \centering
+    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
+      \clip(-2.5,-0.5) rectangle (2.5,1.25);
+      
+      \draw (1.6,0) -- (2,0);      
+      \draw (1.2,0) -- (1.6,0);
+      \draw (0.8,1) -- (1.2,1);
+      \draw (0.4,1) -- (0.8,1);
+      \draw (0,0) -- (0.4,0);
+      \draw (-0.4,0) -- (0,0);
+      \draw (-0.4,1) -- (-0.8,1);
+      \draw (-0.8,1) -- (-1.2,1);
+      \draw (-1.2,0) -- (-1.6,0);
+      \draw (-1.6,0) -- (-2,0);
+  
+      % Add Axes
+      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+      \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+  
+      % Label y=1
+      \node at (-0.1, 1) [left] {1};
+      \draw (-0.1, 1) -- (0, 1);
+  
+      % Add Nodes
+      \begin{scriptsize}
+      \fill [color=black] (1.6,0) circle (1.5pt);
+      \fill [color=black] (2,0) circle (1.5pt);      
+      \fill [color=black] (1.2,0) circle (1.5pt);
+      \fill [color=black] (0.8,1) circle (1.5pt);
+      \fill [color=black] (1.2,1) circle (1.5pt);
+      \fill [color=black] (0.4,1) circle (1.5pt);
+      \fill [color=black] (0.8,1) circle (1.5pt);
+      \fill [color=black] (0,0) circle (1.5pt);
+      \fill [color=black] (0.4,0) circle (1.5pt);
+      \fill [color=black] (-0.4,0) circle (1.5pt);
+      \fill [color=black] (0,0) circle (1.5pt);
+      \fill [color=black] (-0.4,1) circle (1.5pt);
+      \fill [color=black] (-0.8,1) circle (1.5pt);
+      \fill [color=black] (-1.2,1) circle (1.5pt);
+      \fill [color=black] (-1.2,0) circle (1.5pt);
+      \fill [color=black] (-1.6,0) circle (1.5pt);
+      \fill [color=black] (-2,0) circle (1.5pt);
+      \end{scriptsize}
+    \end{tikzpicture}
+    \caption{Refinement indicator function $I$.}
+  \end{subfigure}
+  \vspace*{.25cm}
+  \caption{Illustration of Variable Coefficient Elliptic Smoothing algorithm.}
+\end{figure}
+
+Support for unstructured meshes in Firedrake comes from the DMPlex class in PETSc, as developed by \citet{lange_flexible_2015}. DMPlex is a data management object which can store the topology (connectivity of mesh entities) and geometry (coordinates) of a discretization. In the DMPlex object every mesh entity is assigned a unique index. The connectivity of a mesh is stored as a layered directed acyclic graph (DAG) in which a "covering" relation specifies the edges of the graph. For example, for a tetrahedral element in a 3d mesh, a face is covered by 3 edges and a tetrahedral cell is covered by 4 faces. Each layer represents a class of mesh entity i.e vertices, edges, etc. Below is an example of how a single tetrahedral cell is represented by DMPlex.
+
+The DMPlex object has several methods which make querying the mesh topology and geometry simple \citep{lange_efficient_2016}. For example, let $p$ be an index assigned by DMPlex. Then $\emph{cone}(p)$ returns all the in-neighbors of $p$. In the example above $\emph{cone}(0) = \{11, 12, 13, 14\}$. The transitive closure of $\emph{cone}(p)$ is also available with $\emph{closure}(p)$. The dual of $\emph{cone}(p)$ is $\emph{support}(p)$ which returns all the out-neighbors of $p$. In the example above $\emph{support}(6) = \{6, 7, 10\}$. The transitive closure of $\emph{support}(p)$ is also available with $\emph{star}(p)$. 
+
+The use of DMPlex queries is essential to our second strategy, the Unstructured Dilation Operator (UDO). We identify the set $B$ of elements that border the computed free boundary $\Gamma_{u^k}$ by interpolating a nodal active indicator function into DG0 and thresholding for values in the range (0, 1). We then use the \emph{closure} and \emph{star} methods to create vertex-to-cell and cell-to-vertex mappings. These mappings are then used to determine which elements are neighbors to the computed free boundary. We say an element neighbors another if it shares at least one vertex. The function $N(\triangle)$ returns a set of elements:
+\begin{equation}
+  N(\triangle) = \{\triangle_i \in T: \triangle \text{ shares at least 1 vertex with } \triangle_i\}.
+\end{equation}
+This process is then repeated $n$ times to create a set of elements that are within $n$ neighborhood levels of the border elements:
+\begin{equation}
+  N^n(\triangle) = \underbrace{N(...N(\triangle))}_{n \text{ times}}.
+\end{equation}
+As show in Algorithim 3, for a border element set $B$, defined below in (5.5) we use breadth-first search to construct the set $N^n(B)$ and then assemble its corresponding indicator function. This process expand the support of the DG0 indicator function in a way that resembles the "dilation" operation in image processing as seen in \citep{OpenCV} but it is applied over an unstructured mesh.
+
+\begin{algorithm}[H]
+  \caption{Unstructured Dilation Operator Element Tagging for VIs}
+  \begin{algorithmic}[1]
+    \Require $tol \in \mathbb{R}$, $u^k \in K, \psi \in V$, $W$ is a DGO FE space, mesh $T$.
+    \Require Neighborhood Depth Parameter $n \in \mathbb{N}$.
+    \State Compute the nodal active set indicator function $s$
+    \begin{equation}
+    s = \begin{cases}
+      1 & \text{ if } u^k - \psi < tol\\
+      0 & \text{ otherwise}
+    \end{cases}.
+    \end{equation}
+  
+    \State Let $s_W = interpolate(s, W)$ .
+    \State Define the border element set $B$:
+    \begin{equation}
+    B = \{\triangle \in T: 0 < s_W(\triangle) < 1 \} .
+    \end{equation}
+
+    \State Use the \emph{closure} and \emph{star} methods to construct vertex-to-cell and cell-to-vertex mappings.
+
+    \State Use breadth-first search to construct the set $N^n(B)$ as in (5.2) and (5.3). 
+    \State Assemble the indicator function $I$ of the set $N^n(B)$. \\
+    \Return $I$
+  \end{algorithmic}
+  \end{algorithm}
+
+A simple example using UDO is shown.
+
+\inputminted{python}{short.py}
+
+Using thresholding $u - \psi < 0.001$ to determine the active set, running this example generates the following Figure.
+
+\begin{figure}[H]
+FIXME
+\caption{Mesh (left) generated from the spiral problem, with $N=2.3\times 10^3$ elements, and the approximated active set (right).}
+\end{figure}
 
 \section{Results} \label{sec:results}
 
-
+FIXME
 
 \section*{Acknowledgements}
 
