@@ -4,6 +4,9 @@ from collections import deque
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
+from firedrake.utils import IntType
+import firedrake.cython.dmcommon as dmcommon
+
 from pyop2.mpi import MPI
 
 from shapely.geometry import MultiLineString
@@ -215,6 +218,50 @@ class VIAMR(OptionsManager):
         # Adapt
         adaptedMesh = adapt(mesh, VImetric)
         return adaptedMesh
+    
+    def refinemarkedelements(self, mesh, indicator):
+        """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D"""
+        
+        
+        # Create Section for DG0 indicator
+        tdim = mesh.topological_dimension()
+        entity_dofs = np.zeros(tdim+1, dtype=IntType)
+        entity_dofs[:] = 0
+        entity_dofs[-1] = 1
+        indicatorSect, _ = dmcommon.create_section(mesh, entity_dofs)
+
+        # Pull Plex from mesh
+        dm = mesh.topology_dm
+        
+        # Create an adaptation label to mark cells for refinement
+        dm.createLabel('refine')
+        adaptLabel = dm.getLabel('refine')
+
+        # dmcommon provides a python binding for this operation of setting the label given an indicator function data array
+        dmcommon.mark_points_with_function_array(
+            dm, indicatorSect, 0, indicator.dat.data_with_halos, adaptLabel, 1)
+
+        # Create a DMPlexTransform object to apply the refinement
+        opts = PETSc.Options()
+        opts['dm_plex_transform_active'] = 'refine'
+        opts['dm_plex_transform_type'] = 'refine_sbr' # <- skeleton based refinement is what netgen does.
+        dmTransform = PETSc.DMPlexTransform().create()
+        dmTransform.setDM(dm)
+        # For now the only way to set the active label with petsc4py is with PETSc.Options() (DMPlexTransformSetActive() has no binding)
+        dmTransform.setFromOptions()
+        dmTransform.setUp()
+        dmAdapt = dmTransform.apply(dm)
+        
+        # Pull distribution parameters from original dm
+        distParams = indicator.function_space().mesh()._distribution_parameters
+        
+        # Create a new mesh from the adapted dm
+        refinedmesh = Mesh(dmAdapt, distribution_parameters=distParams)
+        
+        return refinedmesh
+
+    
+    
 
     def jaccard(self, active1, active2):
         """Compute the Jaccard metric from two element-wise active
