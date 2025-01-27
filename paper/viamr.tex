@@ -16,6 +16,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{pgfplots}
 \usetikzlibrary{arrows}
+\pgfplotsset{compat=1.16}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{minted}
@@ -108,7 +109,7 @@ However, a point that is weakly acknowledged, in the PDE-motivated FE literature
 % FIXME regenerate with labels ||u-u_h||_{H^1} = O(h^1.09), ||u-u_h||_{L^2} = O(h^1.57), \Delta_h
 \end{minipage}
 }
-\caption{Left:  A one-dimensional obstacle problem with a parabolic obstacle, for which the exact free boundary location $x_*$ is known.  Right:  Using uniform meshes, the geometrical error $\Delta_h$ in locating $x_*$ explains the erratic error norm $\|u-u_h\|$ reduction.}
+\caption{Left:  A one-dimensional obstacle problem with a parabolic obstacle, for which the exact free boundary locations $x_*$ are known.  Right:  Using uniform meshes, the geometrical error $\Delta_h$ in locating $x_*$ explains the erratic error norm $\|u-u_h\|$ behavior.}
 \label{fig:parabola}
 \end{figure}
 

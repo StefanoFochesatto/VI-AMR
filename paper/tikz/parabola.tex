@@ -1,22 +1,22 @@
-\begin{tikzpicture}[scale=0.85]
+\begin{tikzpicture}[scale=0.9]
     \begin{axis}[
       axis lines = middle,
       xlabel = {$x$},
-      ylabel = {$y$},
+      xlabel style = {at={(1.05, 0.25)}},  % relative to whole figure box [0,1]x[0,1]
       domain = -1:1,
       samples = 100,
       xmin = -1.2,
       xmax = 1.2,
-      ymin = -0.6,
-      ymax = 0.5,
-      legend pos = north west
+      ymin = -0.3,
+      ymax = 0.6,
+      legend pos = north west,
+      legend style = {draw=none, font=\small}
     ]
       % Parameters
       \def\b{(2-sqrt(2))/2}
       \def\a{-\b}
       % Plot the obstacle function psi(x)
       \addplot[
-        thick,
         red
       ] {0.5 - x^2};
       \addlegendentry{$\psi(x)$}
@@ -27,15 +27,11 @@
         blue,
         domain=-1:\a
       ] {((.5 - \a*\a)/(\a + 1))*(x + 1)};
-
-  
       \addplot[
         thick,
         blue,
         domain=\a:\b
       ] {0.5 - x^2};
-
-  
       \addplot[
         thick,
         blue,
@@ -43,7 +39,9 @@
       ] {-((.5 - \b*\b)/(1 - \b))*(x - 1)};
       \addlegendentry{$u(x)$}
 
-
+      % indicate free boundary locations
+      \addplot[black, thick, draw] coordinates {(\a,-0.02) (\a,0.02)} node[above] (A) {$x_*$};
+      \addplot[black, thick, draw] coordinates {(\b,-0.02) (\b,0.02)} node[above] (B) {$x_*$};
     \end{axis}
   \end{tikzpicture}
   
