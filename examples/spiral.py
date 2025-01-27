@@ -11,7 +11,7 @@ meshHist = [mesh]
 for i in range(5):
     mesh = meshHist[i]
     u, lb = problem.solveProblem(mesh=mesh, u=u)
-    mark = amr.udomark(mesh, u, lb, n=2)
+    mark = amr.udomarkParallel(mesh, u, lb, n=3)
     mesh = mesh.refine_marked_elements(mark)
     meshHist.append(mesh)
 

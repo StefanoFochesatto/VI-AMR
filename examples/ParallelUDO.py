@@ -13,16 +13,26 @@ size = comm.Get_size()
 
 n = 3
 
+activetol = 1.0e-10
 # Instantiate obstacle problem and solution
 initTriHeight = .05
 problem_instance = SphereObstacleProblem(TriHeight=initTriHeight)
 mesh = problem_instance.setInitialMesh()
-u, lb = problem_instance.solveProblem(mesh=mesh, u=None)
 dm = mesh.topology_dm
+mesh = Mesh(dm, distribution_parameters={
+            "partition": None, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
 
-z = VIAMR()
-nodalactive = z.nodalactive(u, lb)
-elemborder = z.elemborder(nodalactive)
+
+u, lb = problem_instance.solveProblem(mesh=mesh, u=None)
+# Entrypoint to udomark
+
+DG0 = FunctionSpace(mesh, "DG", 0)
+CG1 = FunctionSpace(mesh, "CG", 1)
+
+nodalactive = Function(CG1).interpolate(
+    conditional(abs(u - lb) < activetol, 0, 1))
+elemborder = Function(DG0).interpolate(conditional(
+    nodalactive > 0, conditional(nodalactive < 1, 1, 0), 0))
 
 for i in range(n):
     # Pull border elements cell with dmplex cell indices
@@ -41,18 +51,24 @@ for i in range(n):
     NeighborSet = set()
     for i in incidentVertices:
         for entity in dm.getTransitiveClosure(i, useCone=False)[0]:
-            if dm.getDepthStratum(2)[0] <= entity <= dm.getDepthStratum(2)[1]:
+            if dm.getDepthStratum(2)[0] <= entity < dm.getDepthStratum(2)[1]:
                 NeighborSet.add(entity)
 
     NeighborSet = list(NeighborSet)
 
     # For plotting
-    _, DG0 = z.spaces(mesh)
     elemborder = Function(DG0).interpolate(Constant(0.0))
     plexelementlist = mesh.cell_closure[:, -1]
+
     dm_to_fd = {number: index for index, number in enumerate(plexelementlist)}
 
     for i in NeighborSet:
         elemborder.dat.data_wo_with_halos[dm_to_fd[i]] = 1
+
+    print("flag")
+
+    # Synchronize all processes
+    MPI.COMM_WORLD.Barrier()
+
 
 VTKFile("results.pvd").write(elemborder)

@@ -8,6 +8,7 @@ from pyop2.mpi import MPI
 
 from shapely.geometry import MultiLineString
 import shapely
+from mpi4py import MPI
 
 
 class VIAMR(OptionsManager):
@@ -100,34 +101,46 @@ class VIAMR(OptionsManager):
                                 queue.append((neighbor, level + 1))
         return result
 
-    def udomark(self, mesh, u, lb, n=2):
+    def udomark(self, mesh, elemborder, n=2):
         '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
         Warning: Not valid in parallel.'''
 
         # generate element-wise and nodal-wise indicators for active set
         _, DG0 = self.spaces(mesh)
-        nodalactive = self.nodalactive(u, lb)
-        elemactive = self.elemactive(u, lb)
+        # nodalactive = self.nodalactive(u, lb)
+        # elemactive = self.elemactive(u, lb)
 
         # generate border element indicator
-        elemborder = self.elemborder(nodalactive)
+        # elemborder = self.elemborder(nodalactive)
 
         # bfs_neighbors() constructs N^n(B) indicator.  Last argument
         # is to refine only in active or only in inactive set (currently commented out).
-        return self.bfs_neighbors(mesh, elemborder, n, elemactive)
+        return self.bfs_neighbors(mesh, elemborder, n, Function(DG0).interpolate(Constant(0.0)))
 
-    def udomarkParallel(self, mesh, u, lb, n=2):
+    def udomarkParallel(self, ngmesh, ngelemborder, n=2):
         '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
         Warning: Not valid in parallel.'''
-        # pull dm
+        activetol = 1.0e-10
+
+        Vc = ngmesh.coordinates.function_space()
+        x, y = SpatialCoordinate(ngmesh)
+        f = Function(Vc).interpolate(as_vector([x, y]))
+        mesh = Mesh(f, name="dmmesh")
+        CG1, DG0 = self.spaces(mesh)
+        elemborder = Function(DG0).interpolate(ngelemborder)
+        elemborder.rename("elemborder")
+
+        # Quick and dirty fix is broken until netgen meshes are checkpointing
+        with CheckpointFile("udo.h5", 'w') as afile:
+            afile.save_mesh(mesh)
+            afile.save_function(elemborder)
+
+        with CheckpointFile("udo.h5", 'r') as afile:
+            mesh = afile.load_mesh("dmmesh", distribution_parameters={
+                "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, n+1)})
+            elemborder = afile.load_function(mesh, "elemborder")
+
         dm = mesh.topology_dm
-
-        # generate element-wise and nodal-wise indicators for active set
-        _, DG0 = self.spaces(mesh)
-        nodalactive = self.nodalactive(u, lb)
-        # generate border element indicator
-        elemborder = self.elemborder(nodalactive)
-
         # generate map from dm to fd indices
         plexelementlist = mesh.cell_closure[:, -1]
         dm_to_fd = {number: index for index,
@@ -137,6 +150,10 @@ class VIAMR(OptionsManager):
             # Pull border elements cell with dmplex cell indices
             BorderSetElementsIndices = [mesh.cell_closure[:, -1][i] for i, value in enumerate(
                 elemborder.dat.data_ro_with_halos) if value != 0]
+            print(
+                f"size of Local Mesh Closure: {len(mesh.cell_closure[:, -1])}")
+            print(
+                f"size of elemborder ro with halo: {len(elemborder.dat.data_ro_with_halos)}")
 
             # Pull indices of vertices which are incident to said border elements
             incidentVertices = [dm.getTransitiveClosure(
@@ -161,6 +178,9 @@ class VIAMR(OptionsManager):
 
             for j in NeighborSet:
                 elemborder.dat.data_wo_with_halos[dm_to_fd[j]] = 1
+
+              # Synchronize all processes
+            MPI.COMM_WORLD.Barrier()
 
         return elemborder
 
