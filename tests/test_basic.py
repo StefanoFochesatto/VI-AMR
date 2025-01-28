@@ -127,7 +127,7 @@ def test_refine_vces_petsc4py_firedrake():
     VTKFile(f"result_0.pvd").write(u)
     mark = z.vcesmark(mesh, u, psi)
     rmesh = z.refinemarkedelements(mesh, mark)
-    rmesh.coordinates.dat.data[:] -= 2.0  # FIXME why needed?
+    rmesh.coordinates.dat.data[:] -= 2.0  # why? see note on "Features which rely on the coordinates field of a mesh’s PETSc DM", at https://www.firedrakeproject.org/mesh-coordinates.html
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 73
     rV = FunctionSpace(rmesh, "CG", 1)
@@ -197,4 +197,4 @@ if __name__ == "__main__":
     #test_symmetry_jaccard()
     #test_overlapping_and_nonoverlapping_hausdorff()
     #test_petsc4py_refine_vces()
-    test_refine_vces_petsc4py_firedrake()
+    #test_refine_vces_petsc4py_firedrake()
