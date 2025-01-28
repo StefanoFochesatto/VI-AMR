@@ -92,7 +92,28 @@ def test_refine_vces():
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u) # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
-    #VTKFile(f"result_refine_1.pvd").write(ru)
+    VTKFile(f"netgen_result_refine_1.pvd").write(ru)
+    
+    
+def test_petsc4py_refine_vces():
+    mesh = get_netgen_mesh(TriHeight=1.2)
+    z = VIAMR(debug=True)
+    CG1, _ = z.spaces(mesh)
+    assert CG1.dim() == 19
+    (x, y) = SpatialCoordinate(mesh)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
+    unorm0 = norm(u)
+    # from firedrake.output import VTKFile
+    # VTKFile(f"result_refine_0.pvd").write(u)
+    mark = z.vcesmark(mesh, u, psi)
+    rmesh = z.refinemarkedelements(mesh, mark)
+    rCG1, _ = z.spaces(rmesh)
+    assert rCG1.dim() == 49
+    rV = FunctionSpace(rmesh, "CG", 1)
+    ru = Function(rV).interpolate(u)  # cross-mesh interpolation
+    assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
+    VTKFile(f"petsc4py_result_refine_1.pvd").write(ru)
 
 
 def test_overlapping_jaccard():

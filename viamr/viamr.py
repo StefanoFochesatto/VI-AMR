@@ -220,7 +220,7 @@ class VIAMR(OptionsManager):
         return adaptedMesh
     
     def refinemarkedelements(self, mesh, indicator):
-        """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D"""
+        """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D. Still working out the kinks on more than one iteration of refinement."""
         
         
         # Create Section for DG0 indicator
@@ -236,6 +236,7 @@ class VIAMR(OptionsManager):
         # Create an adaptation label to mark cells for refinement
         dm.createLabel('refine')
         adaptLabel = dm.getLabel('refine')
+        adaptLabel.setDefaultValue(0)
 
         # dmcommon provides a python binding for this operation of setting the label given an indicator function data array
         dmcommon.mark_points_with_function_array(
@@ -252,6 +253,9 @@ class VIAMR(OptionsManager):
         dmTransform.setUp()
         dmAdapt = dmTransform.apply(dm)
         
+        adaptLabel.destroy()
+        dmTransform.destroy()
+
         # Pull distribution parameters from original dm
         distParams = indicator.function_space().mesh()._distribution_parameters
         
