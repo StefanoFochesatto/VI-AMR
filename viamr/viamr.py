@@ -253,7 +253,9 @@ class VIAMR(OptionsManager):
         dmTransform.setUp()
         dmAdapt = dmTransform.apply(dm)
         
-        adaptLabel.destroy()
+        # Labels are no longer needed, not sure if we need to call destroy on them. 
+        dmAdapt.removeLabel('refine')
+        dm.removeLabel('refine')
         dmTransform.destroy()
 
         # Pull distribution parameters from original dm
