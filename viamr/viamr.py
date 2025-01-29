@@ -140,21 +140,25 @@ class VIAMR(OptionsManager):
         
         DistParams = u.function_space().mesh()._distribution_parameters
         
-        if DistParams['overlap_type'][0].name != 'VERTEX' or DistParams['overlap_type'][1] < 1:
-            with CheckpointFile("udo.h5", 'w') as afile:
-                afile.save_mesh(mesh)
-                afile.save_function(elemborder)
+        # if DistParams['overlap_type'][0].name != 'VERTEX' or DistParams['overlap_type'][1] < 1:
+        #     MPI.COMM_WORLD.Barrier()
 
-            with CheckpointFile("udo.h5", 'r') as afile:
-                mesh = afile.load_mesh("dmmesh", distribution_parameters={
-                    "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)}) # <- enforcing distribution parameters
-                elemborder = afile.load_function(mesh, "elemborder")
-             
-            # reconstruct DG0 space so result indicator has correct partition    
-            _, DG0 = self.spaces(mesh)
+        #     with CheckpointFile("udo.h5", 'w') as afile:
+        #         afile.save_mesh(mesh)
+        #         afile.save_function(elemborder)
                 
-            # clean up
-            import os; os.remove("udo.h5")
+        #     MPI.COMM_WORLD.Barrier()
+        #     with CheckpointFile("udo.h5", 'r') as afile:
+        #         mesh = afile.load_mesh("dmmesh", distribution_parameters={
+        #             "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)}) # <- enforcing distribution parameters
+        #         elemborder = afile.load_function(mesh, "elemborder")
+        #     MPI.COMM_WORLD.Barrier()
+
+        #     # reconstruct DG0 space so result indicator has correct partition    
+        #     _, DG0 = self.spaces(mesh)
+                
+        #     # clean up
+        #     import os; os.remove("udo.h5")
 
         # Pull dm 
         dm = mesh.topology_dm

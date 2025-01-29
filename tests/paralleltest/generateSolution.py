@@ -37,10 +37,7 @@ for i in range(args.refinements):
     PETSc.Sys.Print("problem solved")
 
     PETSc.Sys.Print("UDO marking")
-    #mark = z.udomarkParallel(mesh, u, lb, n=1)
-    x, y = SpatialCoordinate(mesh)
-    DG0 = FunctionSpace(mesh, 'DG', 0)
-    mark = Function(DG0).interpolate(conditional(x > 0, 0, 1))
+    mark = z.udomarkParallel(mesh, u, lb, n=1)
     PETSc.Sys.Print("UDO marked")
     if i < args.refinements - 1:
         PETSc.Sys.Print("refining")
