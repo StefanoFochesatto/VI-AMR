@@ -83,7 +83,6 @@ def test_refine_vces():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    #from firedrake.output import VTKFile
     #VTKFile(f"result_refine_0.pvd").write(u)
     mark = z.vcesmark(mesh, u, psi)
     rmesh = mesh.refine_marked_elements(mark)
@@ -92,7 +91,7 @@ def test_refine_vces():
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u) # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
-    VTKFile(f"netgen_result_refine_1.pvd").write(ru)
+    #VTKFile(f"netgen_result_refine_1.pvd").write(ru)
 
 
 def test_petsc4py_refine_vces():
@@ -111,7 +110,7 @@ def test_petsc4py_refine_vces():
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u)  # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
-    VTKFile(f"petsc4py_result_refine_1.pvd").write(ru)
+    #VTKFile(f"petsc4py_result_refine_1.pvd").write(ru)
 
 
 def test_refine_vces_petsc4py_firedrake():
@@ -124,7 +123,7 @@ def test_refine_vces_petsc4py_firedrake():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    VTKFile(f"result_0.pvd").write(u)
+    #VTKFile(f"result_0.pvd").write(u)
     mark = z.vcesmark(mesh, u, psi)
     rmesh = z.refinemarkedelements(mesh, mark)
     rmesh.coordinates.dat.data[:] -= 2.0  # why? see note on "Features which rely on the coordinates field of a mesh’s PETSc DM", at https://www.firedrakeproject.org/mesh-coordinates.html
@@ -133,7 +132,7 @@ def test_refine_vces_petsc4py_firedrake():
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u)  # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
-    VTKFile(f"result_1.pvd").write(ru)
+    #VTKFile(f"result_1.pvd").write(ru)
 
 
 def test_overlapping_jaccard():
@@ -198,3 +197,4 @@ if __name__ == "__main__":
     #test_overlapping_and_nonoverlapping_hausdorff()
     #test_petsc4py_refine_vces()
     #test_refine_vces_petsc4py_firedrake()
+    pass
