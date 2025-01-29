@@ -43,7 +43,7 @@ for i in range(args.refinements):
     PETSc.Sys.Print("UDO marked")
     if i < args.refinements - 1:
         PETSc.Sys.Print("refining")
-        nextMesh = z.refinemarkedelements(mesh, mark)
+        mesh = z.refinemarkedelements(mesh, mark)
         #u = None 
         PETSc.Sys.Print("refined")
 
