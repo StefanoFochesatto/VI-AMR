@@ -25,6 +25,7 @@ args = parser.parse_args()
 initTriHeight = 0.1
 problem_instance = SpiralObstacleProblem(TriHeight=initTriHeight)
 mesh = problem_instance.setInitialMesh()
+meshHist = [mesh]
 u = None
 
 # Initialize VIAMR
@@ -44,14 +45,13 @@ for i in range(args.refinements):
     if i < args.refinements - 1:
         PETSc.Sys.Print("refining")
         mesh = z.refinemarkedelements(mesh, mark)
-        #u = None 
         PETSc.Sys.Print("refined")
 
 if args.refinements > 0:
     mesh.name = f"{args.runtime}Mesh"
     mark.rename(f"{args.runtime}Mark")
 
-VTKFile("resultsSerial.pvd").write(mark)
+VTKFile(f"results{args.runtime}.pvd").write(mark)
 
 with CheckpointFile(f"{args.runtime}UDO.h5", 'w') as afile:
     afile.save_mesh(mesh)

@@ -314,9 +314,7 @@ class VIAMR(OptionsManager):
         return adaptedMesh
     
     def refinemarkedelements(self, mesh, indicator):
-        """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D. Still working out the kinks on more than one iteration of refinement."""
-        
-        
+        """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D. Still working out the kinks on more than one iteration of refinement."""   
         # Create Section for DG0 indicator
         tdim = mesh.topological_dimension()
         entity_dofs = np.zeros(tdim+1, dtype=IntType)
@@ -351,12 +349,19 @@ class VIAMR(OptionsManager):
         dmAdapt.removeLabel('refine')
         dm.removeLabel('refine')
         dmTransform.destroy()
-
+        
+        # Remove labels to stop further distribution in mesh()
+        # dm.distributeSetDefault(False) <- Matt's suggestion
+        dmAdapt.removeLabel("pyop2_core")
+        dmAdapt.removeLabel("pyop2_owned")
+        dmAdapt.removeLabel("pyop2_ghost")
+        # ^ Koki's suggestion
+    
         # Pull distribution parameters from original dm
         distParams = indicator.function_space().mesh()._distribution_parameters
         
         # Create a new mesh from the adapted dm
-        refinedmesh = Mesh(dmAdapt, distribution_parameters=distParams)
+        refinedmesh = Mesh(dmAdapt, distrbution_parameters = distParams, comm = mesh.comm)
         
         return refinedmesh
 
