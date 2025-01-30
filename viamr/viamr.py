@@ -137,33 +137,39 @@ class VIAMR(OptionsManager):
         # 
         # In order for this to work we need to use PETSc refinemarkelements instead
         # also instead of checkpointing we could write a warning telling the user to set the correct distribution parameters
+        # 
         
-        DistParams = u.function_space().mesh()._distribution_parameters
         
-        # if DistParams['overlap_type'][0].name != 'VERTEX' or DistParams['overlap_type'][1] < 1:
-        #     MPI.COMM_WORLD.Barrier()
+        DistParams = mesh._distribution_parameters
+        
+        if DistParams['overlap_type'][0].name != 'VERTEX' or DistParams['overlap_type'][1] < 1:
+            #We will error out instead
+            raise ValueError("""Error: For UDO to work ensure that distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization.""")
+            
+            # This workaround works for firedrake meshes, not netgen. It also forces me to return the mesh which is a bad user pattern. 
+            # MPI.COMM_WORLD.Barrier()
+            # PETSc.Sys.Print("entered bad params")
+            # PETSc.Sys.Print("writing")
+            # with CheckpointFile("udo.h5", 'w') as afile:
+            #     afile.save_mesh(mesh)
+            #     afile.save_function(elemborder)
+            # PETSc.Sys.Print("writing finished")
+            # PETSc.Sys.Print("reading")
+            # with CheckpointFile("udo.h5", 'r') as afile:
+            #     mesh = afile.load_mesh("dmmesh", distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)}) # <- enforcing distribution parameters
+            #     elemborder = afile.load_function(mesh, "elemborder")
+            # PETSc.Sys.Print("reading finished")
 
-        #     with CheckpointFile("udo.h5", 'w') as afile:
-        #         afile.save_mesh(mesh)
-        #         afile.save_function(elemborder)
-                
-        #     MPI.COMM_WORLD.Barrier()
-        #     with CheckpointFile("udo.h5", 'r') as afile:
-        #         mesh = afile.load_mesh("dmmesh", distribution_parameters={
-        #             "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)}) # <- enforcing distribution parameters
-        #         elemborder = afile.load_function(mesh, "elemborder")
-        #     MPI.COMM_WORLD.Barrier()
 
-        #     # reconstruct DG0 space so result indicator has correct partition    
-        #     _, DG0 = self.spaces(mesh)
-                
-        #     # clean up
-        #     import os; os.remove("udo.h5")
+            # # reconstruct DG0 space so result indicator has correct partition    
+            # _, DG0 = self.spaces(mesh)
+    
+
 
         # Pull dm 
         dm = mesh.topology_dm
         
-        # This reset of this should really be written by turning the indicator function into a DMLabel
+        # This rest of this should really be written by turning the indicator function into a DMLabel
         # and then writing the dmplex traversal in petsc4py. This is a workaround.
         
         
@@ -201,10 +207,6 @@ class VIAMR(OptionsManager):
             for j in NeighborSet:
                 elemborder.dat.data_wo_with_halos[dm_to_fd[j]] = 1
 
-              # Synchronize all processes
-            MPI.COMM_WORLD.Barrier()
-        
-        
         
         return elemborder
 
@@ -362,10 +364,10 @@ class VIAMR(OptionsManager):
         # ^ Koki's suggestion
     
         # Pull distribution parameters from original dm
-        distParams = indicator.function_space().mesh()._distribution_parameters
+        distParams = mesh._distribution_parameters
         
         # Create a new mesh from the adapted dm
-        refinedmesh = Mesh(dmAdapt, distrbution_parameters = distParams, comm = mesh.comm)
+        refinedmesh = Mesh(dmAdapt, distribution_parameters = distParams, comm = mesh.comm)
         
         return refinedmesh
 
