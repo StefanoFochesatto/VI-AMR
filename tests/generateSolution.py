@@ -39,6 +39,7 @@ for i in range(args.refinements):
     PETSc.Sys.Print("UDO marking")
     mark = z.udomarkParallel(mesh, u, lb, n=1)
     PETSc.Sys.Print("UDO marked")
+    
     if i < args.refinements - 1:
         PETSc.Sys.Print("refining")
         mesh = z.refinemarkedelements(mesh, mark)
@@ -48,7 +49,7 @@ if args.refinements > 0:
     mesh.name = f"{args.runtime}Mesh"
     mark.rename(f"{args.runtime}Mark")
 
-VTKFile(f"results{args.runtime}.pvd").write(mark)
+#VTKFile(f"results{args.runtime}.pvd").write(mark)
 
 with CheckpointFile(f"{args.runtime}UDO.h5", 'w') as afile:
     afile.save_mesh(mesh)

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from firedrake import *
 from viamr import VIAMR
-
+import subprocess
 
 def get_netgen_mesh(TriHeight=0.4, width=2):
     import netgen
@@ -13,7 +13,7 @@ def get_netgen_mesh(TriHeight=0.4, width=2):
                      bc="rectangle")
     ngmsh = None
     ngmsh = geo.GenerateMesh(maxh=TriHeight)
-    return Mesh(ngmsh)
+    return Mesh(ngmsh, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
 
 
 def test_netgen_mesh_creation():
@@ -72,7 +72,42 @@ def test_refine_udo():
     ru = Function(rV).interpolate(u) # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
     #VTKFile(f"result_refine_1.pvd").write(ru)
+    
+    
+    
+    
+def test_refine_udo_parallelUDO():
+    mesh1 = get_netgen_mesh(TriHeight=.1)
+    z = VIAMR(debug=True)
+    CG1, _ = z.spaces(mesh1)
+    (x, y) = SpatialCoordinate(mesh1)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
+    unorm0 = norm(u)
+    #from firedrake.output import VTKFile
+    #VTKFile(f"result_refine_0.pvd").write(u)
+    mark1 = z.udomark(mesh1, u, psi)
+    rmesh1 = mesh1.refine_marked_elements(mark1)
+    
+    mesh2 = get_netgen_mesh(TriHeight=.1)
+    CG1, _ = z.spaces(mesh2)
+    (x, y) = SpatialCoordinate(mesh1)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
+    unorm0 = norm(u)
+    # from firedrake.output import VTKFile
+    # VTKFile(f"result_refine_0.pvd").write(u)
+    mark2 = z.udomarkParallel(mesh1, u, psi)
+    rmesh2 = mesh2.refine_marked_elements(mark2)
+    
+    assert z.jaccard(mark1, mark2) == 1.0
+    
+    
+    r1CG1, _ = z.spaces(rmesh1)
+    r2CG1, _ = z.spaces(rmesh2)
 
+    assert r1CG1.dim() == r2CG1.dim()
+    
 
 def test_refine_vces():
     mesh = get_netgen_mesh(TriHeight=1.2)
@@ -92,28 +127,9 @@ def test_refine_vces():
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u) # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
-    VTKFile(f"netgen_result_refine_1.pvd").write(ru)
+    #VTKFile(f"netgen_result_refine_1.pvd").write(ru)
     
     
-def test_petsc4py_refine_vces():
-    mesh = get_netgen_mesh(TriHeight=1.2)
-    z = VIAMR(debug=True)
-    CG1, _ = z.spaces(mesh)
-    assert CG1.dim() == 19
-    (x, y) = SpatialCoordinate(mesh)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
-    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
-    unorm0 = norm(u)
-    # from firedrake.output import VTKFile
-    # VTKFile(f"result_refine_0.pvd").write(u)
-    mark = z.vcesmark(mesh, u, psi)
-    rmesh = z.refinemarkedelements(mesh, mark)
-    rCG1, _ = z.spaces(rmesh)
-    assert rCG1.dim() == 49
-    rV = FunctionSpace(rmesh, "CG", 1)
-    ru = Function(rV).interpolate(u)  # cross-mesh interpolation
-    assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
-    VTKFile(f"petsc4py_result_refine_1.pvd").write(ru)
 
 
 def test_overlapping_jaccard():
@@ -164,6 +180,32 @@ def test_overlapping_and_nonoverlapping_hausdorff():
     lb2 = conditional(x <= .4, 1, 0)
     _, E2 = z.freeboundarygraph(sol1, lb2)
     assert z.hausdorff(E1, E2) == .2
+    
+def test_parallel_udo():
+    # This test is not well encapsulated at all however barring crazy changes to the spiral utility problem
+    # and jaccard, we have good visibility of parallel udo and refinemarkedelements()
+     
+    # Run UDO method in both parallel and serial
+    z = VIAMR()
+    subprocess.run(["python3", "generateSolution.py",
+                "--refinements", "2", "--runtime", "serial"])
+    subprocess.run(
+        ["mpiexec", "-n", "4", "python3", "generateSolution.py",
+        "--refinements", "2", "--runtime", "parallel"])
+
+    # Checkpoint in files
+    with CheckpointFile("serialUDO.h5", 'r') as afile:
+        serialMesh = afile.load_mesh("serialMesh")
+        serialMark = afile.load_function(serialMesh, "serialMark")
+
+
+    with CheckpointFile("parallelUDO.h5", 'r') as afile:
+        parallelMesh = afile.load_mesh("parallelMesh")
+        parallelMark = afile.load_function(parallelMesh, "parallelMark")
+
+    #Compare overlap, perfect overlap will have jaccard 1. 
+    assert z.jaccard(serialMark, parallelMark) == 1.0
+
 
 
 if __name__ == "__main__":
@@ -176,3 +218,5 @@ if __name__ == "__main__":
     test_nonoverlapping_jaccard()
     test_symmetry_jaccard()
     test_overlapping_and_nonoverlapping_hausdorff()
+    test_refine_udo_parallelUDO()
+    test_parallel_udo()
