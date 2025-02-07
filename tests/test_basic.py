@@ -2,6 +2,9 @@ import numpy as np
 import pytest
 from firedrake import *
 from viamr import VIAMR
+import subprocess
+import os
+import pathlib
 
 
 def get_netgen_mesh(TriHeight=0.4, width=2):
@@ -13,7 +16,7 @@ def get_netgen_mesh(TriHeight=0.4, width=2):
                      bc="rectangle")
     ngmsh = None
     ngmsh = geo.GenerateMesh(maxh=TriHeight)
-    return Mesh(ngmsh)
+    return Mesh(ngmsh, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
 
 
 def test_netgen_mesh_creation():
@@ -62,16 +65,48 @@ def test_refine_udo():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    #from firedrake.output import VTKFile
-    #VTKFile(f"result_refine_0.pvd").write(u)
+    # from firedrake.output import VTKFile
+    # VTKFile(f"result_refine_0.pvd").write(u)
     mark = z.udomark(mesh, u, psi)
     rmesh = mesh.refine_marked_elements(mark)
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 61
     rV = FunctionSpace(rmesh, "CG", 1)
-    ru = Function(rV).interpolate(u) # cross-mesh interpolation
-    assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
-    #VTKFile(f"result_refine_1.pvd").write(ru)
+    ru = Function(rV).interpolate(u)  # cross-mesh interpolation
+    assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
+    # VTKFile(f"result_refine_1.pvd").write(ru)
+
+
+def test_refine_udo_parallelUDO():
+    mesh1 = get_netgen_mesh(TriHeight=.1)
+    z = VIAMR(debug=True)
+    CG1, _ = z.spaces(mesh1)
+    (x, y) = SpatialCoordinate(mesh1)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
+    unorm0 = norm(u)
+    # from firedrake.output import VTKFile
+    # VTKFile(f"result_refine_0.pvd").write(u)
+    mark1 = z.udomark(mesh1, u, psi)
+    rmesh1 = mesh1.refine_marked_elements(mark1)
+
+    mesh2 = get_netgen_mesh(TriHeight=.1)
+    CG1, _ = z.spaces(mesh2)
+    (x, y) = SpatialCoordinate(mesh1)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
+    unorm0 = norm(u)
+    # from firedrake.output import VTKFile
+    # VTKFile(f"result_refine_0.pvd").write(u)
+    mark2 = z.udomarkParallel(mesh1, u, psi)
+    rmesh2 = mesh2.refine_marked_elements(mark2)
+
+    assert z.jaccard(mark1, mark2) == 1.0
+
+    r1CG1, _ = z.spaces(rmesh1)
+    r2CG1, _ = z.spaces(rmesh2)
+
+    assert r1CG1.dim() == r2CG1.dim()
 
 
 def test_refine_vces():
@@ -84,11 +119,13 @@ def test_refine_vces():
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     #VTKFile(f"result_refine_0.pvd").write(u)
+
     mark = z.vcesmark(mesh, u, psi)
     rmesh = mesh.refine_marked_elements(mark)
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 49
     rV = FunctionSpace(rmesh, "CG", 1)
+
     ru = Function(rV).interpolate(u) # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
     #VTKFile(f"netgen_result_refine_1.pvd").write(ru)
@@ -110,7 +147,9 @@ def test_petsc4py_refine_vces():
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u)  # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
+
     #VTKFile(f"petsc4py_result_refine_1.pvd").write(ru)
+
 
 
 def test_refine_vces_petsc4py_firedrake():
@@ -123,10 +162,13 @@ def test_refine_vces_petsc4py_firedrake():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
+
     #VTKFile(f"result_0.pvd").write(u)
     mark = z.vcesmark(mesh, u, psi)
     rmesh = z.refinemarkedelements(mesh, mark)
     rmesh.coordinates.dat.data[:] -= 2.0  # why? see note on "Features which rely on the coordinates field of a mesh’s PETSc DM", at https://www.firedrakeproject.org/mesh-coordinates.html
+
+    
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 73
     rV = FunctionSpace(rmesh, "CG", 1)
@@ -185,16 +227,61 @@ def test_overlapping_and_nonoverlapping_hausdorff():
     assert z.hausdorff(E1, E2) == .2
 
 
+def test_parallel_udo():
+    # This test is not well encapsulated at all however barring crazy changes to the spiral utility problem
+    # and jaccard, we have good visibility of parallel udo and refinemarkedelements()
+
+    # Get the absolute path of the current test file
+    current_file = pathlib.Path(__file__).resolve()
+    # Navigate to the test root 
+    test_root = current_file.parent
+    # Construct the absolute path to the script
+    script_path = test_root / "generateSolution.py"
+    # Convert to string for subprocess
+    script_path_str = str(script_path)
+
+    try:
+        # Run UDO method in both parallel and serial
+        subprocess.run(
+            ["python", script_path_str, "--refinements", "2", "--runtime", "serial"],
+            check=True
+        )
+        subprocess.run(
+            ["mpiexec", "-n", "4", "python", script_path_str,
+             "--refinements", "2", "--runtime", "parallel"],
+            check=True
+        )
+
+        # Checkpoint in files
+        with CheckpointFile("serialUDO.h5", 'r') as afile:
+            serialMesh = afile.load_mesh("serialMesh")
+            serialMark = afile.load_function(serialMesh, "serialMark")
+
+        with CheckpointFile("parallelUDO.h5", 'r') as afile:
+            parallelMesh = afile.load_mesh("parallelMesh")
+            parallelMark = afile.load_function(parallelMesh, "parallelMark")
+
+        # Compare overlap, perfect overlap will have Jaccard index 1.0
+        assert VIAMR().jaccard(serialMark, parallelMark) == 1.0
+    finally:
+        # Clean up the generated files
+        for filename in ["serialUDO.h5", "parallelUDO.h5"]:
+            file_path = pathlib.Path(filename).resolve()
+            if file_path.exists():
+                file_path.unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
-    #test_netgen_mesh_creation()
-    #test_spaces()
-    #test_mark_none()
-    #test_refine_udo()
-    #test_refine_vces()
-    #test_overlapping_jaccard()
-    #test_nonoverlapping_jaccard()
-    #test_symmetry_jaccard()
-    #test_overlapping_and_nonoverlapping_hausdorff()
-    #test_petsc4py_refine_vces()
-    #test_refine_vces_petsc4py_firedrake()
-    pass
+    test_netgen_mesh_creation()
+    test_spaces()
+    test_mark_none()
+    test_refine_udo()
+    test_refine_vces()
+    test_overlapping_jaccard()
+    test_nonoverlapping_jaccard()
+    test_symmetry_jaccard()
+    test_overlapping_and_nonoverlapping_hausdorff()
+    test_refine_udo_parallelUDO()
+    test_parallel_udo()
+    test_petsc4py_refine_vces()
+    test_refine_vces_petsc4py_firedrake()

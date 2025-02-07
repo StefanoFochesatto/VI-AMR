@@ -102,7 +102,8 @@ class SphereObstacleProblem(BaseObstacleProblem):
         geo = SplineGeometry()
         geo.AddRectangle(p1=(-2, -2), p2=(2, 2), bc="rectangle")
         ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
-        mesh = Mesh(ngmsh)
+        mesh = Mesh(ngmsh, distribution_parameters={
+                    "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
         return mesh
 
     def setObstacleUFL(self, V):
@@ -144,7 +145,7 @@ class SpiralObstacleProblem(BaseObstacleProblem):
         geo = SplineGeometry()
         geo.AddRectangle(p1=(-1, -1), p2=(1, 1), bc="rectangle")
         ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
-        mesh = Mesh(ngmsh)
+        mesh = Mesh(ngmsh, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
         return mesh
 
     def setObstacleUFL(self, V):
@@ -189,7 +190,8 @@ class LShapedDomainProblem(BaseObstacleProblem):
         ]
         [geo.Append(c, bc=bc) for c, bc in curves]
         ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
-        mesh = Mesh(ngmsh)
+        mesh = Mesh(ngmsh, distribution_parameters={
+                    "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
         return mesh
 
     def setObstacleUFL(self, V):

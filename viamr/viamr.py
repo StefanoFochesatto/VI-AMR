@@ -115,6 +115,106 @@ class VIAMR(OptionsManager):
         # bfs_neighbors() constructs N^n(B) indicator.  Last argument
         # is to refine only in active or only in inactive set (currently commented out).
         return self.bfs_neighbors(mesh, elemborder, n, elemactive)
+    
+    
+    def udomarkParallel(self, mesh, u, lb, n=2):
+        '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Refinement must be done with PETSc refinemarkedelements'''
+        
+        # Generate element-wise and nodal-wise indicators for active set
+        _, DG0 = self.spaces(mesh)
+        nodalactive = self.nodalactive(u, lb)
+
+        # Generate border element indicator
+        elemborder = self.elemborder(nodalactive)
+        
+        mesh.name = 'dmmesh'
+        elemborder.rename('elemborder')
+
+        # Checkpointing to enforce distribution parameters which make UDO possible in parallel
+        # This workaround is necessary because:
+        # 1. firedrake does not have a way of changing distribution parameters after mesh initialization (feature request)
+        # 2. netgen meshes cannot be checkpointed in parallel (issue)
+        # 
+        # In order for this to work we need to use PETSc refinemarkelements instead
+        # also instead of checkpointing we could write a warning telling the user to set the correct distribution parameters
+        # 
+        
+        
+        DistParams = mesh._distribution_parameters
+        
+        if DistParams['overlap_type'][0].name != 'VERTEX' or DistParams['overlap_type'][1] < 1:
+            #We will error out instead
+            raise ValueError("""Error: For UDO to work ensure that distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization.""")
+            
+            # This workaround works for firedrake meshes, not netgen. It also forces me to return the mesh which is a bad user pattern. 
+            # MPI.COMM_WORLD.Barrier()
+            # PETSc.Sys.Print("entered bad params")
+            # PETSc.Sys.Print("writing")
+            # with CheckpointFile("udo.h5", 'w') as afile:
+            #     afile.save_mesh(mesh)
+            #     afile.save_function(elemborder)
+            # PETSc.Sys.Print("writing finished")
+            # PETSc.Sys.Print("reading")
+            # with CheckpointFile("udo.h5", 'r') as afile:
+            #     mesh = afile.load_mesh("dmmesh", distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)}) # <- enforcing distribution parameters
+            #     elemborder = afile.load_function(mesh, "elemborder")
+            # PETSc.Sys.Print("reading finished")
+
+
+            # # reconstruct DG0 space so result indicator has correct partition    
+            # _, DG0 = self.spaces(mesh)
+    
+
+
+        # Pull dm 
+        dm = mesh.topology_dm
+        
+        # This rest of this should really be written by turning the indicator function into a DMLabel
+        # and then writing the dmplex traversal in petsc4py. This is a workaround.
+        
+        
+        # Generate map from dm to fd indices (I think there is a better way to do this in dmcommon)
+        plexelementlist = mesh.cell_closure[:, -1]
+        dm_to_fd = {number: index for index,
+                    number in enumerate(plexelementlist)}
+
+        for i in range(n):
+            # Pull border elements cell with dmplex cell indices
+            BorderSetElementsIndices = [mesh.cell_closure[:, -1][i] for i, value in enumerate(
+                elemborder.dat.data_ro_with_halos) if value != 0]
+
+            # Pull indices of vertices which are incident to said border elements
+            incidentVertices = [dm.getTransitiveClosure(
+                i)[0][4:7] for i in BorderSetElementsIndices]
+
+            # Flatten the list of lists and remove duplicates
+            flat_list = [
+                vertex for sublist in incidentVertices for vertex in sublist]
+            incidentVertices = list(set(flat_list))
+
+            # Pull all elements which are neighbor to the incidentVertices. This produces the set N(B)
+            NeighborSet = set()
+            for i in incidentVertices:
+                for entity in dm.getTransitiveClosure(i, useCone=False)[0]:
+                    if dm.getDepthStratum(2)[0] <= entity < dm.getDepthStratum(2)[1]:
+                        NeighborSet.add(entity)
+
+            NeighborSet = list(NeighborSet)
+
+            # Create new elemborder function
+            elemborder = Function(DG0).interpolate(Constant(0.0))
+
+            for j in NeighborSet:
+                elemborder.dat.data_wo_with_halos[dm_to_fd[j]] = 1
+
+        
+        return elemborder
+
+    
+    
+    
+    
+    
 
     def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
         """Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
@@ -220,9 +320,7 @@ class VIAMR(OptionsManager):
         return adaptedMesh
     
     def refinemarkedelements(self, mesh, indicator):
-        """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D. Still working out the kinks on more than one iteration of refinement."""
-        
-        
+        """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D. Still working out the kinks on more than one iteration of refinement."""   
         # Create Section for DG0 indicator
         tdim = mesh.topological_dimension()
         entity_dofs = np.zeros(tdim+1, dtype=IntType)
@@ -246,7 +344,7 @@ class VIAMR(OptionsManager):
         opts = PETSc.Options()
         opts['dm_plex_transform_active'] = 'refine'
         opts['dm_plex_transform_type'] = 'refine_sbr' # <- skeleton based refinement is what netgen does.
-        dmTransform = PETSc.DMPlexTransform().create()
+        dmTransform = PETSc.DMPlexTransform().create(comm = mesh.comm)
         dmTransform.setDM(dm)
         # For now the only way to set the active label with petsc4py is with PETSc.Options() (DMPlexTransformSetActive() has no binding)
         dmTransform.setFromOptions()
@@ -257,12 +355,19 @@ class VIAMR(OptionsManager):
         dmAdapt.removeLabel('refine')
         dm.removeLabel('refine')
         dmTransform.destroy()
-
+        
+        # Remove labels to stop further distribution in mesh()
+        # dm.distributeSetDefault(False) <- Matt's suggestion
+        dmAdapt.removeLabel("pyop2_core")
+        dmAdapt.removeLabel("pyop2_owned")
+        dmAdapt.removeLabel("pyop2_ghost")
+        # ^ Koki's suggestion
+    
         # Pull distribution parameters from original dm
-        distParams = indicator.function_space().mesh()._distribution_parameters
+        distParams = mesh._distribution_parameters
         
         # Create a new mesh from the adapted dm
-        refinedmesh = Mesh(dmAdapt, distribution_parameters=distParams)
+        refinedmesh = Mesh(dmAdapt, distribution_parameters = distParams, comm = mesh.comm)
         
         return refinedmesh
 
