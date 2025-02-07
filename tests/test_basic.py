@@ -3,6 +3,9 @@ import pytest
 from firedrake import *
 from viamr import VIAMR
 import subprocess
+import os
+import pathlib
+
 
 def get_netgen_mesh(TriHeight=0.4, width=2):
     import netgen
@@ -185,26 +188,44 @@ def test_parallel_udo():
     # This test is not well encapsulated at all however barring crazy changes to the spiral utility problem
     # and jaccard, we have good visibility of parallel udo and refinemarkedelements()
      
-    # Run UDO method in both parallel and serial
-    z = VIAMR()
-    subprocess.run(["python3", "generateSolution.py",
-                "--refinements", "2", "--runtime", "serial"])
-    subprocess.run(
-        ["mpiexec", "-n", "4", "python3", "generateSolution.py",
-        "--refinements", "2", "--runtime", "parallel"])
+    # Get the absolute path of the current test file
+    current_file = pathlib.Path(__file__).resolve()
+    # Navigate to the project root (assumes test_parallel.py is in /tests)
+    test_root = current_file.parent
+    # Construct the absolute path to the script
+    script_path = test_root / "generateSolution.py"
+    # Convert to string for subprocess
+    script_path_str = str(script_path)
 
-    # Checkpoint in files
-    with CheckpointFile("serialUDO.h5", 'r') as afile:
-        serialMesh = afile.load_mesh("serialMesh")
-        serialMark = afile.load_function(serialMesh, "serialMark")
+    try:
+        # Run UDO method in both parallel and serial
+        subprocess.run(
+            ["python", script_path_str, "--refinements", "2", "--runtime", "serial"],
+            check=True
+        )
+        subprocess.run(
+            ["mpiexec", "-n", "4", "python", script_path_str,
+             "--refinements", "2", "--runtime", "parallel"],
+            check=True
+        )
 
+        # Checkpoint in files
+        with CheckpointFile("serialUDO.h5", 'r') as afile:
+            serialMesh = afile.load_mesh("serialMesh")
+            serialMark = afile.load_function(serialMesh, "serialMark")
 
-    with CheckpointFile("parallelUDO.h5", 'r') as afile:
-        parallelMesh = afile.load_mesh("parallelMesh")
-        parallelMark = afile.load_function(parallelMesh, "parallelMark")
+        with CheckpointFile("parallelUDO.h5", 'r') as afile:
+            parallelMesh = afile.load_mesh("parallelMesh")
+            parallelMark = afile.load_function(parallelMesh, "parallelMark")
 
-    #Compare overlap, perfect overlap will have jaccard 1. 
-    assert z.jaccard(serialMark, parallelMark) == 1.0
+        # Compare overlap, perfect overlap will have Jaccard index 1.0
+        assert VIAMR().jaccard(serialMark, parallelMark) == 1.0
+    finally:
+        # Clean up the generated files
+        for filename in ["serialUDO.h5", "parallelUDO.h5"]:
+            file_path = pathlib.Path(filename).resolve()
+            if file_path.exists():
+                file_path.unlink(missing_ok=True)
 
 
 
