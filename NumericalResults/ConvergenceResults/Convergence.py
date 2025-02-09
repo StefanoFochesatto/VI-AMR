@@ -27,9 +27,9 @@ if __name__ == "__main__":
     meshHistory = [problem_instance.setInitialMesh()]
     u = None
 
-    os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
+    #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
     with CheckpointFile("ExactSolution.h5", 'r') as afile:
-        # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh
+        # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh # this might be fixed in new firedrake builds 
         exactMesh = afile.load_mesh('Default')
         exactU = afile.load_function(exactMesh, "ExactU")
     exactV = FunctionSpace(exactMesh, "CG", 1)
