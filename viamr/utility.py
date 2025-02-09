@@ -176,7 +176,9 @@ class LShapedDomainProblem(BaseObstacleProblem):
     def setInitialMesh(self):
         # L shaped domain, missing 4th quadrant
         geo = SplineGeometry()
-        pnts = [(0, 0), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1)]
+        interiorX = 1.25
+        interiorY = -1.25
+        pnts = [(interiorX, interiorY), (6, interiorY), (6, 2), (2, 2), (-2, 2), (-2, -2), (-2, -6), (interiorX, -6)]
         p1, p2, p3, p4, p5, p6, p7, p8 = [geo.AppendPoint(*pnt) for pnt in pnts]
         curves = [
             [["line", p1, p2], "line"],
@@ -195,33 +197,63 @@ class LShapedDomainProblem(BaseObstacleProblem):
         return mesh
 
     def setObstacleUFL(self, V):
-        # Bump function parameters
-        center = [-0.5, 0.5]
-        width = (0.5,)
-        height = 0.25
-
         mesh = V.mesh()
         (x, y) = SpatialCoordinate(mesh)
-        dsqr = (x + 0.5) ** 2 + (y - 0.5) ** 2
-        obsUFL = (1.5 * exp(-2.5 * dsqr)) - 1
+        r = sqrt(x * x + y * y)
+        r0 = 0.9
+        psi0 = np.sqrt(1.0 - r0 * r0)
+        dpsi0 = -r0 / psi0
+        obsUFL = conditional(le(r, r0), sqrt(1.0 - r * r), psi0 + dpsi0 * (r - r0))
         return obsUFL
+        # Bump function parameters
+        #center = [-0.5, 0.5]
+        #width = (0.5,)
+        #height = 0.25
+
+        #mesh = V.mesh()
+        #(x, y) = SpatialCoordinate(mesh)
+        #dsqr = (x + 0.5) ** 2 + (y - 0.5) ** 2
+        #obsUFL = (1.5 * exp(-2.5 * dsqr)) - 1
+        #return obsUFL
 
     def setBoundaryConditionsUFL(self, V, bdryID=None):
-        bdryUFL = Constant(0.0)
-        # Pull ngmsh from V.mesh() and get the boundary IDs for the boundary conditions
+        mesh = V.mesh()
+        (x, y) = SpatialCoordinate(mesh)
+        r = sqrt(x * x + y * y)
+        afree = 0.697965148223374
+        A = 0.680259411891719
+        B = 0.471519893402112
+
+        obsUFL = self.setObstacleUFL(V)
+        bdryUFL = conditional(le(r, afree), obsUFL, -A * ln(r) + B)
+        
         ngmsh = V.mesh().netgen_mesh
         bdryID = [
-            i + 1
-            for i, name in enumerate(ngmsh.GetRegionNames(codim=1))
-            if name in ["line"]
+           i + 1
+           for i, name in enumerate(ngmsh.GetRegionNames(codim=1))
+           if name in ["line"]
         ]
+
         if bdryID is None:
             bdryID = (1, 2, 3, 4)
-        return bdryUFL, bdryID
+
+        return bdryUFL, bdryID    
+        
+        #bdryUFL = Constant(0.0)
+        # Pull ngmsh from V.mesh() and get the boundary IDs for the boundary conditions
+        #ngmsh = V.mesh().netgen_mesh
+        #bdryID = [
+        #    i + 1
+        #    for i, name in enumerate(ngmsh.GetRegionNames(codim=1))
+        #    if name in ["line"]
+        #]
+        #if bdryID is None:
+        #    bdryID = (1, 2, 3, 4)
+        #return bdryUFL, bdryID
 
 
 # Example usage
-# if __name__ == '__main__':
+#if __name__ == '__main__':
 #    u = None
 #    problem = LShapedDomainProblem(TriHeight=.05)
 #    amr = VIAMR()
@@ -232,5 +264,4 @@ class LShapedDomainProblem(BaseObstacleProblem):
 #        mark = amr.udomark(meshHist[i], u, lb, n=1)
 #        mesh = meshHist[i].refine_marked_elements(mark)
 #        meshHist.append(mesh)
-#   VTKFile('lshape.pvd').write(u)
-#
+#    VTKFile('lshape.pvd').write(u)
