@@ -24,10 +24,10 @@ if __name__ == "__main__":
 
     problem_instance = SphereObstacleProblem(TriHeight=args.initTriHeight)
     amr_instance = VIAMR()
-    meshHistory = [problem_instance.setInitialMesh()]
+    mesh = problem_instance.setInitialMesh()
     u = None
 
-    #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
+    os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
     with CheckpointFile("ExactSolution.h5", 'r') as afile:
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh # this might be fixed in new firedrake builds 
         exactMesh = afile.load_mesh('Default')
@@ -41,7 +41,6 @@ if __name__ == "__main__":
 
     data = []
     for i in range(args.maxIterations):
-        mesh = meshHistory[i]
         # solution gets overwritten; never stored
         u, lb = problem_instance.solveProblem(mesh=mesh, u=u)
 
@@ -88,7 +87,7 @@ if __name__ == "__main__":
                 mark = Function(DG0).interpolate(Constant(1.0))
                 nextmesh = mesh.refine_marked_elements(mark)
                 mesh = nextmesh
-                meshHistory.append(mesh)
+
 
             else:
                 print("Adaptive")
@@ -99,14 +98,14 @@ if __name__ == "__main__":
 
                 nextmesh = mesh.refine_marked_elements(mark)
                 mesh = nextmesh
-                meshHistory.append(mesh)
+
 
         elif args.refinement == "Uniform":
             print(f"Running {args.refinement} scheme:{i}")
             mark = Function(DG0).interpolate(Constant(1.0))
             nextmesh = mesh.refine_marked_elements(mark)
             mesh = nextmesh
-            meshHistory.append(mesh)
+
 
         elif args.refinement == "Adaptive":
             print(f"Running {args.refinement} scheme:{i}")
@@ -117,7 +116,7 @@ if __name__ == "__main__":
 
             nextmesh = mesh.refine_marked_elements(mark)
             mesh = nextmesh
-            meshHistory.append(mesh)
+
 
         else:
             raise ValueError(f"Unknown refinement type: {args.refinement}")
