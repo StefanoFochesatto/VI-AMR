@@ -41,6 +41,9 @@
 \newcommand{\norm}[2]{\left\| #1 \right\|_{#2}}
 \newcommand{\abs}[1]{\left| #1 \right|}
 
+\newcommand{\grad}{\nabla}
+\newcommand{\Div}{\nabla\cdot}
+
 
 \begin{document}
 
@@ -122,37 +125,41 @@ However, weakly acknowledged in the FE literature for VIs \cite[for example]{Sut
 \label{fig:parabola}
 \end{figure}
 
-The above example, and our numerical results (Section \ref{sec:results}), justifies our approach to adaptive mesh refinement (AMR) for VIs.
+The above example, and our numerical results (Section \ref{sec:results}), justifies our approach to adaptive mesh refinement (AMR) for VIs.  Because the convergence of VI problems is dominated by the error in approximating the free boundary, an adaptive refinement scheme that is able to concentrate effort around the solution free boundary will both enhance convergence to the solution over the inactive set, and reduce unnecessary computation in the active set.
 
-Three AMR methods are described in Section \ref{sec:viamr}.  Two methods are of the tag-and-refine type [FIXME: CITE?], only differing by the analysis technique used to identify which elements to tag.  For these methods skeleton-based refinement \cite{PlazaCarey2000} is applied, as implemented in PETSc's DMPlex component \cite{petsc-user-ref}.  A third method is goal-oriented and metric-based \cite{Alauzet2010,Wallworketal2020}, where an intermediate representation of the size, shape, and orientation of the refined mesh is constructed, namely a tensor-valued Riemannian metric.  For this third method the mesh is refined, from the metric, using the MMG mesh library \cite{DapognyDobrzynskiFrey2014}.
+Three AMR methods are described in Section \ref{sec:viamr}.  Two methods are of the tag-and-refine type [FIXME: CITE?], only differing by the analysis technique used to identify which elements to tag.  For these methods skeleton-based refinement \cite{PlazaCarey2000}, implemented within PETSc's DMPlex component \cite{petsc-user-ref}, is applied after tagging.  The third method is goal-oriented and metric-based \cite{Alauzet2010,Wallworketal2020}.  This method constructs an intermediate representation of the size, shape, and orientation of the refinement, namely a tensor-valued Riemannian metric, and then the mesh is actually refined using the MMG mesh library \cite{DapognyDobrzynskiFrey2014}.
 
 Traditional AMR for PDE problems \citep{BangerthRannacher2003} computes error indicators within the solution domain based on analysis of an FE solution computed on the current mesh.  These methods are designed to increase mesh resolution, or polynomial degree \cite{Demkowicz2007}, by means of a local error estimator, for some goal often referred to as the quantity of interest (QoI), denoted as $J(\cdot)$. The dual weighted residual (DWR) method \cite{RannacherSuttmeier1997} begins with a posteriori or a priori analysis of the quantity $J(u) - J(u_h)$.  Estimates of this error quantity are then decomposed into local element-wise error estimators which can be used as a heuristic to tag elements for refinement.
 
-FIXME In terms of numerics, the constraint of $u \geq \psi$ makes this problem nonlinear so we are required to use an iterative solver. In this project our main solver will be VI-adapted Newton with Reduced-Space Line Search (VINEWTONRSLS). In Chapter 3 we will show that numerical methods will not converge until the active and inactive sets stabilize and the free boundary is identified. For solvers like VINEWTONRSLS which employ a Newton iteration, we find that they can only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009} and therefore convergence is tied to mesh resolution and is proportional to the number of grid spaces between initial iterate free boundary and discrete solution free boundary \citep[page 324]{Bueler2021}.
+Our implementations of these methods are written using the Firedrake finite element library and produce conforming meshes with no hanging nodes.   These high quality meshes are suitable for various VI solvers.  Note that the constraint of $u \geq \psi$ makes these VI problems nonlinear so we are required to use an iterative solver.  Our main solver will be a VI-adapted Newton method with a reduced-space line search (RSLS) \cite{BensonMunson2006}, implemented in PETSc \cite{petsc-user-ref}.  Such a numerical method will not converge quickly until the active and inactive sets stabilize on the given mesh, and the discrete free boundary is identified, at which point the domain of quadratic convergence can be entered, giving convergence in a few more iterations.  Newton solvers like RSLS can only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009} and therefore convergence is roughly proportional to the number of grid spaces between the initial iterate free boundary and the discrete solution free boundary \citep{Bueler2021}.  Using the meshes generated here as coarse grids for the FASCD multilevel solver in \cite{BuelerFarrell2024}, is one path to a scalable solver which overcomes this convergence rate limitation.
 
-FIXME As we will see in Chapter 3, convergence of VI problems is dominated by the error in approximating the free boundary. An adaptive refinement scheme that is able to concentrate effort around the solution free boundary will both, enhance convergence properties and reduce unnecessary computation in the active set.
-
-FIXME In this project we will introduce two adaptive refinement schemes which can identify the free boundary to a high degree of accuracy and permit the user to vary the spread of the refinement area. In the first strategy we compute a node-wise indicator function for the active set for use as an initial iterate in a single step of a time-dependent heat equation problem. Solving a single step of this problem has the effect of smoothing the indicator about the free boundary. The result of this smoothing is then averaged over each element and thresholded for refinement.  The second strategy focuses on the discrete identification of elements adjacent to the free boundary, employing a graph-based approach to mark neighboring elements for refinement.  This generalizes the bitmap image processing operation of dilation [cite] to unstructured meshes.
-
-FIXME Our implementations of these methods are written using the Firedrake finite element library and produce conforming meshes with no hanging nodes. These high quality meshes are suitable for various VI solvers, including as coarse grids for the FASCD multilevel solver in \cite{BuelerFarrell2024}
+FIXME  In the first strategy we compute a node-wise indicator function for the active set for use as an initial iterate in a single step of a time-dependent heat equation problem. Solving a single step of this problem has the effect of smoothing the indicator about the free boundary. The result of this smoothing is then averaged over each element and thresholded for refinement.  The second strategy focuses on the discrete identification of elements adjacent to the free boundary, employing a graph-based approach to mark neighboring elements for refinement.  This generalizes the bitmap image processing operation of dilation [cite] to unstructured meshes.
 
 FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCES and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries. 
 
 
 \section{Variational inequalities and their finite element errors} \label{sec:vifem}
 
-We seek to find the position of the membrane $u(x)$, with fixed valued $u(x) = g_D(x)$ on $\partial \Omega$ with a load $f$ applied, and where $u(x)$ is constrained to be above an obstacle $\psi(x)$, 
-The admissable set for such a problem can be described by 
-  \begin{equation}
-    K_\psi = \{u \in X| u \geq \psi \}
-  \end{equation}
-  where $X$ is a Sobolev space with boundary conditions $g_D$ enforced. 
-  
-  We can describe another, equivalent, variational inequality (VI) formulation of the obstacle problem 
-  \begin{equation}
-    \int_\Omega \nabla u \cdot \nabla(v - u) \geq \int_\Omega f(v - u), \quad \text{ for all } v \in K_\psi.
-  \end{equation} 
-Sets $I_u$, $A_u$, and $\Gamma_u$ are defined in the Introduction.
+For a bounded, open domain $\Omega \subset \RR^d$, $d=2,3$, with Lipschitz boundary \cite{Ciarlet2002}, let $X = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}, with norm denoted $\|\cdot\|$.  For simplicity we will assume regular data, so suppose $\psi \in X \cap C(\bar\Omega)$, and assume $g\in C(\partial \Omega)$ satisfies $g \ge \psi|_{\partial\Omega}$.  Let
+\begin{equation} \label{eq:admissible}
+K = \{u \in X \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
+\end{equation}
+be the admissible subset, exactly as for the classical obstacle problem \eqref{eq:classical:admissible}.  Note that $K\subset X$ is closed and convex.
+
+Let $X'$ be the dual space of $X$, with action denoted $\omega[v] \in \RR$ for $\omega \in X'$ and $v\in X$, and with norm $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:K \to X'$ be a given continuous function, generally nonlinear, and let $\ell\in X'$ be given.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in K$ so that
+\begin{equation} \label{eq:vi}
+F(u)[v - u] \ge \ell[v - u] \quad \text{ for all } v \in K.
+\end{equation}
+This problem generals the classical obstacle problem \eqref{eq:classical:vi}.
+
+The VI problems considered here can be analyzed, at least in part, within the framework of monotonicity and coercivity.  We say $F$ is monotone if $(F(v) - F(w))[v - w] \ge 0$ for all $v,w \in K$, and that $F$ is $q$-coercive, for $q>1$, if there is $\alpha>0$ so that
+\begin{equation} \label{eq:coercive}
+(F(v) - F(w))[v - w] \ge \alpha \|v-w\|^q
+\end{equation}
+for all $v,w \in K$.  Note that if $F$ is $q$-coercive then it is also monotone, indeed strictly monotone in the sense that $(F(v) - F(w))[v - w] > 0$ for $v\ne w$.  It is a well-known fact that if $F$ is continuous and $q$-coercive then VI \eqref{eq:vi} is well-posed \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.
+
+The classical obstacle problem \eqref{eq:classical:vi} has $X=W^{1,2}(\Omega) = H^1(\Omega)$, i.e.~$p=2$, and $F(u)[v] = \int_\Omega \grad u \cdot \grad v$.  Here $F$ is linear and $2$-coercive, because the (weak) Laplacian is uniformly elliptic \cite{Evans2010}, so \eqref{eq:classical:vi} is well-posed.  Problem \eqref{eq:classical:vi} is also the first-order optimality condition for the minimization of a continuous, quadratic objective function over the admissible set $K$, but we will not need this optimization structure at an point, so it is not assumed henceforth.
+
 
 FIXME Cea's lemma and Falk technique
 
