@@ -3,10 +3,12 @@ from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
 from viamr.utility import SphereObstacleProblem
+import time
 import math
 import argparse
 import pandas as pd
 import os
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -84,40 +86,49 @@ if __name__ == "__main__":
 
             if HError < h**2 or switch:
                 print("Uniform")
+                tic = time.perf_counter()
                 mark = Function(DG0).interpolate(Constant(1.0))
                 nextmesh = mesh.refine_marked_elements(mark)
+                toc = time.perf_counter()
                 mesh = nextmesh
 
 
             else:
                 print("Adaptive")
+                tic = time.perf_counter()
                 if args.amrMethod == "udo":
                     mark = amr_instance.udomark(mesh, u, lb, n=3)
                 elif args.amrMethod == "vces":
                     mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
 
                 nextmesh = mesh.refine_marked_elements(mark)
+                toc = time.perf_counter()
                 mesh = nextmesh
 
 
         elif args.refinement == "Uniform":
             print(f"Running {args.refinement} scheme:{i}")
+            tic = time.perf_counter()
             mark = Function(DG0).interpolate(Constant(1.0))
             nextmesh = mesh.refine_marked_elements(mark)
+            toc = time.perf_counter()
             mesh = nextmesh
 
 
         elif args.refinement == "Adaptive":
             print(f"Running {args.refinement} scheme:{i}")
+            tic = time.perf_counter()
             if args.amrMethod == "udo":
                 mark = amr_instance.udomark(mesh, u, lb, n=3)
             elif args.amrMethod == "vces":
                 mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
 
             nextmesh = mesh.refine_marked_elements(mark)
+            toc = time.perf_counter()
             mesh = nextmesh
 
 
+        # implement metric based refinement
         else:
             raise ValueError(f"Unknown refinement type: {args.refinement}")
 
@@ -127,7 +138,8 @@ if __name__ == "__main__":
             'Hausdorff': HError,
             'Elements': ne,
             'Vertices': nv,
-            'sizes': (hmin, hmax)
+            'sizes': (hmin, hmax),
+            'time': toc - tic
         })
 
     # Ensure the 'Results' directory exists
