@@ -7,6 +7,7 @@ from firedrake.output import VTKFile
 from firedrake.utils import IntType
 import firedrake.cython.dmcommon as dmcommon
 
+
 from pyop2.mpi import MPI
 
 from shapely.geometry import MultiLineString
@@ -118,7 +119,7 @@ class VIAMR(OptionsManager):
     
     
     def udomarkParallel(self, mesh, u, lb, n=2):
-        '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Refinement must be done with PETSc refinemarkedelements'''
+        '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements'''
         
         # Generate element-wise and nodal-wise indicators for active set
         _, DG0 = self.spaces(mesh)
@@ -183,39 +184,41 @@ class VIAMR(OptionsManager):
             BorderSetElementsIndices = [mesh.cell_closure[:, -1][i] for i, value in enumerate(
                 elemborder.dat.data_ro_with_halos) if value != 0]
 
+
+
             # Pull indices of vertices which are incident to said border elements
             incidentVertices = [dm.getTransitiveClosure(
                 i)[0][4:7] for i in BorderSetElementsIndices]
 
+     
             # Flatten the list of lists and remove duplicates
-            flat_list = [
-                vertex for sublist in incidentVertices for vertex in sublist]
-            incidentVertices = list(set(flat_list))
+            flattened_array = np.ravel(incidentVertices)
+            incidentVertices = np.unique(flattened_array)
 
+
+
+            # Pull the depth stratum for the vertices            
+            lb = dm.getDepthStratum(2)[0]
+            ub = dm.getDepthStratum(2)[1]
             # Pull all elements which are neighbor to the incidentVertices. This produces the set N(B)
-            NeighborSet = set()
+            NeighborSet = []
             for i in incidentVertices:
-                for entity in dm.getTransitiveClosure(i, useCone=False)[0]:
-                    if dm.getDepthStratum(2)[0] <= entity < dm.getDepthStratum(2)[1]:
-                        NeighborSet.add(entity)
+                idx = np.where((dm.getTransitiveClosure(i, useCone=False)[0] >= lb) & (dm.getTransitiveClosure(i, useCone=False)[0] < ub))
+                NeighborSet.extend(dm.getTransitiveClosure(i, useCone=False)[0][idx])
+            # Flatten the list of lists and remove duplicates
+            NeighborSet = np.ravel(NeighborSet)
+            NeighborSet = np.unique(NeighborSet)
 
-            NeighborSet = list(NeighborSet)
 
             # Create new elemborder function
             elemborder = Function(DG0).interpolate(Constant(0.0))
 
             for j in NeighborSet:
                 elemborder.dat.data_wo_with_halos[dm_to_fd[j]] = 1
-
         
         return elemborder
 
     
-    
-    
-    
-    
-
     def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
         """Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
         Valid in parallel."""
@@ -284,6 +287,7 @@ class VIAMR(OptionsManager):
         metric.compute_hessian(u)
         metric.normalise()
         return metric
+    
 
     def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50]):
         """Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the
@@ -318,6 +322,8 @@ class VIAMR(OptionsManager):
         # Adapt
         adaptedMesh = adapt(mesh, VImetric)
         return adaptedMesh
+    
+    
     
     def refinemarkedelements(self, mesh, indicator):
         """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D. Still working out the kinks on more than one iteration of refinement."""   

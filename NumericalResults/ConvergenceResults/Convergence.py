@@ -44,8 +44,10 @@ if __name__ == "__main__":
     data = []
     for i in range(args.maxIterations):
         # solution gets overwritten; never stored
+        tic = time.perf_counter()
         u, lb = problem_instance.solveProblem(mesh=mesh, u=u)
-
+        toc = time.perf_counter()
+        
         # Get Mesh details
         nv, ne, hmin, hmax = amr_instance.meshsizes(mesh)
 
@@ -86,45 +88,45 @@ if __name__ == "__main__":
 
             if HError < h**2 or switch:
                 print("Uniform")
-                tic = time.perf_counter()
+                mtic = time.perf_counter()
                 mark = Function(DG0).interpolate(Constant(1.0))
                 nextmesh = mesh.refine_marked_elements(mark)
-                toc = time.perf_counter()
+                mtoc = time.perf_counter()
                 mesh = nextmesh
 
 
             else:
                 print("Adaptive")
-                tic = time.perf_counter()
+                mtic = time.perf_counter()
                 if args.amrMethod == "udo":
-                    mark = amr_instance.udomark(mesh, u, lb, n=3)
+                    mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
                 elif args.amrMethod == "vces":
                     mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
 
                 nextmesh = mesh.refine_marked_elements(mark)
-                toc = time.perf_counter()
+                mtoc = time.perf_counter()
                 mesh = nextmesh
 
 
         elif args.refinement == "Uniform":
             print(f"Running {args.refinement} scheme:{i}")
-            tic = time.perf_counter()
+            mtic = time.perf_counter()
             mark = Function(DG0).interpolate(Constant(1.0))
             nextmesh = mesh.refine_marked_elements(mark)
-            toc = time.perf_counter()
+            mtoc = time.perf_counter()
             mesh = nextmesh
 
 
         elif args.refinement == "Adaptive":
             print(f"Running {args.refinement} scheme:{i}")
-            tic = time.perf_counter()
+            mtic = time.perf_counter()
             if args.amrMethod == "udo":
-                mark = amr_instance.udomark(mesh, u, lb, n=3)
+                mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
             elif args.amrMethod == "vces":
                 mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
 
             nextmesh = mesh.refine_marked_elements(mark)
-            toc = time.perf_counter()
+            mtoc = time.perf_counter()
             mesh = nextmesh
 
 
@@ -139,7 +141,8 @@ if __name__ == "__main__":
             'Elements': ne,
             'Vertices': nv,
             'sizes': (hmin, hmax),
-            'time': toc - tic
+            'MeshTime': mtoc - mtic,
+            'SolveTime' : toc - tic
         })
 
     # Ensure the 'Results' directory exists
