@@ -74,7 +74,9 @@ This code runs a convergence analysis given the following kwargs:
 
 So we run the analysis and the code spits out CSVs whose titles identify the refinement strategy and AMR method. The header for the CSVs looks like; L2, Jaccard, Hausdorff, Elements, Vertices, Sizes (hmin, hmax).
 
-TODO: Get rid of meshHistory it is not necessary and it is slow and bad. Add timing data. Add metric based adaptation, possibly abstract Hybrid scheme implementation. 
+TODO: Get rid of meshHistory it is not necessary and it is slow and bad. Add timing data. Add metric based adaptation, possibly abstract Hybrid scheme implementation.
+
+TODO: Add H1 norm, to computation
 
 - `GeneratePlots.py`
 This is the driver code for `Convergence.py`, so when we run `GeneratePlots.py --runconvergence` we use subprocess to run `Convergence.py` with every combination of --refinement and --amrMethod. Without the `--runconvergence` flag we assume the CSVs have been generated and they get read into a dataframe and the `getPlot()` function will plot any two columns against each other for every --amrMethod.
@@ -99,3 +101,4 @@ Time is not clear to me. Should we time from the end of the solve to the constru
  - Time vs L2
  - Time vs Jaccard
  - Time vs Hausdorff
+ - dof vs solve time
