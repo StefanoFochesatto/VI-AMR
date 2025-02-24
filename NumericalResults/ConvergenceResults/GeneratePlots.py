@@ -159,13 +159,27 @@ if __name__ == "__main__":
     print("MultiIndex DataFrame created successfully.")
     print(Convdf.head())
 
-    # Example Plot
+    # Plots from thesis
     getPlot(Convdf, "udo", "Elements", "L2", plottype="loglog")
     getPlot(Convdf, "vces", "Elements", "L2", plottype="loglog")
     getPlot(Convdf, "udo", "Elements", "Hausdorff", plottype="loglog")
     getPlot(Convdf, "vces", "Elements", "Hausdorff", plottype="loglog")
     getPlot(Convdf, "udo", "Elements", "Jaccard", plottype="loglog")
     getPlot(Convdf, "vces", "Elements", "Jaccard", plottype="loglog")
+    
+    # Time Based Plots
+    getPlot(Convdf, "udo", "MeshTime", "L2", plottype="loglog")
+    getPlot(Convdf, "vces", "MeshTime", "L2", plottype="loglog")
+    
+    getPlot(Convdf, "udo", "MeshTime", "Hausdorff", plottype="loglog")
+    getPlot(Convdf, "vces", "MeshTime", "Hausdorff", plottype="loglog")
+
+    getPlot(Convdf, "udo", "MeshTime", "Jaccard", plottype="loglog")
+    getPlot(Convdf, "vces", "MeshTime", "Jaccard", plottype="loglog")
+
+    getPlot(Convdf, "udo", "Elements", "SolveTime", plottype="loglog")
+    getPlot(Convdf, "vces", "Elements", "SolveTime", plottype="loglog")
+
 
     # loglog Number of elements vs l2 with convergence rate
     # Number of elements vs Hausdorff distance

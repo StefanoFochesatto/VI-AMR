@@ -140,7 +140,8 @@ if __name__ == "__main__":
             'Hausdorff': HError,
             'Elements': ne,
             'Vertices': nv,
-            'sizes': (hmin, hmax),
+            'SizeMin': hmin,
+            'SizeMax': hmax,
             'MeshTime': mtoc - mtic,
             'SolveTime' : toc - tic
         })
