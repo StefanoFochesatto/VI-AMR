@@ -195,11 +195,11 @@ class VIAMR(OptionsManager):
             flattened_array = np.ravel(incidentVertices)
             incidentVertices = np.unique(flattened_array)
 
-
-
-            # Pull the depth stratum for the vertices            
-            lb = dm.getDepthStratum(2)[0]
-            ub = dm.getDepthStratum(2)[1]
+            # Needs to be based of topological dimension
+            # Pull the depth stratum for the vertices           
+            tdim = mesh.topological_dimension() 
+            lb = dm.getDepthStratum(tdim)[0]
+            ub = dm.getDepthStratum(tdim)[1]
             # Pull all elements which are neighbor to the incidentVertices. This produces the set N(B)
             NeighborSet = []
             for i in incidentVertices:
