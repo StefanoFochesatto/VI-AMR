@@ -2,7 +2,7 @@ from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
 from viamr.utility import LShapedDomainProblem
-levels = 4
+levels = 6
 outfile = "result_LShaped.pvd"
 
 
