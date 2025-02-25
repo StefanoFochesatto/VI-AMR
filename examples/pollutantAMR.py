@@ -7,11 +7,10 @@ import petsc4py
 from viamr import VIAMR
 from netgen.occ import *
 
-### There is an issue with 3d netgen refinement where the outer boundary is 
-## refined every time, someone recently brought this up in the Slack, I don't know if its ngsPETSc or netgen. 
+# This issue about refinement along the surface will be fixed in the next firedrake release. Install the latest ngsPETSc changes for now. 
 
 amr = VIAMR()
-refinement = 3
+refinement = 2
 # set up mesh
 box = Box((-1, -1, -1), (1, 1, 1))
 ngmesh = OCCGeometry(box, dim=3).GenerateMesh(maxh=.1)
