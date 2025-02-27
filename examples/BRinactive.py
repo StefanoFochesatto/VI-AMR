@@ -13,6 +13,14 @@ outfile = "result_LShaped.pvd"
 # Union FB and DWR marks
 
 
+# following function is from
+#   https://github.com/pefarrell/icerm2024/blob/main/slides.pdf  (slide 109)
+#   https://github.com/pefarrell/icerm2024/blob/main/02_netgen/01_l_shaped_adaptivity.py
+# the original source is perhaps
+#   Babuška, I., & Rheinboldt, W. C. (1978). Error estimates for adaptive
+#   finite element computations. SIAM Journal on Numerical Analysis, 15(4), 736-754.
+#   https://www.jstor.org/stable/pdf/2156851.pdf
+
 def estimate_error(mesh, uh):
     W = FunctionSpace(mesh, "DG", 0)
     eta_sq = Function(W)
