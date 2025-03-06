@@ -10,6 +10,9 @@ import pandas as pd
 import os
 
 
+vcesHybridVertexCounts = [413,623,2417,3221,12737,15837, 113]
+vcesAdaptVertexCounts = [194,436,842,1644,3216,6302, 113]
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run convergence script with specified parameters.")
@@ -82,30 +85,39 @@ if __name__ == "__main__":
         h = max(mesh.cell_sizes.dat.data)
         CG1, DG0 = amr_instance.spaces(mesh)
         if args.refinement == "Hybrid":
-            print(f"Running {args.refinement} scheme:{i}")
-            ratio = HError/(h**2)
-            switch = math.isclose(ratio, 1, rel_tol=.1)
-
-            if HError < h**2 or switch:
-                print("Uniform")
+            
+            if args.amrMethod == "metric":
                 mtic = time.perf_counter()
-                mark = Function(DG0).interpolate(Constant(1.0))
-                nextmesh = mesh.refine_marked_elements(mark)
+                amr_instance.setmetricparameters(target_complexity=vcesHybridVertexCounts[i])
+                nextmesh = amr_instance.metricrefine(mesh, u, lb, weights = [.5, .5]) # Corresponds to equal averaging of freeboundary and hessian based metrics. 
                 mtoc = time.perf_counter()
-                mesh = nextmesh
-
-
+                
+            
             else:
-                print("Adaptive")
-                mtic = time.perf_counter()
-                if args.amrMethod == "udo":
-                    mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
-                elif args.amrMethod == "vces":
-                    mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
+                print(f"Running {args.refinement} scheme:{i}")
+                ratio = HError/(h**2)
+                switch = math.isclose(ratio, 1, rel_tol=.1)
 
-                nextmesh = mesh.refine_marked_elements(mark)
-                mtoc = time.perf_counter()
-                mesh = nextmesh
+                if HError < h**2 or switch:
+                    print("Uniform")
+                    mtic = time.perf_counter()
+                    mark = Function(DG0).interpolate(Constant(1.0))
+                    nextmesh = mesh.refine_marked_elements(mark)
+                    mtoc = time.perf_counter()
+                    mesh = nextmesh
+
+
+                else:
+                    print("Adaptive")
+                    mtic = time.perf_counter()
+                    if args.amrMethod == "udo":
+                        mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+                    elif args.amrMethod == "vces":
+                        mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
+
+                    nextmesh = mesh.refine_marked_elements(mark)
+                    mtoc = time.perf_counter()
+                    mesh = nextmesh
 
 
         elif args.refinement == "Uniform":
@@ -122,10 +134,19 @@ if __name__ == "__main__":
             mtic = time.perf_counter()
             if args.amrMethod == "udo":
                 mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+                nextmesh = mesh.refine_marked_elements(mark)
+
             elif args.amrMethod == "vces":
                 mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
-
-            nextmesh = mesh.refine_marked_elements(mark)
+                nextmesh = mesh.refine_marked_elements(mark)
+                
+            elif args.amrMethod == "metric":
+                amr_instance.setmetricparameters(target_complexity = vcesAdaptVertexCounts[i])
+                nextmesh = amr_instance.metricrefine(mesh, u, lb, weights = [0, 1]) # Corresponds to only freeboundary metric applied
+                
+                
+                
+                
             mtoc = time.perf_counter()
             mesh = nextmesh
 

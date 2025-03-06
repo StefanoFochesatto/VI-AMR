@@ -128,7 +128,7 @@ if __name__ == "__main__":
     if args.runconvergence:
         # adjust flags for running convergence script, small modification for metric based adaptation
         # amr_methods = ["udo", "vces", "metric"] <- will need to adjust if statements in Convergence.py
-        amr_methods = ["udo", "vces"]
+        amr_methods = ["udo", "vces", "metric"]
         refinements = ["Uniform", "Hybrid", "Adaptive"]
 
         script_path = "Convergence.py"

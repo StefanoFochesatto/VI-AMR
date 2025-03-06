@@ -10,10 +10,10 @@ from netgen.occ import *
 # This issue about refinement along the surface will be fixed in the next firedrake release. Install the latest ngsPETSc changes for now. 
 
 amr = VIAMR()
-refinement = 2
+refinement = 4
 # set up mesh
 box = Box((-1, -1, -1), (1, 1, 1))
-ngmesh = OCCGeometry(box, dim=3).GenerateMesh(maxh=.1)
+ngmesh = OCCGeometry(box, dim=3).GenerateMesh(maxh=.2)
 mesh = Mesh(ngmesh, distribution_parameters={
             "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
 
