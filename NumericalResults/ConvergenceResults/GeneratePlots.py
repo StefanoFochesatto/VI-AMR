@@ -77,7 +77,7 @@ def create_multiindex_dataframe(result_dir, methodlist):
 
 
 if __name__ == "__main__":
-    os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
+    #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
     methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif', 'udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
 
 
@@ -114,6 +114,9 @@ if __name__ == "__main__":
     
     getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'], 'Elements', 'Jaccard', 'VCES', plottype='loglog')
     getPlot(Convdf, ['udo', 'udoUnif', 'uniform'], 'Elements','Jaccard', 'UDO', plottype='loglog')
+
+    getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'],'Elements', 'L2', 'VCES', plottype='loglog')
+    getPlot(Convdf, ['udo', 'udoUnif', 'uniform'],'Elements', 'L2', 'UDO', plottype='loglog')
 
 
     
