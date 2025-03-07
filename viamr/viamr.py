@@ -56,7 +56,7 @@ class VIAMR(OptionsManager):
         z.interpolate(conditional(abs(u - lb) < self.activetol, 1, 0))
         return z
     
-    def elemainactive(self, u, lb):
+    def eleminactive(self, u, lb):
         """Compute element inactive set indicator in DG0."""
         if self.debug:
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
@@ -340,7 +340,7 @@ class VIAMR(OptionsManager):
     # Error estimator computation is from
     #   https://github.com/pefarrell/icerm2024/blob/main/slides.pdf  (slide 109)
     #   https://github.com/pefarrell/icerm2024/blob/main/02_netgen/01_l_shaped_adaptivity.py
-    def BRinactivemark(self, mesh, u, lb, resUFL, theta):
+    def BRinactivemark(self, mesh, u, lb, resUFL, theta, markFB = None):
         _ , W = self.spaces(mesh)
         eta_sq = Function(W)
         w = TestFunction(W)
@@ -365,8 +365,11 @@ class VIAMR(OptionsManager):
         # Thinking about removing the Free Boundary mark from here. 
         # Mask inactive set 
         eleminactive = self.eleminactive(u, lb)
-        etaInactive = Function(DG0).interpolate(eta * eleminactive)
-        
+        if markFB == None:
+            etaInactive = Function(W).interpolate(eta * eleminactive)
+        else:
+            etaInactive = Function(W).interpolate(eta * eleminactive* abs(markFB - 1))
+            
         
         # Refine all cells greater than theta*eta_max
         with etaInactive.dat.vec_ro as eta_:
@@ -378,9 +381,7 @@ class VIAMR(OptionsManager):
             
             
     def union(self, mark1, mark2):
-        
         markUnion = Function(mark1.function_space()).interpolate((mark1 + mark2) - (mark1*mark2))
-        
         return markUnion
         
     

@@ -1,66 +1,39 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import subprocess  # for running convergence.py later
+import subprocess  
 import os
 import argparse
 
 
-def getPlot(Convdf, amrtype, x, y, plottype=None):
-    """Generates and displays a convergence plot for different mesh refinement schemes.
-    Args:
-        df (pd.DataFrame): The DataFrame containing the convergence data. It is expected
-            to have a MultiIndex with levels ['amrType', 'Scheme', 'index'] where 'Scheme' identifies
-            different refinement strategies (e.g., AMR, Hybrid, Unif).
-        amrtype (str): A string specifying the type of adaptive mesh refinement being analyzed.
-            This is used in the plot title to distinguish between different AMR methods.
-        x (str): The name of the column in the DataFrame to be used as the x-axis of the plot.
-        y (str): The name of the column in the DataFrame to be used as the y-axis of the plot.
-        plottype (str, optional): The type of plot to generate. It can be "loglog", "semilog",
-            or None (default). In "loglog", both axes are logarithmic. In "semilog", only the
-            x-axis is logarithmic. If None, a simple linear plot is drawn.
+def getPlot(Convdf, methodslist, x, y, title, plottype=None):
 
-    Raises:
-        KeyError: If the specified x or y columns are not present in the DataFrame.
-
-    Example:
-        getPlot(Convdf, "UDO", "Elements", "L2", plottype="loglog")
-    """
-
-    # Filter the DataFrame by the specified amrtype
-    df = Convdf.loc[amrtype]
-
-    # pull schemes list from df
-    schemes = df.index.get_level_values('Scheme').unique().tolist()
-
-    # plotting types
+      # plotting types
     if plottype == "loglog":
         convrates = []
-        for scheme in schemes:
-            Conv = np.polyfit(np.log(df.loc[scheme, x].to_numpy()), np.log(
-                df.loc[scheme, y].to_numpy()), 1)
+        for method in methodslist:
+            Conv = np.polyfit(np.log(Convdf[method][x].to_numpy()), np.log(Convdf[method][y].to_numpy()), 1)
             convrates.append(Conv[0])
 
         plt.figure(figsize=(10, 6))
-        for i, scheme in enumerate(schemes):
-            plt.loglog(df.loc[scheme, x].to_numpy(
-            ), df.loc[scheme, y].to_numpy(), label=f'{scheme} Convergence Rate: {convrates[i]:.2f}', marker='o')
+        for i, method in enumerate(methodslist):
+            plt.loglog(Convdf[method][x].to_numpy(), Convdf[method][y].to_numpy(), label=f'{method} Convergence Rate: {convrates[i]:.2f}', marker='o')
+   
+   
     elif plottype == "semilog":
         plt.figure(figsize=(10, 6))
-        for i, scheme in enumerate(schemes):
-            plt.semilogx(df.loc[scheme, x].to_numpy(),
-                         df.loc[scheme, y].to_numpy(), marker='o')
+        for i, method in enumerate(methodslist):
+            plt.semilogx(Convdf[method][x].to_numpy(), Convdf[method][y].to_numpy(), marker='o')
 
     else:
         plt.figure(figsize=(10, 6))
         for i, scheme in enumerate(schemes):
-            plt.plot(df.loc[scheme, x].to_numpy(),
-                     df.loc[scheme, y].to_numpy(), marker='o')
+            plt.plot(Convdf[method][x].to_numpy(), Convdf[method][y].to_numpy(), marker='o')
+
 
     plt.xlabel(x, fontsize=16)
     plt.ylabel(y, fontsize=16)
-    plt.title(
-        f'Convergence Plot {amrtype} - Uniform vs Adaptive vs Hybrid Refinement')
+    plt.title(title)
     plt.legend()
     plt.grid(True)
 
@@ -69,54 +42,44 @@ def getPlot(Convdf, amrtype, x, y, plottype=None):
     os.makedirs(results_dir, exist_ok=True)
 
     # Construct the filename and save the plot
-    file_title = f"{amrtype}_{plottype}_{x}_vs_{y}.png".replace(" ", "_")
+    concattitle = ""
+    for method in methodslist:
+        concattitle += method + "_"
+        
+    file_title = f"{concattitle}{x}_vs_{y}.png".replace(" ", "_")
     plt.savefig(os.path.join(results_dir, file_title))
 
 
-def create_multiindex_dataframe(directory):
-    """Creates a MultiIndex DataFrame from CSV files in a specified directory.
 
-    The CSV files should be named using the convention 'Scheme_amrType.csv'.
 
-    Args:
-        directory (str): The path to the directory containing the CSV files.
 
-    Returns:
-        pd.DataFrame: A concatenated DataFrame with a MultiIndex on ['amrType', 'Scheme'].
-    """
-    all_dfs = []
 
-    # Iterate over all files in the specified directory
-    for filename in os.listdir(directory):
-        if filename.endswith('.csv'):
-            # Extract Scheme and amrType from the filename
-            scheme, amr_type = filename.rsplit('.', 1)[0].split('_')
+def create_multiindex_dataframe(result_dir, methodlist):
+    # Initialize an empty list to hold each method's DataFrame
+    dfs = []
+    for method in methodlist:
+        filename = f"{method}.csv"
+        file_path = os.path.join(result_dir, filename)
+        df = pd.read_csv(file_path)
 
-            # Capitalize the scheme name for consistency
-            scheme = scheme.capitalize()
+        # Create a MultiIndex for columns using the method name and original headers
+        multi_cols = [(method, col) for col in df.columns]
+        df.columns = pd.MultiIndex.from_tuples(multi_cols)
 
-            # Read the CSV file into a DataFrame
-            df = pd.read_csv(os.path.join(directory, filename))
+        dfs.append(df)
 
-            # Add Scheme and amrType columns
-            df = df.assign(Scheme=scheme, amrType=amr_type)
+    # Concatenate all DataFrames horizontally to create the multi-index structure
+    combined_df = pd.concat(dfs, axis=1)
+    return combined_df
 
-            # Append to the list of DataFrames
-            all_dfs.append(df)
+    CG1, DG0 = amr_instance.spaces(mesh)
 
-    # Concatenate all DataFrames
-    Convdf = pd.concat(all_dfs, ignore_index=True)
-
-    # Set the new MultiIndex with amrType and Scheme
-    Convdf.set_index(['amrType', 'Scheme', Convdf.index], inplace=True)
-
-    # Sort the MultiIndex
-    Convdf.sort_index(inplace=True)
-
-    return Convdf
 
 
 if __name__ == "__main__":
+    os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
+    methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif', 'udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
+
 
     # flag for running convergence script
     parser = argparse.ArgumentParser(
@@ -125,63 +88,34 @@ if __name__ == "__main__":
                         help='Run convergence script for all amr_methods and refinements.')
     args = parser.parse_args()
 
+    methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif','udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
+    print(args.runconvergence)
+    
     if args.runconvergence:
-        # adjust flags for running convergence script, small modification for metric based adaptation
-        # amr_methods = ["udo", "vces", "metric"] <- will need to adjust if statements in Convergence.py
-        amr_methods = ["udo", "vces", "metric"]
-        refinements = ["Uniform", "Hybrid", "Adaptive"]
-
         script_path = "Convergence.py"
-        for amr_method in amr_methods:
-            for refinement in refinements:
-                # Construct the command with arguments
-                cmd = [
-                    "python3", script_path,
-                    "-a", amr_method,
-                    "-r", refinement
-                ]
+        for method in methodlist:
+            # Construct the command with arguments
+            cmd = ["python3", script_path,"-m", method]
 
-                # Print the command to be executed
-                print(f"Running command: {' '.join(cmd)}")
+            # Print the command to be executed
+            print(f"Running command: {' '.join(cmd)}")
 
-                # Call the script using subprocess
-                result = subprocess.run(cmd, capture_output=True, text=True)
+            # Call the script using subprocess
+            result = subprocess.run(cmd, capture_output=True, text=True)
 
-                # Check the result and handle any errors
-                if result.returncode == 0:
-                    print(f"Success: {result.stdout}")
-                else:
-                    print(f"Error: {result.stderr}")
 
+    # Generate Convergence dataframe
     current_dir = os.getcwd()
     results_dir = os.path.join(current_dir, "Results")
-    Convdf = create_multiindex_dataframe(results_dir)
-    print("MultiIndex DataFrame created successfully.")
-    print(Convdf.head())
-
-    # Plots from thesis
-    getPlot(Convdf, "udo", "Elements", "L2", plottype="loglog")
-    getPlot(Convdf, "vces", "Elements", "L2", plottype="loglog")
-    getPlot(Convdf, "udo", "Elements", "Hausdorff", plottype="loglog")
-    getPlot(Convdf, "vces", "Elements", "Hausdorff", plottype="loglog")
-    getPlot(Convdf, "udo", "Elements", "Jaccard", plottype="loglog")
-    getPlot(Convdf, "vces", "Elements", "Jaccard", plottype="loglog")
+    Convdf = create_multiindex_dataframe(results_dir, methodlist)
     
-    # Time Based Plots
-    getPlot(Convdf, "udo", "MeshTime", "L2", plottype="loglog")
-    getPlot(Convdf, "vces", "MeshTime", "L2", plottype="loglog")
+    getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'], 'Elements', 'Hausdorff', 'VCES', plottype='loglog')
+    getPlot(Convdf, ['udo', 'udoUnif', 'uniform'], 'Elements', 'Hausdorff', 'UDO', plottype='loglog')
     
-    getPlot(Convdf, "udo", "MeshTime", "Hausdorff", plottype="loglog")
-    getPlot(Convdf, "vces", "MeshTime", "Hausdorff", plottype="loglog")
-
-    getPlot(Convdf, "udo", "MeshTime", "Jaccard", plottype="loglog")
-    getPlot(Convdf, "vces", "MeshTime", "Jaccard", plottype="loglog")
-
-    getPlot(Convdf, "udo", "Elements", "SolveTime", plottype="loglog")
-    getPlot(Convdf, "vces", "Elements", "SolveTime", plottype="loglog")
+    getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'], 'Elements', 'Jaccard', 'VCES', plottype='loglog')
+    getPlot(Convdf, ['udo', 'udoUnif', 'uniform'], 'Elements','Jaccard', 'UDO', plottype='loglog')
 
 
-    # loglog Number of elements vs l2 with convergence rate
-    # Number of elements vs Hausdorff distance
-    # loglog Number of elements vs Hausdorff distance
-    # Number of elements vs IoU
+    
+    
+    
