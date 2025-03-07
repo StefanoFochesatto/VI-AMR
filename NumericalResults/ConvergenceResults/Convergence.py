@@ -84,22 +84,31 @@ if __name__ == "__main__":
         
         
         # Big switch style statement for methods
-        mtic = time.perf_counter()
         if method == methodlist[0]: # vces
+            mtic = time.perf_counter()
             mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
             mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
             
         elif method == methodlist[1]: # udo 
+            mtic = time.perf_counter()
             mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
             mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
             
         elif method == methodlist[2]: # metric isotropic only
+            mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesAdaptVertexCounts[i])# Corresponds to only freeboundary metric applied
             mesh = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1])
+            mtoc = time.perf_counter()
+
         
         elif method == methodlist[3]: # vces + uniform
-            h = max(mesh.cell_sizes.dat.data)
             CG1, DG0 = amr_instance.spaces(mesh)
+            mtic = time.perf_counter()
+            h = max(mesh.cell_sizes.dat.data)
             ratio = HError/(h**2)
             switch = math.isclose(ratio, 1, rel_tol=.1)
             if HError < h**2 or switch: # uniform
@@ -109,10 +118,13 @@ if __name__ == "__main__":
             else: #adapt
                 mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
                 mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
                 
         elif method == methodlist[4]: # udo + uniform
-            h = max(mesh.cell_sizes.dat.data)
             CG1, DG0 = amr_instance.spaces(mesh)
+            mtic = time.perf_counter()
+            h = max(mesh.cell_sizes.dat.data)
             ratio = HError/(h**2)
             switch = math.isclose(ratio, 1, rel_tol=.1)
             if HError < h**2 or switch:  # uniform
@@ -122,33 +134,47 @@ if __name__ == "__main__":
             else:  # adapt
                 mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
                 mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
                 
         elif method == methodlist[5]: # metric isotropic + hessian
+            mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesHybridVertexCounts[i])# Corresponds to equal averaging of freeboundary and hessian based metrics.
             mesh = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
+            mtoc = time.perf_counter()
+
             
         elif method == methodlist[6]: # vces + br on inactive set
+            mtic = time.perf_counter()
             markFB = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
             resUFL = Constant(0.0) + div(grad(u))
             markBR = amr_instance.BRinactivemark(mesh, u, lb, resUFL, .5, markFB)
             mark = amr_instance.union(markFB, markBR)
             mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
             
         elif method == methodlist[7]: # udo + br on inactive set
+            mtic = time.perf_counter()
             markFB = amr_instance.udomarkParallel(mesh, u, lb, n=3)
             resUFL = Constant(0.0) + div(grad(u))
             markBR = amr_instance.BRinactivemark(mesh, u, lb, resUFL, .5, markFB)
             mark = amr_instance.union(markFB, markBR)
             mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
         
         elif method == methodlist[8]: # uniform
             CG1, DG0 = amr_instance.spaces(mesh)
+            mtic = time.perf_counter()
             mark = Function(DG0).interpolate(Constant(1.0))
             mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
             
         else:
             raise ValueError(f"Method not implemented: {args.method}")
-        mtoc = time.perf_counter()
+        
         
         print(f"Ran {method} refinement on iteration {i}. Solve: {toc - tic} Refinement: {mtoc - mtic}")
 

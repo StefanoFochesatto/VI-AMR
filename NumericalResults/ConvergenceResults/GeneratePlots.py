@@ -101,7 +101,7 @@ if __name__ == "__main__":
             print(f"Running command: {' '.join(cmd)}")
 
             # Call the script using subprocess
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, stdout=True)
 
 
     # Generate Convergence dataframe
@@ -117,8 +117,15 @@ if __name__ == "__main__":
 
     getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'],'Elements', 'L2', 'VCES', plottype='loglog')
     getPlot(Convdf, ['udo', 'udoUnif', 'uniform'],'Elements', 'L2', 'UDO', plottype='loglog')
+    
+    getPlot(Convdf, ['vces', 'vcesBR', 'metricIso', 'metricIsoHess'], 'MeshTime', 'L2', 'Meshing Time Comparison for Compiled Codes', plottype='loglog')
+    getPlot(Convdf, ['vces', 'vcesBR', 'metricIso', 'metricIsoHess'], 'SolveTime', 'L2', 'Solving Time Comparison for Compiled Codes', plottype='loglog')
 
 
+    getPlot(Convdf, ['vces', 'vcesBR', 'metricIso', 'metricIsoHess'], 'MeshTime', 'Jaccard', 'Meshing Time Comparison for Compiled Codes', plottype='loglog')
+    getPlot(Convdf, ['vces', 'vcesBR', 'metricIso', 'metricIsoHess'], 'SolveTime', 'Jaccard', 'Solving Time Comparison for Compiled Codes', plottype='loglog')
     
     
+
+
     
