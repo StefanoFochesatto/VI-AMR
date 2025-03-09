@@ -55,6 +55,15 @@ class VIAMR(OptionsManager):
         z = Function(DG0, name="Element Active Set Indicator")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 1, 0))
         return z
+    
+    def eleminactive(self, u, lb):
+        """Compute element inactive set indicator in DG0."""
+        if self.debug:
+            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
+        _, DG0 = self.spaces(u.function_space().mesh())
+        z = Function(DG0, name="Element Active Set Indicator")
+        z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
+        return z
 
     def elemborder(self, nodalactive):
         """From nodal activeset indicator compute bordering element indicator."""
@@ -324,6 +333,57 @@ class VIAMR(OptionsManager):
         return adaptedMesh
     
     
+    
+    
+    
+    # Computes Babuška Rheinboldt(1978) error estimator, returns marking function on only inactive set.
+    # Error estimator computation is from
+    #   https://github.com/pefarrell/icerm2024/blob/main/slides.pdf  (slide 109)
+    #   https://github.com/pefarrell/icerm2024/blob/main/02_netgen/01_l_shaped_adaptivity.py
+    def BRinactivemark(self, mesh, u, lb, resUFL, theta, markFB = None):
+        _ , W = self.spaces(mesh)
+        eta_sq = Function(W)
+        w = TestFunction(W)
+        
+        h = CellDiameter(mesh)  # symbols for mesh quantities
+        n = FacetNormal(mesh)
+        v = CellVolume(mesh)
+
+        # Babuska-Rheinboldt error estimator
+        G = (  # compute cellwise error estimator
+            inner(eta_sq / v, w)*dx
+            - inner(h**2 * (resUFL)**2, w) * dx
+            - inner(h('+')/2 * jump(grad(u), n)**2, w('+')) * dS
+            - inner(h('-')/2 * jump(grad(u), n)**2, w('-')) * dS
+        )
+
+        # Each cell is an independent 1x1 solve, so Jacobi is exact
+        sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
+        solve(G == 0, eta_sq, solver_parameters=sp)
+        eta = Function(W).interpolate(sqrt(eta_sq))  # compute eta from eta^2
+
+        # Thinking about removing the Free Boundary mark from here. 
+        # Mask inactive set 
+        eleminactive = self.eleminactive(u, lb)
+        if markFB == None:
+            etaInactive = Function(W).interpolate(eta * eleminactive)
+        else:
+            etaInactive = Function(W).interpolate(eta * eleminactive* abs(markFB - 1))
+            
+        
+        # Refine all cells greater than theta*eta_max
+        with etaInactive.dat.vec_ro as eta_:
+            eta_max = eta_.max()[1]        
+        refine = conditional(gt(etaInactive, theta*eta_max), 1, 0)
+        mark = Function(W).interpolate(refine)
+        
+        return mark
+            
+            
+    def union(self, mark1, mark2):
+        markUnion = Function(mark1.function_space()).interpolate((mark1 + mark2) - (mark1*mark2))
+        return markUnion
+        
     
     def refinemarkedelements(self, mesh, indicator):
         """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D. Still working out the kinks on more than one iteration of refinement."""   

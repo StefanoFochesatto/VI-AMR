@@ -13,26 +13,30 @@ import os
 vcesHybridVertexCounts = [413,623,2417,3221,12737,15837, 113]
 vcesAdaptVertexCounts = [194,436,842,1644,3216,6302, 113]
 
+methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif', 'udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run convergence script with specified parameters.")
-    parser.add_argument('-i', '--initTriHeight', type=float,
+    parser.add_argument('-t', '--initTriHeight', type=float,
                         default=0.45, help='Initial triangle height')
-    parser.add_argument('-r', '--refinement', type=str,
-                        default="Uniform", help='Refinement type')
-    parser.add_argument('-m', '--maxIterations', type=int,
+    parser.add_argument('-i', '--maxIterations', type=int,
                         default=7, help='Maximum number of iterations')
-    parser.add_argument('-a', '--amrMethod', type=str,
-                        default="udo", help='AMR method to use')
-
+    parser.add_argument('-m', '--method', type=str, 
+                        default='uniform', help='string indicating method')
+    
     args = parser.parse_args()
+    method = args.method
 
     problem_instance = SphereObstacleProblem(TriHeight=args.initTriHeight)
     amr_instance = VIAMR()
     mesh = problem_instance.setInitialMesh()
     u = None
 
-    os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
+    # for debugging purposes
+    #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
+    
+    # Load in data about exact solution
     with CheckpointFile("ExactSolution.h5", 'r') as afile:
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh # this might be fixed in new firedrake builds 
         exactMesh = afile.load_mesh('Default')
@@ -44,6 +48,7 @@ if __name__ == "__main__":
     _, exactFreeBoundaryEdges = amr_instance.freeboundarygraph(
         exactU, exactPsi)
 
+    # init data list which will be written to csv
     data = []
     for i in range(args.maxIterations):
         # solution gets overwritten; never stored
@@ -68,92 +73,110 @@ if __name__ == "__main__":
         _, exactU = problem_instance.getBoundaryConditions(u.function_space())
         diffu = Function(u.function_space()).interpolate(u - exactU)
         L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
+        
+        # Compute H1 error
 
         # FIXME: investigate this further, this is giving weird results.
         # Compute L2 Error (using conservative projection to finer mesh)
         # proju = Function(exactV).project(u)
         # L2Error = sqrt(
         #    assemble(dot((proju - exactU), (proju - exactU)) * dx(exactMesh)))
+        
+        
+        # Big switch style statement for methods
+        if method == methodlist[0]: # vces
+            mtic = time.perf_counter()
+            mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
+            mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
 
-        # Refine
-        # Hybrid Refinement Strategy:
-        # 1. Compute ratio between Hausdorff Error and h^2
-        # 2. If Hausdorff Error < h^2 or ratio is within .1 of 1:
-        #       apply uniform
-        #    Else:
-        #        apply AMR
-        h = max(mesh.cell_sizes.dat.data)
-        CG1, DG0 = amr_instance.spaces(mesh)
-        if args.refinement == "Hybrid":
             
-            if args.amrMethod == "metric":
-                mtic = time.perf_counter()
-                amr_instance.setmetricparameters(target_complexity=vcesHybridVertexCounts[i])
-                nextmesh = amr_instance.metricrefine(mesh, u, lb, weights = [.5, .5]) # Corresponds to equal averaging of freeboundary and hessian based metrics. 
-                mtoc = time.perf_counter()
+        elif method == methodlist[1]: # udo 
+            mtic = time.perf_counter()
+            mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+            mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
+            
+        elif method == methodlist[2]: # metric isotropic only
+            mtic = time.perf_counter()
+            amr_instance.setmetricparameters(target_complexity=vcesAdaptVertexCounts[i])# Corresponds to only freeboundary metric applied
+            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1])
+            mtoc = time.perf_counter()
+
+        
+        elif method == methodlist[3]: # vces + uniform
+            CG1, DG0 = amr_instance.spaces(mesh)
+            mtic = time.perf_counter()
+            h = max(mesh.cell_sizes.dat.data)
+            ratio = HError/(h**2)
+            switch = math.isclose(ratio, 1, rel_tol=.1)
+            if HError < h**2 or switch: # uniform
+                mark = Function(DG0).interpolate(Constant(1.0))
+                mesh = mesh.refine_marked_elements(mark)
                 
+            else: #adapt
+                mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
+                mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
+                
+        elif method == methodlist[4]: # udo + uniform
+            CG1, DG0 = amr_instance.spaces(mesh)
+            mtic = time.perf_counter()
+            h = max(mesh.cell_sizes.dat.data)
+            ratio = HError/(h**2)
+            switch = math.isclose(ratio, 1, rel_tol=.1)
+            if HError < h**2 or switch:  # uniform
+                mark = Function(DG0).interpolate(Constant(1.0))
+                mesh = mesh.refine_marked_elements(mark)
+                
+            else:  # adapt
+                mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+                mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
+
+                
+        elif method == methodlist[5]: # metric isotropic + hessian
+            mtic = time.perf_counter()
+            amr_instance.setmetricparameters(target_complexity=vcesHybridVertexCounts[i])# Corresponds to equal averaging of freeboundary and hessian based metrics.
+            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
+            mtoc = time.perf_counter()
+
             
-            else:
-                print(f"Running {args.refinement} scheme:{i}")
-                ratio = HError/(h**2)
-                switch = math.isclose(ratio, 1, rel_tol=.1)
+        elif method == methodlist[6]: # vces + br on inactive set
+            mtic = time.perf_counter()
+            markFB = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
+            resUFL = Constant(0.0) + div(grad(u))
+            markBR = amr_instance.BRinactivemark(mesh, u, lb, resUFL, .5, markFB)
+            mark = amr_instance.union(markFB, markBR)
+            mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
 
-                if HError < h**2 or switch:
-                    print("Uniform")
-                    mtic = time.perf_counter()
-                    mark = Function(DG0).interpolate(Constant(1.0))
-                    nextmesh = mesh.refine_marked_elements(mark)
-                    mtoc = time.perf_counter()
-                    mesh = nextmesh
+            
+        elif method == methodlist[7]: # udo + br on inactive set
+            mtic = time.perf_counter()
+            markFB = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+            resUFL = Constant(0.0) + div(grad(u))
+            markBR = amr_instance.BRinactivemark(mesh, u, lb, resUFL, .5, markFB)
+            mark = amr_instance.union(markFB, markBR)
+            mesh = mesh.refine_marked_elements(mark)
+            mtoc = time.perf_counter()
 
-
-                else:
-                    print("Adaptive")
-                    mtic = time.perf_counter()
-                    if args.amrMethod == "udo":
-                        mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
-                    elif args.amrMethod == "vces":
-                        mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
-
-                    nextmesh = mesh.refine_marked_elements(mark)
-                    mtoc = time.perf_counter()
-                    mesh = nextmesh
-
-
-        elif args.refinement == "Uniform":
-            print(f"Running {args.refinement} scheme:{i}")
+        
+        elif method == methodlist[8]: # uniform
+            CG1, DG0 = amr_instance.spaces(mesh)
             mtic = time.perf_counter()
             mark = Function(DG0).interpolate(Constant(1.0))
-            nextmesh = mesh.refine_marked_elements(mark)
+            mesh = mesh.refine_marked_elements(mark)
             mtoc = time.perf_counter()
-            mesh = nextmesh
 
-
-        elif args.refinement == "Adaptive":
-            print(f"Running {args.refinement} scheme:{i}")
-            mtic = time.perf_counter()
-            if args.amrMethod == "udo":
-                mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
-                nextmesh = mesh.refine_marked_elements(mark)
-
-            elif args.amrMethod == "vces":
-                mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
-                nextmesh = mesh.refine_marked_elements(mark)
-                
-            elif args.amrMethod == "metric":
-                amr_instance.setmetricparameters(target_complexity = vcesAdaptVertexCounts[i])
-                nextmesh = amr_instance.metricrefine(mesh, u, lb, weights = [0, 1]) # Corresponds to only freeboundary metric applied
-                
-                
-                
-                
-            mtoc = time.perf_counter()
-            mesh = nextmesh
-
-
-        # implement metric based refinement
+            
         else:
-            raise ValueError(f"Unknown refinement type: {args.refinement}")
+            raise ValueError(f"Method not implemented: {args.method}")
+        
+        
+        print(f"Ran {method} refinement on iteration {i}. Solve: {toc - tic} Refinement: {mtoc - mtic}")
 
         data.append({
             'L2': L2Error,
@@ -173,7 +196,7 @@ if __name__ == "__main__":
 
     # Construct the output file path
     OutputFile = os.path.join(
-        results_dir, f"{args.refinement}_{args.amrMethod}.csv")
+        results_dir, f"{method}.csv")
 
     # Create a DataFrame and save it to the specified path
     df = pd.DataFrame(data)

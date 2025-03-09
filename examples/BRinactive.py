@@ -51,9 +51,6 @@ def estimate_error(mesh, uh):
 
 
 
-
-
-
 if __name__ == "__main__":
     problem = LShapedDomainProblem(TriHeight=.25)
     amr = VIAMR()
