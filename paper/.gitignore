@@ -7,5 +7,7 @@
 /*.vrb
 /*.bbl
 /*.synctex.gz
+/*.fls
+/*.fdb_latexmk
 /result*
 /_minted*

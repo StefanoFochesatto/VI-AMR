@@ -14,5 +14,5 @@ viamr.bbl: viamr.aux viamr.bib
 .PHONY: clean
 
 clean:
-	@rm -f *~ *.out *.aux *.lo? *.blg *.snm *.toc *.nav *.vrb *.bbl *.synctex.gz *.thm *.dvi
+	@rm -f *~ *.out *.aux *.lo? *.blg *.snm *.toc *.nav *.vrb *.bbl *.synctex.gz *.thm *.dvi *.fls *.fdb_latexmk
 	@rm -rf result* _minted*
