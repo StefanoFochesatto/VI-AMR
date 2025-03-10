@@ -398,8 +398,8 @@ class VIAMR(OptionsManager):
         dm = mesh.topology_dm
         
         # Create an adaptation label to mark cells for refinement
-        dm.createLabel('refine')
-        adaptLabel = dm.getLabel('refine')
+        dm.createLabel('refinesbr')
+        adaptLabel = dm.getLabel('refinesbr')
         adaptLabel.setDefaultValue(0)
 
         # dmcommon provides a python binding for this operation of setting the label given an indicator function data array
@@ -408,7 +408,7 @@ class VIAMR(OptionsManager):
 
         # Create a DMPlexTransform object to apply the refinement
         opts = PETSc.Options()
-        opts['dm_plex_transform_active'] = 'refine'
+        opts['dm_plex_transform_active'] = 'refinesbr'
         opts['dm_plex_transform_type'] = 'refine_sbr' # <- skeleton based refinement is what netgen does.
         dmTransform = PETSc.DMPlexTransform().create(comm = mesh.comm)
         dmTransform.setDM(dm)
@@ -418,8 +418,8 @@ class VIAMR(OptionsManager):
         dmAdapt = dmTransform.apply(dm)
         
         # Labels are no longer needed, not sure if we need to call destroy on them. 
-        dmAdapt.removeLabel('refine')
-        dm.removeLabel('refine')
+        dmAdapt.removeLabel('refinesbr')
+        dm.removeLabel('refinesbr')
         dmTransform.destroy()
         
         # Remove labels to stop further distribution in mesh()
@@ -434,7 +434,8 @@ class VIAMR(OptionsManager):
         
         # Create a new mesh from the adapted dm
         refinedmesh = Mesh(dmAdapt, distribution_parameters = distParams, comm = mesh.comm)
-        
+        opts['dm_plex_transform_type'] = 'refine_regular' # <- skeleton based refinement is what netgen does.
+
         return refinedmesh
 
     

@@ -5,6 +5,7 @@ from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 
+
 from viamr import VIAMR
 
 try:
@@ -17,20 +18,49 @@ except ImportError:
 from netgen.geom2d import SplineGeometry
 
 
+
+
 class BaseObstacleProblem(ABC, OptionsManager):
     def __init__(self, **kwargs):
         self.TriHeight = kwargs.pop("TriHeight", 0.1)
-        sp_default = {
-            "snes_type": "vinewtonrsls",
+        sp_default = {  
+          # "snes_monitor": None,
+            "snes_converged_reason": None,
             "snes_rtol": 1.0e-8,
             "snes_atol": 1.0e-12,
             "snes_stol": 1.0e-12,
+            "snes_type": "vinewtonrsls",
             "snes_vi_zero_tolerance": 1.0e-12,
+            "snes_linesearch_type": "basic",
+            "snes_max_it": 200,
             "ksp_type": "preonly",
             "pc_type": "lu",
-            "pc_factor_mat_solver_type": "mumps",
-        }
+            "pc_factor_mat_solver_type": "mumps"}
         self.sp = kwargs.pop("sp", sp_default)
+        
+        sp_fascd = {
+            "fascd_monitor": None,
+            "fascd_converged_reason": None,
+            "fascd_levels_snes_type": "vinewtonrsls",
+            "fascd_levels_snes_max_it": 1,
+            "fascd_levels_snes_vi_zero_tolerance": 1.0e-12,
+            "fascd_levels_snes_linesearch_type": "basic",
+            "fascd_levels_ksp_type": "cg",
+            "fascd_levels_ksp_max_it": 3,
+            "fascd_levels_ksp_converged_maxits": None,
+            "fascd_levels_pc_type": "bjacobi",
+            "fascd_levels_sub_pc_type": "icc",
+            "fascd_coarse_snes_rtol": 1.0e-8,
+            "fascd_coarse_snes_atol": 1.0e-12,
+            "fascd_coarse_snes_stol": 1.0e-12,
+            "fascd_coarse_snes_type": "vinewtonrsls",
+            "fascd_coarse_snes_vi_zero_tolerance": 1.0e-12,
+            "fascd_coarse_snes_linesearch_type": "basic",
+            "fascd_coarse_ksp_type": "preonly",
+            "fascd_coarse_pc_type": "lu",
+            "fascd_coarse_pc_factor_mat_solver_type": "mumps"}
+        self.spFASCD = kwargs.pop("spFASCD", sp_fascd)
+
 
     @abstractmethod
     def setInitialMesh(self):
@@ -59,7 +89,7 @@ class BaseObstacleProblem(ABC, OptionsManager):
     def getExactSolution(self, V):
         return None
 
-    def solveProblem(self, mesh=None, u=None, bdry=None, moreparams=None):
+    def solveProblem(self, mesh=None, u=None, bdry=None, moreparams=None, FASCD = False):
         if mesh is None:
             mesh = self.setInitialMesh()
 
@@ -77,15 +107,30 @@ class BaseObstacleProblem(ABC, OptionsManager):
         F = inner(grad(u), grad(v)) * dx
 
         problem = NonlinearVariationalProblem(F, u, bcs)
-        params = self.sp.copy()
-        if moreparams is not None:
-            params.update(moreparams)
-        solver = NonlinearVariationalSolver(
-            problem, solver_parameters=params, options_prefix=""
-        )
-
         ub = Function(V).interpolate(Constant(PETSc.INFINITY))
-        solver.solve(bounds=(lb, ub))
+        
+        if FASCD:
+            from fascd import FASCDSolver
+            params = self.spFASCD.copy()
+            if moreparams is not None:
+                params.update(moreparams)
+                
+            solver = FASCDSolver(problem, solver_parameters=params, options_prefix="", bounds=(lb, ub),
+                                     debug_coarse_save=False, warnings_convergence=True,
+                                     admiss_fail_dump=True)
+            solver.solve()
+            
+            
+        else:
+            params = self.sp.copy()
+            if moreparams is not None:
+                params.update(moreparams)
+                
+            solver = NonlinearVariationalSolver(
+                problem, solver_parameters=params, options_prefix=""
+            )
+            solver.solve(bounds=(lb, ub))
+        
         return u, lb
 
 
@@ -227,15 +272,16 @@ class LShapedDomainProblem(BaseObstacleProblem):
         obsUFL = self.setObstacleUFL(V)
         #bdryUFL = conditional(le(r, afree), obsUFL, -A * ln(r) + B)
         bdryUFL = Constant(0.0)
-        ngmsh = V.mesh().netgen_mesh
-        bdryID = [
-           i + 1
-           for i, name in enumerate(ngmsh.GetRegionNames(codim=1))
-           if name in ["line"]
-        ]
-
+        #if V.mesh().netgen_mesh is not None:
+        #    ngmsh = V.mesh().netgen_mesh
+        #    bdryID = [
+        #        i + 1
+        #        for i, name in enumerate(ngmsh.GetRegionNames(codim=1))
+        #        if name in ["line"]
+        #        ]
+    
         if bdryID is None:
-            bdryID = (1, 2, 3, 4)
+            bdryID = (1, 2, 3, 4, 5, 6, 7, 8)
 
         return bdryUFL, bdryID    
         
