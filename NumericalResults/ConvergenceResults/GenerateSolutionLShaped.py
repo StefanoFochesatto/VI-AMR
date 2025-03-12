@@ -8,25 +8,34 @@ import os
 #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
 problem = LShapedDomainProblem(TriHeight=.25)
 amr = VIAMR()
-ExactMesh = Mesh("lshaped.msh")
+ExactMesh = problem.setInitialMesh("lshaped.msh")
 ExactU = None
 
-
-for i in range(4):
+nv, ne, hmin, hmax = amr.meshsizes(ExactMesh)
+for i in range(3):
     ExactU, lb = problem.solveProblem(mesh = ExactMesh, u = ExactU)
     ExactU.rename("ExactU")
-    DG0 = FunctionSpace(ExactMesh, "DG", 0)
-    resUFL = Constant(0.0) + div(grad(ExactU))
-    FBmark = amr.vcesmark(ExactMesh, ExactU, lb)
-    BRmark = amr.BRinactivemark(ExactMesh, ExactU, lb, resUFL=resUFL, theta = .50, markFB=FBmark)
-    mark = amr.union(FBmark, BRmark)
-    ExactMesh = amr.refinemarkedelements(ExactMesh, mark)
-    
+    if i == 0:
+        # Run one metric refine to have substantially different mesh from convergence runs
+        amr.setmetricparameters(
+            target_complexity=nv)
+        ExactMesh = amr.metricrefine(ExactMesh, ExactU, lb, weights=[.5, .5])
+        
+    else:
+        DG0 = FunctionSpace(ExactMesh, "DG", 0)
+        resUFL = Constant(0.0) + div(grad(ExactU))
+        FBmark = amr.vcesmark(ExactMesh, ExactU, lb)
+        BRmark = amr.BRinactivemark(ExactMesh, ExactU, lb, resUFL=resUFL, theta = .50, markFB=FBmark)
+        mark = amr.union(FBmark, BRmark)
+        ExactMesh = amr.refinemarkedelements(ExactMesh, mark)
+        
 
-mh = MeshHierarchy(ExactMesh, 5)
+
+
+mh = MeshHierarchy(ExactMesh, 4)
 ExactMesh = mh[-1]
 
-ExactU = Function(FunctionSpace(ExactMesh, 'CG', 1)).interpolate(ExactU)
+ExactU = Function(FunctionSpace(ExactMesh, "CG", 1)).interpolate(ExactU)
 
 ExactU, lb = problem.solveProblem(mesh=ExactMesh, u=ExactU, FASCD=True)
 ExactU.rename("ExactU")

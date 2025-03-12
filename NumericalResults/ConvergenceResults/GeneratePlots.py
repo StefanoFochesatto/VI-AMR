@@ -103,13 +103,23 @@ if __name__ == "__main__":
             # Call the script using subprocess
             result = subprocess.run(cmd, stdout=True)
 
-
     # Generate Convergence dataframe
     current_dir = os.getcwd()
     results_dir = os.path.join(current_dir, "Results")
+    methodlist = [os.path.splitext(filename)[0] for filename in os.listdir(results_dir)]
     Convdf = create_multiindex_dataframe(results_dir, methodlist)
+
+    # Compute things on the dataframe
+    for method in methodlist:
+        Convdf[method, 'TotalTime'] = Convdf[method]['MeshTime'] + Convdf[method]['SolveTime']
+        Convdf[method, 'MeshTime/Elements'] = Convdf[method]['MeshTime']/Convdf[method]['Elements']
+        Convdf[method, 'SolveTime/Elements'] = Convdf[method]['SolveTime']/Convdf[method]['Elements']
+        Convdf[method, 'TotalTime/Elements'] = Convdf[method]['TotalTime']/Convdf[method]['Elements']
+    Convdf = Convdf.sort_index(axis=1)
     
-    getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'], 'Elements', 'Hausdorff', 'VCES', plottype='loglog')
+    
+    getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'],
+            'Elements', 'Hausdorff', 'VCES', plottype='loglog')
     getPlot(Convdf, ['udo', 'udoUnif', 'uniform'], 'Elements', 'Hausdorff', 'UDO', plottype='loglog')
     
     getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'], 'Elements', 'Jaccard', 'VCES', plottype='loglog')
