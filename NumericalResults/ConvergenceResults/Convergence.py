@@ -71,10 +71,11 @@ if __name__ == "__main__":
 
         # Compute L2 error
         _, exactU = problem_instance.getBoundaryConditions(u.function_space())
-        diffu = Function(u.function_space()).interpolate(u - exactU)
-        L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
-        
+        diffu = Function(exactU.function_space()).interpolate(u - exactU)
+        # L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
+        L2Error = norm(diffu)
         # Compute H1 error
+        H1Error = norm(diffu, 'H1')
 
         # FIXME: investigate this further, this is giving weird results.
         # Compute L2 Error (using conservative projection to finer mesh)
@@ -87,22 +88,26 @@ if __name__ == "__main__":
         if method == methodlist[0]: # vces
             mtic = time.perf_counter()
             mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
-            mesh = mesh.refine_marked_elements(mark)
             mtoc = time.perf_counter()
-
+            rtic = time.perf_counter()
+            mesh = mesh.refine_marked_elements(mark)
+            rtoc = time.perf_counter()
             
         elif method == methodlist[1]: # udo 
             mtic = time.perf_counter()
             mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
-            mesh = mesh.refine_marked_elements(mark)
             mtoc = time.perf_counter()
-
+            rtic = time.perf_counter()
+            mesh = mesh.refine_marked_elements(mark)
+            rtoc = time.perf_counter()
             
         elif method == methodlist[2]: # metric isotropic only
             mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesAdaptVertexCounts[i])# Corresponds to only freeboundary metric applied
-            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1])
             mtoc = time.perf_counter()
+            rtic = time.perf_counter()
+            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1])
+            rtoc = time.perf_counter()
 
         
         elif method == methodlist[3]: # vces + uniform
@@ -113,13 +118,17 @@ if __name__ == "__main__":
             switch = math.isclose(ratio, 1, rel_tol=.1)
             if HError < h**2 or switch: # uniform
                 mark = Function(DG0).interpolate(Constant(1.0))
+                mtoc = time.perf_counter()
+                rtic = time.perf_counter()
                 mesh = mesh.refine_marked_elements(mark)
+                rtoc = time.perf_counter()
                 
             else: #adapt
                 mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
+                mtoc = time.perf_counter()
+                rtic = time.perf_counter()
                 mesh = mesh.refine_marked_elements(mark)
-            mtoc = time.perf_counter()
-
+                rtoc = time.perf_counter()
                 
         elif method == methodlist[4]: # udo + uniform
             CG1, DG0 = amr_instance.spaces(mesh)
@@ -129,20 +138,25 @@ if __name__ == "__main__":
             switch = math.isclose(ratio, 1, rel_tol=.1)
             if HError < h**2 or switch:  # uniform
                 mark = Function(DG0).interpolate(Constant(1.0))
+                mtoc = time.perf_counter()
+                rtic = time.perf_counter()
                 mesh = mesh.refine_marked_elements(mark)
+                rtoc = time.perf_counter()
                 
             else:  # adapt
                 mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+                mtoc = time.perf_counter()
+                rtic = time.perf_counter()
                 mesh = mesh.refine_marked_elements(mark)
-            mtoc = time.perf_counter()
-
+                rtoc = time.perf_counter()
                 
         elif method == methodlist[5]: # metric isotropic + hessian
             mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesHybridVertexCounts[i])# Corresponds to equal averaging of freeboundary and hessian based metrics.
-            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
             mtoc = time.perf_counter()
-
+            rtic = time.perf_counter()
+            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
+            rtoc = time.perf_counter()
             
         elif method == methodlist[6]: # vces + br on inactive set
             mtic = time.perf_counter()
@@ -150,9 +164,10 @@ if __name__ == "__main__":
             resUFL = Constant(0.0) + div(grad(u))
             markBR = amr_instance.BRinactivemark(mesh, u, lb, resUFL, .5, markFB)
             mark = amr_instance.union(markFB, markBR)
-            mesh = mesh.refine_marked_elements(mark)
             mtoc = time.perf_counter()
-
+            rtic = time.perf_counter()
+            mesh = mesh.refine_marked_elements(mark)
+            rtoc = time.perf_counter()
             
         elif method == methodlist[7]: # udo + br on inactive set
             mtic = time.perf_counter()
@@ -160,16 +175,19 @@ if __name__ == "__main__":
             resUFL = Constant(0.0) + div(grad(u))
             markBR = amr_instance.BRinactivemark(mesh, u, lb, resUFL, .5, markFB)
             mark = amr_instance.union(markFB, markBR)
-            mesh = mesh.refine_marked_elements(mark)
             mtoc = time.perf_counter()
-
+            rtic = time.perf_counter()
+            mesh = mesh.refine_marked_elements(mark)
+            rtoc = time.perf_counter()
         
         elif method == methodlist[8]: # uniform
             CG1, DG0 = amr_instance.spaces(mesh)
             mtic = time.perf_counter()
             mark = Function(DG0).interpolate(Constant(1.0))
-            mesh = mesh.refine_marked_elements(mark)
             mtoc = time.perf_counter()
+            rtic = time.perf_counter()
+            mesh = mesh.refine_marked_elements(mark)
+            rtoc = time.perf_counter()
 
             
         else:
@@ -180,13 +198,15 @@ if __name__ == "__main__":
 
         data.append({
             'L2': L2Error,
+            'H1': H1Error,
             'Jaccard': JError,
             'Hausdorff': HError,
             'Elements': ne,
             'Vertices': nv,
             'SizeMin': hmin,
             'SizeMax': hmax,
-            'MeshTime': mtoc - mtic,
+            'PreMeshCompTime': mtoc - mtic,
+            'RefineTime': rtoc - rtic,
             'SolveTime' : toc - tic
         })
 

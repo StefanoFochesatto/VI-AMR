@@ -38,4 +38,4 @@ Plane Surface(1) = {1};
 Physical Surface("MySurface") = {1};
 
 // Set the mesh size:  smaller value = finer mesh
-Mesh.CharacteristicLengthMax = 0.25; // Adjust this value to change mesh fineness.
+Mesh.CharacteristicLengthMax = 0.20; // Adjust this value to change mesh fineness.

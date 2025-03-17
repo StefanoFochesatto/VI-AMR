@@ -385,7 +385,7 @@ class VIAMR(OptionsManager):
         return markUnion
         
     
-    def refinemarkedelements(self, mesh, indicator):
+    def refinemarkedelements(self, mesh, indicator, isUniform = False):
         """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D. Still working out the kinks on more than one iteration of refinement."""   
         # Create Section for DG0 indicator
         tdim = mesh.topological_dimension()
@@ -408,8 +408,11 @@ class VIAMR(OptionsManager):
 
         # Create a DMPlexTransform object to apply the refinement
         opts = PETSc.Options()
-        opts['dm_plex_transform_active'] = 'refinesbr'
-        opts['dm_plex_transform_type'] = 'refine_sbr' # <- skeleton based refinement is what netgen does.
+        if isUniform:
+            opts['dm_plex_transform_type'] = 'refine_regular'
+        else:
+            opts['dm_plex_transform_active'] = 'refinesbr'
+            opts['dm_plex_transform_type'] = 'refine_sbr' # <- skeleton based refinement is what netgen does.
         dmTransform = PETSc.DMPlexTransform().create(comm = mesh.comm)
         dmTransform.setDM(dm)
         # For now the only way to set the active label with petsc4py is with PETSc.Options() (DMPlexTransformSetActive() has no binding)
@@ -434,8 +437,8 @@ class VIAMR(OptionsManager):
         
         # Create a new mesh from the adapted dm
         refinedmesh = Mesh(dmAdapt, distribution_parameters = distParams, comm = mesh.comm)
-        opts['dm_plex_transform_type'] = 'refine_regular' # <- skeleton based refinement is what netgen does.
-
+        opts['dm_plex_transform_type'] = 'refine_regular'
+        
         return refinedmesh
 
     

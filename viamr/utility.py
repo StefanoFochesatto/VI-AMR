@@ -39,10 +39,13 @@ class BaseObstacleProblem(ABC, OptionsManager):
         self.sp = kwargs.pop("sp", sp_default)
         
         sp_fascd = {
+            "fascd_cycle_type": "full",
+            "fascd_skip_downsmooth": None, 
             "fascd_monitor": None,
             "fascd_converged_reason": None,
             "fascd_levels_snes_type": "vinewtonrsls",
             "fascd_levels_snes_max_it": 1,
+            "fascd_levels_snes_converged_reason": None,
             "fascd_levels_snes_vi_zero_tolerance": 1.0e-12,
             "fascd_levels_snes_linesearch_type": "basic",
             "fascd_levels_ksp_type": "cg",
@@ -50,7 +53,8 @@ class BaseObstacleProblem(ABC, OptionsManager):
             "fascd_levels_ksp_converged_maxits": None,
             "fascd_levels_pc_type": "bjacobi",
             "fascd_levels_sub_pc_type": "icc",
-            "fascd_coarse_snes_rtol": 1.0e-8,
+            "fascd_coarse_snes_converged_reason": None,
+            "fascd_coarse_snes_rtol": 1.0e-8,   
             "fascd_coarse_snes_atol": 1.0e-12,
             "fascd_coarse_snes_stol": 1.0e-12,
             "fascd_coarse_snes_type": "vinewtonrsls",
@@ -218,27 +222,32 @@ class LShapedDomainProblem(BaseObstacleProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def setInitialMesh(self):
-        # L shaped domain, missing 4th quadrant
-        geo = SplineGeometry()
-        interiorX = 1.25
-        interiorY = -1.25
-        pnts = [(interiorX, interiorY), (6, interiorY), (6, 2), (2, 2), (-2, 2), (-2, -2), (-2, -6), (interiorX, -6)]
-        p1, p2, p3, p4, p5, p6, p7, p8 = [geo.AppendPoint(*pnt) for pnt in pnts]
-        curves = [
-            [["line", p1, p2], "line"],
-            [["line", p2, p3], "line"],
-            [["line", p3, p4], "line"],
-            [["line", p4, p5], "line"],
-            [["line", p5, p6], "line"],
-            [["line", p6, p7], "line"],
-            [["line", p7, p8], "line"],
-            [["line", p8, p1], "line"],
-        ]
-        [geo.Append(c, bc=bc) for c, bc in curves]
-        ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
-        mesh = Mesh(ngmsh, distribution_parameters={
-                    "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+    def setInitialMesh(self, filename = None):
+        if filename == None:
+            # L shaped domain, missing 4th quadrant
+            geo = SplineGeometry()
+            interiorX = 1.25
+            interiorY = -1.25
+            pnts = [(interiorX, interiorY), (6, interiorY), (6, 2), (2, 2), (-2, 2), (-2, -2), (-2, -6), (interiorX, -6)]
+            p1, p2, p3, p4, p5, p6, p7, p8 = [geo.AppendPoint(*pnt) for pnt in pnts]
+            curves = [
+                [["line", p1, p2], "line"],
+                [["line", p2, p3], "line"],
+                [["line", p3, p4], "line"],
+                [["line", p4, p5], "line"],
+                [["line", p5, p6], "line"],
+                [["line", p6, p7], "line"],
+                [["line", p7, p8], "line"],
+                [["line", p8, p1], "line"],
+            ]
+            [geo.Append(c, bc=bc) for c, bc in curves]
+            ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
+            mesh = Mesh(ngmsh, distribution_parameters={
+                        "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+        else:
+            mesh = Mesh(filename, distribution_parameters={
+                        "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+
         return mesh
 
     def setObstacleUFL(self, V):

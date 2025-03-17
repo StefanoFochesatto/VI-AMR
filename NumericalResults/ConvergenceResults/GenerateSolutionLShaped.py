@@ -41,7 +41,7 @@ ExactU, lb = problem.solveProblem(mesh=ExactMesh, u=ExactU, FASCD=True)
 ExactU.rename("ExactU")
 
 VTKFile("Test.pvd").write(ExactU)
-# Open issue won't run in parallel: https://github.com/firedrakeproject/firedrake/issues/3783
+# Open issue won't run in parallel with netgen mesh: https://github.com/firedrakeproject/firedrake/issues/3783
 with CheckpointFile("ExactSolutionLShaped.h5", 'w') as afile:
     afile.save_mesh(ExactMesh)
     afile.save_function(ExactU)
