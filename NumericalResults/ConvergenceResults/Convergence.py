@@ -70,12 +70,11 @@ if __name__ == "__main__":
             solFreeBoundaryEdges, exactFreeBoundaryEdges)
 
         # Compute L2 error
-        _, exactU = problem_instance.getBoundaryConditions(u.function_space())
-        diffu = Function(exactU.function_space()).interpolate(u - exactU)
-        # L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
-        L2Error = norm(diffu)
+        #L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
+        uProj = Function(exactU.function_space()).project(u)
+        L2Error = errornorm(exactU, uProj , norm_type = 'L2')
         # Compute H1 error
-        H1Error = norm(diffu, 'H1')
+        H1Error = errornorm(exactU, uProj , norm_type = 'H1')
 
         # FIXME: investigate this further, this is giving weird results.
         # Compute L2 Error (using conservative projection to finer mesh)
