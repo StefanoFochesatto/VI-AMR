@@ -8,11 +8,11 @@ import os
 #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
 problem = LShapedDomainProblem(TriHeight=.25)
 amr = VIAMR()
-ExactMesh = problem.setInitialMesh("lshaped.msh")
+ExactMesh = problem.setInitialMesh("lshapedSolution.msh")
 ExactU = None
 
 nv, ne, hmin, hmax = amr.meshsizes(ExactMesh)
-for i in range(3):
+for i in range(5):
     ExactU, lb = problem.solveProblem(mesh = ExactMesh, u = ExactU)
     ExactU.rename("ExactU")
     if i == 0:

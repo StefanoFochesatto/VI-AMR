@@ -10,8 +10,12 @@ import pandas as pd
 import os
 
 
-vcesHybridVertexCounts = [1895, 2504, 4147, 7062, 12776, 24756, 1572]
-vcesAdaptVertexCounts = [1868, 2408, 3544, 5712, 10044, 19064, 1572]
+vcesHybridVertexCounts = [229,425,860,1616,3219,6385,116]
+vcesAdaptVertexCounts = [178,328,618,1207,2465,4855,116]
+
+
+
+
 
 methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif', 'udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
 
@@ -70,12 +74,11 @@ if __name__ == "__main__":
             solFreeBoundaryEdges, exactFreeBoundaryEdges)
 
         # Compute L2 error
-        _, exactU = problem_instance.getBoundaryConditions(u.function_space())
-        diffu = Function(exactU.function_space()).interpolate(u - exactU)
         #L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
-        L2Error = norm(diffu)
+        uProj = Function(exactU.function_space()).project(u)
+        L2Error = errornorm(exactU, uProj , norm_type = 'L2')
         # Compute H1 error
-        H1Error = norm(diffu, 'H1')
+        H1Error = errornorm(exactU, uProj , norm_type = 'H1')
 
         # FIXME: investigate this further, this is giving weird results.
         # Compute L2 Error (using conservative projection to finer mesh)
@@ -120,7 +123,7 @@ if __name__ == "__main__":
                 mark = Function(DG0).interpolate(Constant(1.0))
                 mtoc = time.perf_counter()
                 rtic = time.perf_counter()
-                mesh = amr_instance.refinemarkedelements(mesh, mark)
+                mesh = amr_instance.refinemarkedelements(mesh, mark, isUniform = True)
                 rtoc = time.perf_counter()
 
             else:  # adapt
@@ -137,10 +140,10 @@ if __name__ == "__main__":
             ratio = HError/(h**2)
             switch = math.isclose(ratio, 1, rel_tol=.1)
             if HError < h**2 or switch:  # uniform
-                mark = Function(DG0).interpolate(Constant(1.0))
                 mtoc = time.perf_counter()
+                mark = Function(DG0).interpolate(Constant(1.0))
                 rtic = time.perf_counter()
-                mesh = amr_instance.refinemarkedelements(mesh, mark)
+                mesh = amr_instance.refinemarkedelements(mesh, mark, isUniform = True)
                 rtoc = time.perf_counter()
 
             else:  # adapt
@@ -186,11 +189,11 @@ if __name__ == "__main__":
 
         elif method == methodlist[8]:  # uniform
             CG1, DG0 = amr_instance.spaces(mesh)
-            mtic = time.perf_counter()
             mark = Function(DG0).interpolate(Constant(1.0))
+            mtic = time.perf_counter()
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = amr_instance.refinemarkedelements(mesh, mark)
+            mesh = amr_instance.refinemarkedelements(mesh, mark, isUniform = True)
             rtoc = time.perf_counter()
 
         else:
