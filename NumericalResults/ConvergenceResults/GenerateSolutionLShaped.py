@@ -23,6 +23,7 @@ for i in range(5):
         
     else:
         DG0 = FunctionSpace(ExactMesh, "DG", 0)
+    
         resUFL = Constant(0.0) + div(grad(ExactU))
         FBmark = amr.vcesmark(ExactMesh, ExactU, lb)
         BRmark = amr.BRinactivemark(ExactMesh, ExactU, lb, resUFL=resUFL, theta = .50, markFB=FBmark)

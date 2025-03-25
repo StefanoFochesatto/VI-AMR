@@ -39,7 +39,7 @@ problem_instance = SphereObstacleProblem()
 amr_instance = VIAMR()
 
 ExactU = None
-for i in range(10):
+for i in range(15):
     ExactU, lb = problem_instance.solveProblem(
         mesh=ExactMesh, u=ExactU, bdry=labels)
     ExactU.rename("ExactU")
@@ -53,6 +53,7 @@ for i in range(10):
 ExactU, lb = problem_instance.solveProblem(
     mesh=ExactMesh, u=ExactU, bdry=labels)
 ExactU.rename("exactU")
+
 
 # Open issue won't run in parallel: https://github.com/firedrakeproject/firedrake/issues/3783
 with CheckpointFile("ExactSolution.h5", 'w') as afile:

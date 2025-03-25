@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run convergence script with specified parameters.")
     parser.add_argument('-t', '--initTriHeight', type=float,
-                        default=0.45, help='Initial triangle height')
+                        default=0.7, help='Initial triangle height')
     parser.add_argument('-i', '--maxIterations', type=int,
                         default=7, help='Maximum number of iterations')
     parser.add_argument('-m', '--method', type=str, 
