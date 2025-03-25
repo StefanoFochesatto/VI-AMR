@@ -298,7 +298,7 @@ class VIAMR(OptionsManager):
         return metric
     
 
-    def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50]):
+    def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50], hessian = True):
         """Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the
         hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed vces indicator.  These metrics are averaged using the weights."""
 
@@ -324,13 +324,14 @@ class VIAMR(OptionsManager):
         freeboundaryMetric.normalise()
 
         # Build hessian based metric for interpolation error and average
-        solutionMetric = self.metricfromhessian(mesh, u)
-        VImetric = solutionMetric.copy(deepcopy=True)
-        VImetric.average(freeboundaryMetric, weights=weights)
+        if hessian:
+            VImetric = freeboundaryMetric.copy(deepcopy=True)
+            solutionMetric = self.metricfromhessian(mesh, u)
+            VImetric.average(freeboundaryMetric, weights=weights)
+        else:
+            VImetric = freeboundaryMetric.copy(deepcopy=True)
 
-        # Adapt
-        adaptedMesh = adapt(mesh, VImetric)
-        return adaptedMesh
+        return VImetric
     
     
     
