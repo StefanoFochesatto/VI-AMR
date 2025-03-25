@@ -8,6 +8,7 @@ import math
 import argparse
 import pandas as pd
 import os
+from animate import adapt
 
 
 vcesHybridVertexCounts = [413,623,2417,3221,12737,15837, 113]
@@ -103,9 +104,10 @@ if __name__ == "__main__":
         elif method == methodlist[2]: # metric isotropic only
             mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesAdaptVertexCounts[i])# Corresponds to only freeboundary metric applied
+            VImetric = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1], hessian = False)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1])
+            mesh = adapt(mesh, VImetric)
             rtoc = time.perf_counter()
 
         
@@ -152,9 +154,10 @@ if __name__ == "__main__":
         elif method == methodlist[5]: # metric isotropic + hessian
             mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesHybridVertexCounts[i])# Corresponds to equal averaging of freeboundary and hessian based metrics.
+            VImetric = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
+            mesh = adapt(mesh, VImetric)
             rtoc = time.perf_counter()
             
         elif method == methodlist[6]: # vces + br on inactive set

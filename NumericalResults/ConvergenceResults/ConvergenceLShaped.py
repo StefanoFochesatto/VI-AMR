@@ -8,6 +8,8 @@ import math
 import argparse
 import pandas as pd
 import os
+from animate import adapt
+
 
 
 vcesHybridVertexCounts = [229,425,860,1616,3219,6385,116]
@@ -105,12 +107,11 @@ if __name__ == "__main__":
 
         elif method == methodlist[2]:  # metric isotropic only
             mtic = time.perf_counter()
-            # Corresponds to only freeboundary metric applied
-            amr_instance.setmetricparameters(
-                target_complexity=vcesAdaptVertexCounts[i])
+            amr_instance.setmetricparameters(target_complexity=vcesAdaptVertexCounts[i])# Corresponds to only freeboundary metric applied
+            VImetric = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1], hessian = False)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1])
+            mesh = adapt(mesh, VImetric)
             rtoc = time.perf_counter()
 
         elif method == methodlist[3]:  # vces + uniform
@@ -155,14 +156,13 @@ if __name__ == "__main__":
 
         elif method == methodlist[5]:  # metric isotropic + hessian
             mtic = time.perf_counter()
-            # Corresponds to equal averaging of freeboundary and hessian based metrics.
-            amr_instance.setmetricparameters(
-                target_complexity=vcesHybridVertexCounts[i])
+            amr_instance.setmetricparameters(target_complexity=vcesHybridVertexCounts[i])# Corresponds to equal averaging of freeboundary and hessian based metrics.
+            VImetric = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
+            mesh = adapt(mesh, VImetric)
             rtoc = time.perf_counter()
-
+            
         elif method == methodlist[6]:  # vces + br on inactive set
             mtic = time.perf_counter()
             markFB = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
