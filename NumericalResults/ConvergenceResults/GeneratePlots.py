@@ -6,49 +6,57 @@ import os
 import argparse
 
 
-def getPlot(Convdf, methodslist, x, y, title, plottype=None):
+def getPlot(Convdf, methodslist, x, y, title, plottype=None, methodcolors = None,legend = True):
 
-      # plotting types
+    # plotting types
     if plottype == "loglog":
         convrates = []
         for method in methodslist:
-            Conv = np.polyfit(np.log(Convdf[method][x].to_numpy()), np.log(Convdf[method][y].to_numpy()), 1)
+            Conv = np.polyfit(np.log(Convdf[method][x].to_numpy()), np.log(
+                Convdf[method][y].to_numpy()), 1)
             convrates.append(Conv[0])
 
         plt.figure(figsize=(10, 6))
         for i, method in enumerate(methodslist):
-            plt.loglog(Convdf[method][x].to_numpy(), Convdf[method][y].to_numpy(), label=f'{method} Convergence Rate: {convrates[i]:.2f}', marker='o')
-   
-   
-    elif plottype == "semilog":
+            plt.loglog(Convdf[method][x].to_numpy(), Convdf[method][y].to_numpy(
+            ), color = methodcolors[method], label=f'{method} Convergence Rate: {convrates[i]:.2f}', marker='o')
+
+    elif plottype == "semilogx":
         plt.figure(figsize=(10, 6))
         for i, method in enumerate(methodslist):
-            plt.semilogx(Convdf[method][x].to_numpy(), Convdf[method][y].to_numpy(), marker='o')
+            plt.semilogx(Convdf[method][x].to_numpy(),
+                         Convdf[method][y].to_numpy(),color = methodcolors[method], marker='o')
+    elif plottype == "semilogy":
+        plt.figure(figsize=(10, 6))
+        for i, method in enumerate(methodslist):
+            plt.semilogy(Convdf[method][x].to_numpy(),
+                         Convdf[method][y].to_numpy(),color = methodcolors[method], marker='o')
 
     else:
         plt.figure(figsize=(10, 6))
-        for i, scheme in enumerate(schemes):
-            plt.plot(Convdf[method][x].to_numpy(), Convdf[method][y].to_numpy(), marker='o')
-
+        for i, method in enumerate(methodslist):
+            plt.plot(Convdf[method][x].to_numpy(),
+                     Convdf[method][y].to_numpy(), color = methodcolors[method],marker='o')
 
     plt.xlabel(x, fontsize=16)
     plt.ylabel(y, fontsize=16)
     plt.title(title)
-    plt.legend()
+    if legend:
+        plt.legend()
     plt.grid(True)
 
     # Ensure the Plots directory exists
-    results_dir = "Plots"
+    results_dir = "PlotsTest"
     os.makedirs(results_dir, exist_ok=True)
 
     # Construct the filename and save the plot
     concattitle = ""
     for method in methodslist:
         concattitle += method + "_"
-        
-    file_title = f"{concattitle}{x}_vs_{y}.png".replace(" ", "_")
-    plt.savefig(os.path.join(results_dir, file_title))
 
+    file_title = f"{concattitle}{x}_vs_{y}.png".replace(" ", "_").replace("/","_per_")
+    
+    return plt, file_title
 
 
 
@@ -77,13 +85,15 @@ def create_multiindex_dataframe(result_dir, methodlist):
 
 
 if __name__ == "__main__":
-    #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
+    os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
     methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif', 'udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
 
 
     # flag for running convergence script
     parser = argparse.ArgumentParser(
         description="Script to run Convergence with various parameters")
+    parser.add_argument('--lshaped', action='store_true',
+                        help='run script for lshaped domain problem')
     parser.add_argument('--runconvergence', action='store_true',
                         help='Run convergence script for all amr_methods and refinements.')
     args = parser.parse_args()
@@ -91,8 +101,13 @@ if __name__ == "__main__":
     methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif','udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
     print(args.runconvergence)
     
-    if args.runconvergence:
+    if args.lshaped:
+        script_path = "ConvergenceLShaped.py"
+    else:        
         script_path = "Convergence.py"
+
+        
+    if args.runconvergence:
         for method in methodlist:
             # Construct the command with arguments
             cmd = ["python3", script_path,"-m", method]
@@ -105,7 +120,11 @@ if __name__ == "__main__":
 
     # Generate Convergence dataframe
     current_dir = os.getcwd()
-    results_dir = os.path.join(current_dir, "Results")
+    
+    if args.lshaped:
+        results_dir = os.path.join(current_dir, "ResultsLShaped")
+    else:
+        results_dir = os.path.join(current_dir, "Results")
     methodlist = [os.path.splitext(filename)[0] for filename in os.listdir(results_dir)]
     Convdf = create_multiindex_dataframe(results_dir, methodlist)
 
@@ -113,30 +132,62 @@ if __name__ == "__main__":
     for method in methodlist:
         Convdf[method, 'MeshTime'] = Convdf[method]['PreMeshCompTime'] + Convdf[method]['RefineTime']
         Convdf[method, 'TotalTime'] = Convdf[method]['PreMeshCompTime'] + Convdf[method]['RefineTime'] + Convdf[method]['SolveTime']
+        Convdf[method, 'PreMeshCompTime/Elements'] = Convdf[method]['PreMeshCompTime']/Convdf[method]['Elements']
         Convdf[method, 'MeshTime/Elements'] = Convdf[method]['MeshTime']/Convdf[method]['Elements']
         Convdf[method, 'SolveTime/Elements'] = Convdf[method]['SolveTime']/Convdf[method]['Elements']
         Convdf[method, 'TotalTime/Elements'] = Convdf[method]['TotalTime']/Convdf[method]['Elements']
     Convdf = Convdf.sort_index(axis=1)
     
+    # Hardcoded high-saturation colors (hex codes)
+    methodcolors = {
+        # Group 1: metric* methods (greens)
+        'metricIso': '#317256',     
+        'metricIsoHess': '#52bf90', 
+        
+        # Group 2: vces* methods (blues)
+        'vces': '#0021f3',          
+        'vcesBR': '#0006b1',        
+        'vcesUnif': '#05014a',      
+        
+        # Group 3: udo* methods (reds)
+        'udo': '#440909',           
+        'udoBR': '#a72b2b',         
+        'udoUnif': '#d09c9c',       
+        
+        # Standalone methods (unique color)
+        'uniform': '#9467bd',       
+    }
+    if args.lshaped:
+        plot_dir = 'PlotsLShaped'
+        os.makedirs(plot_dir, exist_ok=True)
+    else:
+        plot_dir = 'Plots'
+        os.makedirs(plot_dir, exist_ok=True)
     
-    getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'],
-            'Elements', 'Hausdorff', 'VCES', plottype='loglog')
-    getPlot(Convdf, ['udo', 'udoUnif', 'uniform'], 'Elements', 'Hausdorff', 'UDO', plottype='loglog')
-    
-    getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'], 'Elements', 'Jaccard', 'VCES', plottype='loglog')
-    getPlot(Convdf, ['udo', 'udoUnif', 'uniform'], 'Elements','Jaccard', 'UDO', plottype='loglog')
+    # Individual Methods plotted compared to uniform
+    plt, file_title = getPlot(Convdf, ['udo', 'udoBR', 'uniform'] , 'Elements', 'H1', 'UDO', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
 
-    getPlot(Convdf, ['vces', 'vcesUnif', 'uniform'],'Elements', 'L2', 'VCES', plottype='loglog')
-    getPlot(Convdf, ['udo', 'udoUnif', 'uniform'],'Elements', 'L2', 'UDO', plottype='loglog')
-    
-    getPlot(Convdf, ['vces', 'vcesBR', 'metricIso', 'metricIsoHess'], 'MeshTime', 'L2', 'Meshing Time Comparison for Compiled Codes', plottype='loglog')
-    getPlot(Convdf, ['vces', 'vcesBR', 'metricIso', 'metricIsoHess'], 'SolveTime', 'L2', 'Solving Time Comparison for Compiled Codes', plottype='loglog')
-
-
-    getPlot(Convdf, ['vces', 'vcesBR', 'metricIso', 'metricIsoHess'], 'MeshTime', 'Jaccard', 'Meshing Time Comparison for Compiled Codes', plottype='loglog')
-    getPlot(Convdf, ['vces', 'vcesBR', 'metricIso', 'metricIsoHess'], 'SolveTime', 'Jaccard', 'Solving Time Comparison for Compiled Codes', plottype='loglog')
-    
-    
-
-
-    
+    plt, file_title = getPlot(Convdf, ['vces', 'vcesBR', 'uniform'] , 'Elements', 'H1', 'VCES', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf, ['metricIso', 'metricIsoHess', 'uniform'] , 'Elements', 'H1', 'Metric', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf, ['udo', 'udoBR', 'uniform'] , 'Elements', 'Jaccard', 'UDO', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf, ['vces', 'vcesBR', 'uniform'] , 'Elements', 'Jaccard', 'VCES', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf, ['metricIso', 'metricIsoHess', 'uniform'] , 'Elements', 'Jaccard', 'Metric', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf.iloc[1:], ['udo', 'vces', 'metricIso'] , 'Elements', 'Jaccard', 'Comparison of Best Methods WRT Jaccard', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf.iloc[0:], ['udo', 'vces', 'metricIso'] , 'Elements', 'Hausdorff', 'Comparison of Best Methods WRT Hausdorff', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf, ['vcesBR', 'udoBR', 'metricIsoHess'] , 'PreMeshCompTime/Elements', 'L2', 'L2 Time Effeciency of Inactive Set Methods', plottype='loglog',methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf.iloc[0:], ['vces','udo' ,'metricIso'] , 'PreMeshCompTime/Elements', 'Hausdorff', 'Hausdorff Time Effeciency of Inactive Set Methods', plottype='loglog',methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf.iloc[0:], ['vces','udo' ,'metricIso'] , 'PreMeshCompTime/Elements', 'Jaccard', 'Jaccard Time Effeciency of Inactive Set Methods', plottype='loglog',methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    plt, file_title = getPlot(Convdf.iloc[0:], ['vces' ,'metricIso'] , 'Elements', 'SolveTime/Elements', 'L Shaped Domain Solve Time Comparison', plottype='loglog',methodcolors=methodcolors, legend = True)
+    plt.savefig(os.path.join(plot_dir, file_title))
+    # Grid sequencing should make the solve time better for tag and refine methods?? Likely an issue with cross mesh interpolation?
