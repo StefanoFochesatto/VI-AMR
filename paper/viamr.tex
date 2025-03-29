@@ -39,12 +39,13 @@
 \newtheorem{notation}{Notation}
 
 \newcommand{\RR}{\mathbb{R}}
-\newcommand{\norm}[2]{\left\| #1 \right\|_{#2}}
-\newcommand{\abs}[1]{\left| #1 \right|}
 
+\newcommand{\eps}{\epsilon}
 \newcommand{\grad}{\nabla}
 \newcommand{\Div}{\nabla\cdot}
 
+\newcommand{\cK}{\mathcal{K}}
+\newcommand{\cX}{\mathcal{X}}
 
 \begin{document}
 
@@ -73,9 +74,9 @@ Free-boundary problems posed as variational inequalities, such as obstacle probl
 The classical obstacle problem \cite{KinderlehrerStampacchia1980} finds the equilibrium position (vertical displacement) $u$ of an elastic membrane, attached to a fixed boundary, with some applied force $f$, but where the membrane is constrained to lie above some obstacle $\psi$.  Let $\Omega \subset \RR^d$ be a bounded, open domain, with the data $f$ and $\psi$ given on $\Omega$.  The strong formulation of this problem is a complementarity problem (CP).  It gives conditions satisfied by the solution $u$ almost everywhere in $\Omega$:
 \begin{subequations} \label{eq:classical:ncp}
 \begin{align}
-  -\nabla^2 u - f \geq 0 \\
+  -\nabla^2 u - f \geq 0 \label{eq:classical:ncp:a} \\
   u - \psi \geq 0\\
-  (-\nabla^2u - f)(u - \psi) = 0
+  (-\nabla^2u - f)(u - \psi) = 0 \label{eq:classical:ncp:c}
 \end{align}
 \end{subequations}
 From a solution to \eqref{eq:classical:ncp} we may identify the inactive and active sets,
@@ -91,13 +92,13 @@ The free boundary $\Gamma_u = \Omega \cap \partial I_u$ is where $I_u$ meets $A_
 \label{fig:ball}
 \end{figure}
 
-As is well-known, CP \eqref{eq:classical:ncp} has a weak formulation which is a variational inequality (VI) over a Sobolev space.  Let $X=H^1(\Omega)$ \cite{ElmanSilvesterWathen2014} and suppose $\psi \in X \cap C(\bar\Omega)$.  Let $g:\partial \Omega\to \RR$ be continuous, also satisfying $g \ge \psi|_{\partial \Omega}$.  Let
+As is well-known, CP \eqref{eq:classical:ncp} has a weak formulation which is a variational inequality (VI) over a Sobolev space.  Let $\cX=H^1(\Omega)$ \cite{ElmanSilvesterWathen2014} and suppose $\psi \in X \cap C(\bar\Omega)$.  Let $g:\partial \Omega\to \RR$ be continuous, also satisfying $g \ge \psi|_{\partial \Omega}$.  Let
 \begin{equation} \label{eq:classical:admissible}
-K = \{u \in X \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
+\cK = \{u \in \cX \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
 \end{equation}
-be the admissible set for solutions, a closed and convex subset of $X$.  For $f\in L^2(\Omega)$, the VI formulation of the obstacle problem \cite{KinderlehrerStampacchia1980} is then to find $u\in K$ so that
+be the admissible set for solutions, a closed and convex subset of $X$.  For $f\in L^2(\Omega)$, the VI formulation of the obstacle problem \cite{KinderlehrerStampacchia1980} is then to find $u\in \cK$ so that
 \begin{equation} \label{eq:classical:vi}
-\int_\Omega \nabla u \cdot \nabla(v - u) \ge \int_\Omega f(v - u) \quad \text{ for all } v \in K.
+\int_\Omega \nabla u \cdot \nabla(v - u) \ge \int_\Omega f(v - u) \quad \text{ for all } v \in \cK.
 \end{equation}
 
 Section \ref{sec:vifem} will recall some of the theory of such VIs, and their finite element (FE) approximation.  The conforming FE approximation of \eqref{eq:classical:vi} uses the same weak form but over the discrete space.  As for PDEs \cite{ElmanSilvesterWathen2014}, because the exact solution $u$ and the FE solution $u_h$ solve VIs, with the latter computed on a mesh with characteristic size $h>0$, the norm errors $\|u-u_h\|$ can be bounded, and related to the approximation properties of the FE space.  Specifically, an extension of the Falk \cite{Falk1974} technique for \emph{a priori} norm error estimation for VIs is provided in Section \ref{sec:vifem}.
@@ -148,30 +149,84 @@ FIXME TABLE OF ACRONYMS
 
 In this section we summarize some basic theory of the VI formulation of unilateral obstacle problems in Banach spaces.  Under a hypothesis of coercivity we have continuum well-posedness even for nonlinear operators.  Our extension of the Falk \cite{Falk1974} technique for VIs, which generalizes Cea's lemma \cite{ElmanSilvesterWathen2014} for PDE problems, then gives an upper bound on the FE norm error, and a convergence argument.  The same Falk-type inequality illuminates why targeted mesh refinement around the free boundary provides improved solutions.
 
-For a bounded, open domain $\Omega \subset \RR^d$, $d=2,3$, with Lipschitz boundary \cite{Ciarlet2002}, let $X = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}, with norm denoted $\|\cdot\|$.  For simplicity we will assume continuous problem data, possessing well-defined point values, so suppose $\psi \in X \cap C(\bar\Omega)$, and assume $g\in C(\partial \Omega)$ satisfies $g \ge \psi|_{\partial\Omega}$.  As for the classical obstacle problem \eqref{eq:classical:admissible}, let
+For a bounded, open domain $\Omega \subset \RR^d$, $d=2,3$, with Lipschitz boundary \cite{Ciarlet2002}, let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}, with norm denoted $\|\cdot\|$.  For simplicity we will assume continuous problem data, possessing well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$, and assume $g\in C(\partial \Omega)$ satisfies $g \ge \psi|_{\partial\Omega}$.  As for the classical obstacle problem \eqref{eq:classical:admissible}, let
 \begin{equation} \label{eq:admissible}
-K = \{u \in X \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
+\cK = \{u \in \cX \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
 \end{equation}
-be the admissible subset.  Note that $K\subset X$ is closed and convex.
+be the admissible subset.  Note that $\cK\subset \cX$ is closed and convex.
 
-Let $X'$ be the dual space of $X$, with applicaiton of a linear functional denoted $\omega[v] \in \RR$ for $\omega \in X'$ and $v\in X$, and with norm $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:K \to X'$ be a given continuous operator (function), generally nonlinear, and let $\ell\in X'$ be given.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in K$ so that
+Let $\cX'$ be the dual space of $\cX$, with application of a linear functional denoted $\omega[v] \in \RR$ for $\omega \in \cX'$ and $v\in \cX$, and with norm $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:\cK \to \cX'$ be a given continuous operator (function), generally nonlinear, and let $\ell\in \cX'$ be given.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in \cK$ so that
 \begin{equation} \label{eq:vi}
-F(u)[v - u] \ge \ell[v - u] \quad \text{ for all } v \in K.
+F(u)[v - u] \ge \ell[v - u] \quad \text{ for all } v \in \cK.
 \end{equation}
 This problem generalizes the classical obstacle problem \eqref{eq:classical:vi}.
 
-The VI problems considered here can be analyzed within the framework of monotonicity and coercivity.  We say $F$ is monotone if $(F(v) - F(w))[v - w] \ge 0$ for all $v,w \in K$, and that $F$ is $q$-coercive, for $q>1$, if there is $\alpha>0$ so that
+The VI problems considered here can be analyzed within the framework of monotonicity and coercivity.  We say $F$ is monotone if $(F(v) - F(w))[v - w] \ge 0$ for all $v,w \in \cK$, and that $F$ is $q$-coercive, for $q>1$, if there is $\alpha>0$ so that
 \begin{equation} \label{eq:coercive}
 (F(v) - F(w))[v - w] \ge \alpha \|v-w\|^q
 \end{equation}
-for all $v,w \in K$.  Note that if $F$ is $q$-coercive then it is also monotone, indeed strictly monotone in the sense that $(F(v) - F(w))[v - w] > 0$ for $v\ne w$.  It is a well-known fact that if $F$ is continuous and $q$-coercive then VI \eqref{eq:vi} is well-posed \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.
+for all $v,w \in \cK$.  Note that if $F$ is $q$-coercive then it is also monotone, indeed strictly monotone in the sense that $(F(v) - F(w))[v - w] > 0$ for $v\ne w$.  It is a well-known fact that if $F$ is continuous and $q$-coercive then VI \eqref{eq:vi} is well-posed \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.
 
-The classical obstacle problem in weak form, inequality \eqref{eq:classical:vi}, has $X=W^{1,2}(\Omega) = H^1(\Omega)$, i.e.~$p=2$, and $F(u)[v] = \int_\Omega \grad u \cdot \grad v$.  Here $F$ is linear and defined on all of $X$, while $F$ in \eqref{eq:vi} might be only defined on $K$.  Also $F$ is $2$-coercive in the classical problem, because the (weak) Laplacian is uniformly elliptic \cite{Evans2010}; of course \eqref{eq:classical:vi} is well-posed.  Problem \eqref{eq:classical:vi} is also the first-order optimality condition for the minimization of a continuous, quadratic objective function over the admissible set $K$, but as noted earlier we will not need this optimization structure at any point.
+The classical obstacle problem in weak form, inequality \eqref{eq:classical:vi}, has $\cX=W^{1,2}(\Omega) = H^1(\Omega)$, i.e.~$p=2$, and $F(u)[v] = \int_\Omega \grad u \cdot \grad v$.  Here $F$ is linear and defined on all of $\cX$, while $F$ in \eqref{eq:vi} might be only defined on $K$.  Also $F$ is $2$-coercive in the classical problem, because the (weak) Laplacian is uniformly elliptic \cite{Evans2010}; of course \eqref{eq:classical:vi} is well-posed.  Problem \eqref{eq:classical:vi} is also the first-order optimality condition for the minimization of a continuous, quadratic objective function over the admissible set $\cK$, but as noted earlier we will not need this optimization structure at any point.
 
+Returning to the general case with $\cX = W^{1,p}(\Omega)$ and $p>1$, note that the residual would be zero almost everywhere ($F(u)-\ell=0$) in a PDE case, i.e.~without an inequality constraint.  By contrast, for a VI over $\cK\subset \cX$, defined by \eqref{eq:admissible}, we only know that $F(u)-\ell=0$ a.e.~in the unknown inactive set $I_u$.  On the other hand, although the residual may be highly irregular ($F(u)-\ell\in X'$), in the active set it is at least nonnegative.  Thus the following lemma states a precise complementarity problem associated to the VI weak form \eqref{eq:vi}; compare \eqref{eq:classical:ncp} for the classical obstacle problem.
 
-FIXME Falk technique
+\begin{lemma} \cite[Theorem 6.22]{KinderlehrerStampacchia1980}. Suppose $u\in \cK$ solves \eqref{eq:vi}.  Then $F(u)-\ell$ is a positive Borel measure supported in the active set $A_u$.
+\end{lemma}
 
-%FIXME \cite{Suttmeier2008}
+FIXME define $\cX_h$ and $\cK_h$ and discuss admissibility; if $\psi_h \ge \psi$ then $\cK_h\subset \cK$, but not generally
+
+FIXME state FE VI
+\begin{equation} \label{eq:fe:vi}
+F(u_h)[v_h - u+h] \ge \ell[v_h - u_h] \quad \text{ for all } v_h \in \cK_h.
+\end{equation}
+
+FIXME Falk technique as follows
+
+\begin{theorem} \label{thm:genfalk}  For $q>1$, define the conjugate exponent $q'=q/(q-1)$.  Assume as before that $F$ is $q$-coercive over $\cK$ with constant $\alpha>0$, and Lipshitz on bounded sets of $\cK$.  Suppose $\psi_h\ge \psi$ for $\psi_h\in\cX_h$, and $\psi_h=\psi$ on $\partial \Omega$.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c=c(R_h,\alpha)>0$, not otherwise depending on $u$ or $u_h$, so that
+\begin{align}
+\|u-u_h\|^q &\le \frac{2}{\alpha} \inf_{v_h\in\cK_h} \left(F(u)-\ell\right)[v_h-u] \notag \\
+   &\quad\, + c \inf_{v_h\in\cK_h} \|v_h - u\|^{q'}. \notag
+\end{align}
+\end{theorem}
+
+\begin{proof}  FIXME For arbitrary $v\in\cK$ and $v_h\in\cK_h$, rewrite \eqref{eq:vi} and \eqref{eq:fe:vi} as follows:
+\begin{align}
+f(u)[u]     &\le f(u)[v] + \ell[u-v], \label{eq:abstract:one}  \\
+f_h(u_h)[u_h] &\le f_h(u_h)[v_h] + \ell[u_h-v_h]. \notag
+\end{align}
+It follows from \eqref{eq:abstract:one} and $q$-coercivity of $f$ that
+\begin{align}
+\alpha \|u-u_h\|^q &\le \left(f(u)-f(u_h)\right)[u-u_h] \label{eq:abstract:two} \\
+  &= f(u)[u] + f(u_h)[u_h] - f(u)[u_h] - f(u_h)[u] \notag \\
+  &= f(u)[u] + f_h(u_h)[u_h] \notag \\
+  &\qquad - f(u)[u_h] - f(u_h)[u] + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag \\
+  &\le f(u)[v] + \ell[u-v] + f(u_h)[v_h] + \ell[u_h-v_h] \notag \\
+  &\qquad - f(u)[u_h] - f(u_h)[u] + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag \\
+  &= f(u)[v-u_h] - \ell[v-u_h] + f(u_h)[v_h-u] - \ell[v_h-u] \notag \\
+  &\qquad + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag \\
+  &= \left(f(u)-\ell\right)[v-u_h] + \left(f(u)-\ell\right)[v_h-u] \notag \\
+  &\qquad + \left(f(u)-f(u_h)\right)[u-v_h] + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag
+\end{align}
+Since $u,u_h\in B_{R_h}$, by the Lipshitz assumption over $\cK$ there is $C(R_h)>0$ so that
+\begin{equation}
+\left(f(u)-f(u_h)\right)[u-v_h] \le C(R_h) \|u-u_h\|\|u-v_h\|. \label{eq:abstract:three}
+\end{equation}
+Noting $1<q<\infty$, now use Young's inequality with $\eps>0$ \cite[Appendix B.2]{Evans2010}:
+\begin{align}
+\alpha \|u-u_h\|^q &\le \left(f(u)-\ell\right)[v-u_h] + \left(f(u)-\ell\right)[v_h-u]  \label{eq:abstract:four} \\
+  &\qquad + C(R_h) \left(\eps\|u-u_h\|^q + \tilde C(\eps) \|u-v_h\|^{q'}\right) \notag \\
+  &\qquad + \left(f(u_h)-f_h(u_h)\right)[u_h], \notag
+\end{align}
+where $\tilde C(\eps) = (\eps q)^{-q'/q} {q'}^{-1}$.  Choose $\eps>0$ so that $C(R_h) \eps \le \alpha/2$, and subtract:
+\begin{align}
+\frac{\alpha}{2} \|u-u_h\|^q &\le \left(f(u)-\ell\right)[v-u_h] + \left(f(u)-\ell\right)[v_h-u]  \label{eq:abstract:five} \\
+  &\qquad + C(R_h) \tilde C(\eps) \|u-v_h\|^{q'} + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag
+\end{align}
+Take infimums to show \eqref{eq:abstractestimate}, and note that $c=2 C(R_h) \tilde C(\eps)/\alpha$.
+\end{proof}
+
+FIXME \cite{Suttmeier2008} re DWR
 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
