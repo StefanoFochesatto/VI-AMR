@@ -144,33 +144,34 @@ FIXME The remaining material is organized as follows.  We give a brief backgroun
 FIXME TABLE OF ACRONYMS
 
 
-\section{Variational inequalities and their finite element errors} \label{sec:vifem}
+\section{Variational inequalities and their finite element approximation} \label{sec:vifem}
 
-For a bounded, open domain $\Omega \subset \RR^d$, $d=2,3$, with Lipschitz boundary \cite{Ciarlet2002}, let $X = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}, with norm denoted $\|\cdot\|$.  For simplicity we will assume regular data, so suppose $\psi \in X \cap C(\bar\Omega)$, and assume $g\in C(\partial \Omega)$ satisfies $g \ge \psi|_{\partial\Omega}$.  Let
+In this section we summarize some basic theory of the VI formulation of unilateral obstacle problems in Banach spaces.  Under a hypothesis of coercivity we have continuum well-posedness even for nonlinear operators.  Our extension of the Falk \cite{Falk1974} technique for VIs, which generalizes Cea's lemma \cite{ElmanSilvesterWathen2014} for PDE problems, then gives an upper bound on the FE norm error, and a convergence argument.  The same Falk-type inequality illuminates why targeted mesh refinement around the free boundary provides improved solutions.
+
+For a bounded, open domain $\Omega \subset \RR^d$, $d=2,3$, with Lipschitz boundary \cite{Ciarlet2002}, let $X = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}, with norm denoted $\|\cdot\|$.  For simplicity we will assume continuous problem data, possessing well-defined point values, so suppose $\psi \in X \cap C(\bar\Omega)$, and assume $g\in C(\partial \Omega)$ satisfies $g \ge \psi|_{\partial\Omega}$.  As for the classical obstacle problem \eqref{eq:classical:admissible}, let
 \begin{equation} \label{eq:admissible}
 K = \{u \in X \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
 \end{equation}
-be the admissible subset, exactly as for the classical obstacle problem \eqref{eq:classical:admissible}.  Note that $K\subset X$ is closed and convex.
+be the admissible subset.  Note that $K\subset X$ is closed and convex.
 
-Let $X'$ be the dual space of $X$, with action denoted $\omega[v] \in \RR$ for $\omega \in X'$ and $v\in X$, and with norm $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:K \to X'$ be a given continuous function, generally nonlinear, and let $\ell\in X'$ be given.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in K$ so that
+Let $X'$ be the dual space of $X$, with applicaiton of a linear functional denoted $\omega[v] \in \RR$ for $\omega \in X'$ and $v\in X$, and with norm $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:K \to X'$ be a given continuous operator (function), generally nonlinear, and let $\ell\in X'$ be given.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in K$ so that
 \begin{equation} \label{eq:vi}
 F(u)[v - u] \ge \ell[v - u] \quad \text{ for all } v \in K.
 \end{equation}
-This problem generals the classical obstacle problem \eqref{eq:classical:vi}.
+This problem generalizes the classical obstacle problem \eqref{eq:classical:vi}.
 
-The VI problems considered here can be analyzed, at least in part, within the framework of monotonicity and coercivity.  We say $F$ is monotone if $(F(v) - F(w))[v - w] \ge 0$ for all $v,w \in K$, and that $F$ is $q$-coercive, for $q>1$, if there is $\alpha>0$ so that
+The VI problems considered here can be analyzed within the framework of monotonicity and coercivity.  We say $F$ is monotone if $(F(v) - F(w))[v - w] \ge 0$ for all $v,w \in K$, and that $F$ is $q$-coercive, for $q>1$, if there is $\alpha>0$ so that
 \begin{equation} \label{eq:coercive}
 (F(v) - F(w))[v - w] \ge \alpha \|v-w\|^q
 \end{equation}
 for all $v,w \in K$.  Note that if $F$ is $q$-coercive then it is also monotone, indeed strictly monotone in the sense that $(F(v) - F(w))[v - w] > 0$ for $v\ne w$.  It is a well-known fact that if $F$ is continuous and $q$-coercive then VI \eqref{eq:vi} is well-posed \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.
 
-The classical obstacle problem \eqref{eq:classical:vi} has $X=W^{1,2}(\Omega) = H^1(\Omega)$, i.e.~$p=2$, and $F(u)[v] = \int_\Omega \grad u \cdot \grad v$.  Here $F$ is linear and $2$-coercive, because the (weak) Laplacian is uniformly elliptic \cite{Evans2010}, so \eqref{eq:classical:vi} is well-posed.  Problem \eqref{eq:classical:vi} is also the first-order optimality condition for the minimization of a continuous, quadratic objective function over the admissible set $K$, but we will not need this optimization structure at an point, so it is not assumed henceforth.
+The classical obstacle problem in weak form, inequality \eqref{eq:classical:vi}, has $X=W^{1,2}(\Omega) = H^1(\Omega)$, i.e.~$p=2$, and $F(u)[v] = \int_\Omega \grad u \cdot \grad v$.  Here $F$ is linear and defined on all of $X$, while $F$ in \eqref{eq:vi} might be only defined on $K$.  Also $F$ is $2$-coercive in the classical problem, because the (weak) Laplacian is uniformly elliptic \cite{Evans2010}; of course \eqref{eq:classical:vi} is well-posed.  Problem \eqref{eq:classical:vi} is also the first-order optimality condition for the minimization of a continuous, quadratic objective function over the admissible set $K$, but as noted earlier we will not need this optimization structure at any point.
 
 
-FIXME Cea's lemma and Falk technique
+FIXME Falk technique
 
-%FIXME \cite{ElmanSilvesterWathen2014} \cite{Suttmeier2008}
-%FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
+%FIXME \cite{Suttmeier2008}
 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
@@ -548,7 +549,12 @@ FIXME
 \caption{Mesh (left) generated from the spiral problem, with $N=2.3\times 10^3$ elements, and the approximated active set (right).}
 \end{figure}
 
+
 \section{Results} \label{sec:results}
+
+FIXME discuss norm and geometric measures first
+
+FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
 
 FIXME
 
