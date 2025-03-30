@@ -151,9 +151,9 @@ In this section we summarize some basic theory of the VI formulation of unilater
 
 For a bounded, open domain $\Omega \subset \RR^d$, $d=2,3$, with Lipschitz boundary \cite{Ciarlet2002}, let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}, with norm denoted $\|\cdot\|$.  For simplicity we will assume continuous problem data, possessing well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$, and assume $g\in C(\partial \Omega)$ satisfies $g \ge \psi|_{\partial\Omega}$.  As for the classical obstacle problem \eqref{eq:classical:admissible}, let
 \begin{equation} \label{eq:admissible}
-\cK = \{u \in \cX \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
+\cK = \{v \in \cX \,:\, v \ge \psi \text{ and } v|_{\partial \Omega} = g\}
 \end{equation}
-be the admissible subset.  Note that $\cK\subset \cX$ is closed and convex.
+be the admissible subset.  Note that $\cK\subset \cX$ is closed and convex, and also that $\psi\in\cK$.
 
 Let $\cX'$ be the dual space of $\cX$, with application of a linear functional denoted $\omega[v] \in \RR$ for $\omega \in \cX'$ and $v\in \cX$, and with norm $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:\cK \to \cX'$ be a given continuous operator (function), generally nonlinear, and let $\ell\in \cX'$ be given.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in \cK$ so that
 \begin{equation} \label{eq:vi}
@@ -171,62 +171,65 @@ The classical obstacle problem in weak form, inequality \eqref{eq:classical:vi},
 
 Returning to the general case with $\cX = W^{1,p}(\Omega)$ and $p>1$, note that the residual would be zero almost everywhere ($F(u)-\ell=0$) in a PDE case, i.e.~without an inequality constraint.  By contrast, for a VI over $\cK\subset \cX$, defined by \eqref{eq:admissible}, we only know that $F(u)-\ell=0$ a.e.~in the unknown inactive set $I_u$.  On the other hand, although the residual may be highly irregular ($F(u)-\ell\in X'$), in the active set it is at least nonnegative.  Thus the following lemma states a precise complementarity problem associated to the VI weak form \eqref{eq:vi}; compare \eqref{eq:classical:ncp} for the classical obstacle problem.
 
-\begin{lemma} \cite[Theorem 6.22]{KinderlehrerStampacchia1980}. Suppose $u\in \cK$ solves \eqref{eq:vi}.  Then $F(u)-\ell$ is a positive Borel measure supported in the active set $A_u$.
+\begin{lemma} \cite[Theorem 6.22]{KinderlehrerStampacchia1980}. Suppose $u\in \cK$ solves \eqref{eq:vi}.  Then $F(u)-\ell$ is a positive Borel measure $d\mu_u$ supported in the active set $A_u$, and so if $w\in\cX$ then
+\begin{equation}
+(F(u)-\ell)[w] = \int_{A_u} w\, d\mu_u. \label{eq:measure}
+\end{equation}
 \end{lemma}
 
-FIXME define $\cX_h$ and $\cK_h$ and discuss admissibility; if $\psi_h \ge \psi$ then $\cK_h\subset \cK$, but not generally
-
-FIXME state FE VI
+Let $\cX_h \subset \cX \cap C(\bar\Omega)$ be a finite-dimensional FE subspace.\footnote{Not that our FE method is conforming in the PDE sense \cite{ElmanSilvesterWathen2014}, but admissibility for the VI case is more subtle, as seen in stating Theorem \ref{thm:genfalk}.}  For simplicity we will assume that $\partial \Omega$ is polygonal and that there is $g_h\in\cX_h$ such that $g_h=g$ exactly along $\partial \Omega$.  Let $\psi_h \in \cX_h$ be the FE obstacle, assumed to satisfy the compatibility requirement that $\psi_h \le g_h$ along $\partial\Omega$.  Note that $\psi_h$ might be an interpolant or projection of the continuum obstacle $\psi$, but no specific relationship is implied for now.  Define the FE admissible set
+\begin{equation} \label{eq:fe:admissible}
+\cK_h = \{v_h \in \cX_h \,:\, v_h \ge \psi_h \text{ and } v_h|_{\partial \Omega} = g_h|_{\partial\Omega}\}.
+\end{equation}
+If also $\psi_h \ge \psi$ then $\cK_h\subset \cK$, but otherwise not; we will consider this issue again below.  Our FE method seeks $u_h\in\cK_h$ such that
 \begin{equation} \label{eq:fe:vi}
-F(u_h)[v_h - u+h] \ge \ell[v_h - u_h] \quad \text{ for all } v_h \in \cK_h.
+F(u_h)[v_h - u_h] \ge \ell[v_h - u_h] \quad \text{ for all } v_h \in \cK_h.
 \end{equation}
 
-FIXME Falk technique as follows
+The following theorem generalizes that of Falk \cite{Falk1974}; see also Theorem 5.1.1 in \cite{Ciarlet2002}.  A further generalization, allowing non-conforming operators $F_h\approx F$, is Theorem 6.3 in \cite{Bueler2024}; this adds a fourth term to the bound.
 
-\begin{theorem} \label{thm:genfalk}  For $q>1$, define the conjugate exponent $q'=q/(q-1)$.  Assume as before that $F$ is $q$-coercive over $\cK$ with constant $\alpha>0$, and Lipshitz on bounded sets of $\cK$.  Suppose $\psi_h\ge \psi$ for $\psi_h\in\cX_h$, and $\psi_h=\psi$ on $\partial \Omega$.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c=c(R_h,\alpha)>0$, not otherwise depending on $u$ or $u_h$, so that
+\begin{theorem} \label{thm:genfalk}  For $1<q<\infty$, define the conjugate exponent $q'=q/(q-1)$.  Assume that either $F$ is $q$-coercive over $\cX$, or that $\cK_h\subset \cK$ and $F$ is $q$-coercive over $\cK$, in either case with constant $\alpha>0$.  Assume similarly that either $F$ is Lipschitz on bounded sets of $\cX$ or that $\cK_h\subset \cK$ and $F$ is Lipschitz on bounded subsets of $\cK$.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c=c(R_h,\alpha)>0$, not otherwise depending on $u$ or $u_h$, so that
 \begin{align}
-\|u-u_h\|^q &\le \frac{2}{\alpha} \inf_{v_h\in\cK_h} \left(F(u)-\ell\right)[v_h-u] \notag \\
+\|u-u_h\|^q &\le \frac{2}{\alpha} \inf_{v\in\cK} \int_{A_u} (v-u_h)\,d\mu_u \label{eq:falk} \\
+   &\quad\, + \frac{2}{\alpha} \inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u \notag \\
    &\quad\, + c \inf_{v_h\in\cK_h} \|v_h - u\|^{q'}. \notag
 \end{align}
 \end{theorem}
 
-\begin{proof}  FIXME For arbitrary $v\in\cK$ and $v_h\in\cK_h$, rewrite \eqref{eq:vi} and \eqref{eq:fe:vi} as follows:
+\begin{proof}  For arbitrary $v\in\cK$ and $v_h\in\cK_h$, rewrite \eqref{eq:vi} and \eqref{eq:fe:vi} as $F(u)[u] \le F(u)[v] + \ell[u-v]$ and $F(u_h)[u_h] \le F(u_h)[v_h] + \ell[u_h-v_h]$.  It follows from these inequalities, and $q$-coercivity of $F$, that
 \begin{align}
-f(u)[u]     &\le f(u)[v] + \ell[u-v], \label{eq:abstract:one}  \\
-f_h(u_h)[u_h] &\le f_h(u_h)[v_h] + \ell[u_h-v_h]. \notag
+\alpha \|u-u_h\|^q &\le \left(F(u)-F(u_h)\right)[u-u_h] \label{eq:falkdance} \\
+  &= F(u)[u] + F(u_h)[u_h] - F(u)[u_h] - F(u_h)[u] \notag \\
+  &\le F(u)[v] + \ell[u-v] + F(u_h)[v_h] + \ell[u_h-v_h] \notag \\
+  &\qquad - F(u)[u_h] - F(u_h)[u] \notag \\
+  &= F(u)[v-u_h] - \ell[v-u_h] + F(u_h)[v_h-u] - \ell[v_h-u] \notag \\
+  &= \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u] \notag \\
+  &\qquad + \left(F(u)-F(u_h)\right)[u-v_h] \notag
 \end{align}
-It follows from \eqref{eq:abstract:one} and $q$-coercivity of $f$ that
-\begin{align}
-\alpha \|u-u_h\|^q &\le \left(f(u)-f(u_h)\right)[u-u_h] \label{eq:abstract:two} \\
-  &= f(u)[u] + f(u_h)[u_h] - f(u)[u_h] - f(u_h)[u] \notag \\
-  &= f(u)[u] + f_h(u_h)[u_h] \notag \\
-  &\qquad - f(u)[u_h] - f(u_h)[u] + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag \\
-  &\le f(u)[v] + \ell[u-v] + f(u_h)[v_h] + \ell[u_h-v_h] \notag \\
-  &\qquad - f(u)[u_h] - f(u_h)[u] + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag \\
-  &= f(u)[v-u_h] - \ell[v-u_h] + f(u_h)[v_h-u] - \ell[v_h-u] \notag \\
-  &\qquad + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag \\
-  &= \left(f(u)-\ell\right)[v-u_h] + \left(f(u)-\ell\right)[v_h-u] \notag \\
-  &\qquad + \left(f(u)-f(u_h)\right)[u-v_h] + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag
-\end{align}
-Since $u,u_h\in B_{R_h}$, by the Lipshitz assumption over $\cK$ there is $C(R_h)>0$ so that
+Since $u,u_h\in B_{R_h} = \{w\in\cX\,:\,\|w\|\le R_h\}$, by the Lipschitz assumption there is $C(R_h)>0$ so that
 \begin{equation}
-\left(f(u)-f(u_h)\right)[u-v_h] \le C(R_h) \|u-u_h\|\|u-v_h\|. \label{eq:abstract:three}
+\left(F(u)-F(u_h)\right)[u-v_h] \le C(R_h) \|u-u_h\|\|u-v_h\|. \label{eq:falklip}
 \end{equation}
-Noting $1<q<\infty$, now use Young's inequality with $\eps>0$ \cite[Appendix B.2]{Evans2010}:
+Now use Young's inequality with $\eps>0$ \cite[Appendix B.2]{Evans2010}:
 \begin{align}
-\alpha \|u-u_h\|^q &\le \left(f(u)-\ell\right)[v-u_h] + \left(f(u)-\ell\right)[v_h-u]  \label{eq:abstract:four} \\
-  &\qquad + C(R_h) \left(\eps\|u-u_h\|^q + \tilde C(\eps) \|u-v_h\|^{q'}\right) \notag \\
-  &\qquad + \left(f(u_h)-f_h(u_h)\right)[u_h], \notag
+\alpha \|u-u_h\|^q &\le \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u]  \label{eq:falkyoung} \\
+  &\qquad + C(R_h) \left(\eps\|u-u_h\|^q + \tilde C(\eps) \|u-v_h\|^{q'}\right) \notag
 \end{align}
 where $\tilde C(\eps) = (\eps q)^{-q'/q} {q'}^{-1}$.  Choose $\eps>0$ so that $C(R_h) \eps \le \alpha/2$, and subtract:
 \begin{align}
-\frac{\alpha}{2} \|u-u_h\|^q &\le \left(f(u)-\ell\right)[v-u_h] + \left(f(u)-\ell\right)[v_h-u]  \label{eq:abstract:five} \\
-  &\qquad + C(R_h) \tilde C(\eps) \|u-v_h\|^{q'} + \left(f(u_h)-f_h(u_h)\right)[u_h] \notag
+\frac{\alpha}{2} \|u-u_h\|^q &\le \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u]  \label{eq:abstract:five} \\
+  &\qquad + C(R_h) \tilde C(\eps) \|u-v_h\|^{q'} \notag
 \end{align}
-Take infimums to show \eqref{eq:abstractestimate}, and note that $c=2 C(R_h) \tilde C(\eps)/\alpha$.
+Apply the Lemma, note $u=\psi$ a.e.~in $A_u$, and take infimums to show \eqref{eq:falk}.  Also note that $c=2 C(R_h) \tilde C(\eps)/\alpha$.
 \end{proof}
 
-FIXME \cite{Suttmeier2008} re DWR
+FIXME PDE case
+
+FIXME $\cK_h\subset \cK$ case
+
+FIXME so what: if we have accurate free boundary then \dots and active set apparent errors can be ignored
+
+FIXME compare \cite{Suttmeier2008} re DWR
 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
