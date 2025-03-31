@@ -61,7 +61,7 @@
 \maketitle
 
 \begin{abstract}
-Free-boundary problems posed as variational inequalities, such as obstacle problems, appear in many scientific and engineering applications.  In the finite element (FE) solution of these problems, the geometrical error in locating the unknown free boundary, equivalently in locating the active and inactive sets, often dominates the overall numerical error.  In this paper we propose, and implement using the Firedrake FE library, adaptive mesh refinement (AMR) strategies which enhance the mesh resolution around the free boundary.  These methods mark elements for refinement based on a computed solution; refinement then reduces numerical errors while controlling the growth of mesh complexity.  We consider three AMR methods of this type: (i) an unstructured dilation operator based on discrete adjacency to the computed free-boundary; (ii) a variable-coefficient diffusion method which thresholds a diffused active set indicator function; and (iii) a metric-based method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the diffused active set indicator.  The methods are evaluated by norm error and geometrical error in active set localization, the latter using Jaccard and Hausdorff distances.  Certain hybrid strategies are then considered.  Applications include the classical Poisson obstacle problem and a shallow ice flow problem for predicting the glaciated region in a mountain range.
+Free-boundary problems posed as variational inequalities, for example obstacle problems, appear in many scientific and engineering applications.  In the finite element (FE) solution of these problems, the geometrical error in locating the unknown free boundary, equivalently in locating the active and inactive sets, often dominates the overall numerical error.  In this paper we propose, and implement using the Firedrake FE library, adaptive mesh refinement (AMR) strategies which enhance mesh resolution around the free boundary.  These methods mark elements for refinement based on a computed solution.  We consider three methods: (i) an unstructured dilation operator based on discrete adjacency to the computed free-boundary; (ii) a variable-coefficient diffusion method which thresholds a diffused indicator function for the computed active set; and (iii) a metric-based method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the diffused active set indicator.  The methods, and certain hybrid strategies, are evaluated by norm error relative to mesh complexity and run-time.  They are also evaluated by geometrical error in active set localization using Jaccard and Hausdorff distances.  Applications include the classical Poisson obstacle problem and a shallow ice flow problem for predicting the glaciated region in a mountain range.
 \end{abstract}
 
 %\begin{keywords}
@@ -71,7 +71,7 @@ Free-boundary problems posed as variational inequalities, such as obstacle probl
 
 \section{Introduction} \label{sec:intro}
 
-The classical obstacle problem \cite{KinderlehrerStampacchia1980} finds the equilibrium position (vertical displacement) $u$ of an elastic membrane, attached to a fixed boundary, with some applied force $f$, but where the membrane is constrained to lie above some obstacle $\psi$.  Let $\Omega \subset \RR^d$ be a bounded, open domain, with the data $f$ and $\psi$ given on $\Omega$.  The strong formulation of this problem is a complementarity problem (CP).  It gives conditions satisfied by the solution $u$ almost everywhere in $\Omega$:
+The classical obstacle problem \cite{KinderlehrerStampacchia1980} finds the equilibrium position (vertical displacement) $u$ of an elastic membrane, attached to a fixed boundary at displacement $g$, with some applied force $f$, but with the membrane constrained to be above some obstacle $\psi$.  Let $\Omega \subset \RR^d$ be a bounded and open domain.  For compatibility, suppose $\psi \le g$ along $\partial \Omega$.  The strong formulation of this problem, assuming smooth data, is a complementarity problem (CP) of conditions satisfied almost everywhere in $\Omega$:
 \begin{subequations} \label{eq:classical:ncp}
 \begin{align}
   -\nabla^2 u - f \geq 0 \label{eq:classical:ncp:a} \\
@@ -83,7 +83,7 @@ From a solution to \eqref{eq:classical:ncp} we may identify the inactive and act
 \begin{equation}
   I_u = \{x \in \Omega \,:\, u(x) > \psi(x)\}, \quad A_u = \Omega \setminus I_u. \label{eq:classical:sets}
 \end{equation}
-The free boundary $\Gamma_u = \Omega \cap \partial I_u$ is where $I_u$ meets $A_u$ within $\Omega$.  From \eqref{eq:classical:ncp}, $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$, while both Dirichlet ($u=\psi$) and Neumann ($\grad u = \grad \psi$) conditions apply along $\Gamma_u$.  An example is shown in Figure \ref{fig:ball}, in which $A_u$ is the closed disc of contact ($u=\psi$), and $\Gamma_u$ is a circle.
+The free boundary $\Gamma_u = \Omega \cap \partial I_u$ is where $I_u$ meets $A_u$ within $\Omega$.  From \eqref{eq:classical:ncp}, $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$, while both Dirichlet ($u=\psi$) and Neumann ($\grad u = \grad \psi$) conditions apply along $\Gamma_u$, in addition to fixed Dirichlet conditions ($u=g$) along $\partial\Omega$.  An example is shown in Figure \ref{fig:ball}, in which $A_u$ is a closed disc of contact and $\Gamma_u$ is a circle.
 
 \begin{figure}[H]
 \centering
@@ -92,18 +92,21 @@ The free boundary $\Gamma_u = \Omega \cap \partial I_u$ is where $I_u$ meets $A_
 \label{fig:ball}
 \end{figure}
 
-As is well-known, CP \eqref{eq:classical:ncp} has a weak formulation which is a variational inequality (VI) over a Sobolev space.  Let $\cX=H^1(\Omega)$ \cite{ElmanSilvesterWathen2014} and suppose $\psi \in X \cap C(\bar\Omega)$.  Let $g:\partial \Omega\to \RR$ be continuous, also satisfying $g \ge \psi|_{\partial \Omega}$.  Let
+As is well-known, CP \eqref{eq:classical:ncp} has a weak formulation which is a variational inequality (VI) over a Sobolev space.  Let $\cX=H^1(\Omega)$ \cite{ElmanSilvesterWathen2014} and suppose $\psi \in \cX \cap C(\bar\Omega)$.  Let $g:\partial \Omega\to \RR$ be continuous, with $\psi|_{\partial \Omega} \le g$.  Let
 \begin{equation} \label{eq:classical:admissible}
 \cK = \{u \in \cX \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
 \end{equation}
-be the admissible set for solutions, a closed and convex subset of $X$.  For $f\in L^2(\Omega)$, the VI formulation of the obstacle problem \cite{KinderlehrerStampacchia1980} is then to find $u\in \cK$ so that
+be the admissible set for solutions, a closed and convex subset of $\cX$.  For $f\in L^2(\Omega)$, the VI formulation of the obstacle problem \cite{KinderlehrerStampacchia1980} is then to find $u\in \cK$ so that
 \begin{equation} \label{eq:classical:vi}
 \int_\Omega \nabla u \cdot \nabla(v - u) \ge \int_\Omega f(v - u) \quad \text{ for all } v \in \cK.
 \end{equation}
 
-Section \ref{sec:vifem} will recall some of the theory of such VIs, and their finite element (FE) approximation.  The conforming FE approximation of \eqref{eq:classical:vi} uses the same weak form but over the discrete space.  As for PDEs \cite{ElmanSilvesterWathen2014}, because the exact solution $u$ and the FE solution $u_h$ solve VIs, with the latter computed on a mesh with characteristic size $h>0$, the norm errors $\|u-u_h\|$ can be bounded, and related to the approximation properties of the FE space.  Specifically, an extension of the Falk \cite{Falk1974} technique for \emph{a priori} norm error estimation for VIs is provided in Section \ref{sec:vifem}.
+Section \ref{sec:vifem} will recall some of the theory of such VIs, generalized to coercive nonlinear operators over Banach spaces, and their finite element (FE) approximation.  A conforming FE approximation uses the same weak form as the continuum VI, but now over a discrete space constructed on a mesh with characteristic size $h>0$; see \eqref{eq:fe:vi}.  Similarly to the situation for PDEs \cite{ElmanSilvesterWathen2014}, because the exact solution $u$ and the FE solution $u_h$ solve VIs, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori}.  These norm errors are again related to the approximation properties of the FE space, but also to new VI-specific concerns regarding differences in admissibility (i.e.~between continuum and FE admissible sets).  An extension of the Falk \cite{Falk1974} technique for \emph{a priori} norm error estimation for VIs is therefore provided in Section \ref{sec:vifem}.
 
-However, the geometrical mesh error in locating the free-boundary $\Gamma_u$, by itself, largely explains the behaviour of the numerical error.  (This fact is only weakly acknowledged in the FE literature for VIs \cite[for example]{Suttmeier2008}.)  For example, to make this clear in one dimension suppose $\Omega = (-1,1)$, $\psi(x)=0.5 - x^2$, and $g=0$.  The exact solution $u$ of \eqref{eq:classical:vi} is easily calculated, with free boundaries at $x_*=\pm(2-\sqrt{2})/2$ (Figure \ref{fig:parabola}).  Suppose our FE approximation uses piecewise-linear elements and uniform meshes, and let $\Delta_h$ be the minimum distance between a nodal coordinate and $x_*$, over a uniform mesh.  Because the values $x_*$ are irrational, the mesh nodes will never coincide exactly with $x_*$, and $\Delta_h$ will be an erratic function of $h$, though $\Delta_h = O(h)$.  Figure \ref{fig:parabola} (right) compares the $H^1$ and $L^2$ norm errors $\|u-u_h\|$ to $\Delta_h$.  We see that the purely-geometrical error $\Delta_h$, in approximating the free boundary, fully explains the erratic behavior of the norm errors.
+However, the geometrical mesh error in locating the free-boundary $\Gamma_u$, by itself, largely explains the behaviour of the numerical error $\|u-u_h\|$.  This fact is only weakly acknowledged in the FE literature for VIs \cite[for example]{Suttmeier2008}, but it is clearly seen in the following 1D example.
+
+\begin{example}  Suppose $\Omega = (-1,1)$, $\psi(x)=0.5 - x^2$, and $g=0$.  The exact solution $u$ of \eqref{eq:classical:vi} is easily calculated, with free boundaries at $x_*=\pm(2-\sqrt{2})/2$ (Figure \ref{fig:parabola}).  For an FE approximation using piecewise-linear elements and a uniform mesh, let $\Delta_h$ be the minimum distance between a nodal coordinate and $x_*$.  Because the values $x_*$ are irrational, the mesh nodes will never coincide exactly with $x_*$, and furthermore $\Delta_h$ will be an erratic function of $h$.  Figure \ref{fig:parabola} (right) compares the $H^1$ and $L^2$ norm errors $\|u-u_h\|$ to $\Delta_h = O(h)$.  We see that the purely-geometrical error $\Delta_h$, in approximating the free boundary, fully explains the erratic behavior of the norm errors.
+\end{example}
 
 \begin{figure}[H]
 \mbox{
@@ -120,25 +123,22 @@ However, the geometrical mesh error in locating the free-boundary $\Gamma_u$, by
 \label{fig:parabola}
 \end{figure}
 
-Our numerical results (Section \ref{sec:results}), along with the above example, justify our somewhat-heuristic approach to adaptive mesh refinement (AMR) for VIs.  Because the convergence of VI problems is dominated by the error in approximating the free boundary, an adaptive refinement scheme that is quickly able to concentrate effort around the solution free boundary will both enhance convergence to the solution over the inactive set, and reduce unnecessary computation in the active set.  This approach is especially valuable in applications where a large portion of the domain is active set, and thus where no numerical approximation of the operator is actually required; the glacier example in Section \ref{sec:app} is such an application.
+Along with the above example, our numerical results in Sections \ref{sec:results} and \ref{sec:app} justify our somewhat-heuristic approach to adaptive mesh refinement (AMR) for VIs.  Because the convergence of VI problems is dominated by the error in approximating the free boundary, an AMR scheme that is quickly able to concentrate effort around an \emph{a posteriori} free boundary will both enhance convergence to the solution over the (computed) inactive set, and reduce unnecessary computation in the (computed) active set.  This approach is especially valuable in applications where a large portion of the domain turns out to be active set, thus so that no numerical approximation of the operator there is actually required; the glacier example in Section \ref{sec:app} is such an application.
 
-Note that while the classical obstacle problem in form \eqref{eq:classical:vi} is equivalent to constrained minimization of a scalar objective defined on $X$ \cite{KinderlehrerStampacchia1980}.  However, the analysis of FE errors for VI problems does not require such an objective, and for example in Section \ref{sec:app} no such objective exists.  Thus we will not directly consider any optimization principle.
+While the classical obstacle problem in VI form \eqref{eq:classical:vi} is equivalent to constrained minimization of a scalar objective \cite{KinderlehrerStampacchia1980}, the analysis of FE errors for VI problems presented in Section \ref{sec:vifem} does not require such an objective.  Indeed, for our example in Section \ref{sec:app} no such objective exists.  Thus we will not directly consider any optimization principle.  Also, we consider only meshs of triangles or tetrahedra, and $P_1$ elements (Section \ref{sec:results}), and so only $h$-refinement is addressed.  VIs can be solved using $p$-refinement and higher-order elements, but only if nontrivial monotonicity modifications are made \cite{KeithSurowiec2024}, which is not attempted here.
 
-Also note that the current paper considers only meshs of triangles or tetrahedra, and $P_1$ elements (Section \ref{sec:results}), and so only $h$-refinement is addressed.  VIs can be solved using higher-order elements if nontrivial monotonicity modifications are made \cite{KeithSurowiec2024}, but this is not attempted here.
+Three AMR methods are described in Section \ref{sec:viamr}.  Our implementations of these methods use the Firedrake finite element library and produce conforming meshes with no hanging nodes.  The first two methods are of tag-and-refine type, only differing by the analysis technique used to identify which elements to tag.  For these methods skeleton-based refinement \cite{PlazaCarey2000} is applied after tagging, as implemented within PETSc's DMPlex component \cite{petsc-user-ref}.  The third method is goal-oriented and metric-based \cite{Wallworketal2020}.  The three methods are fully-detailed in Section \ref{sec:viamr}, but the following list gives a high-level summary.
 
-Three AMR methods are described in Section \ref{sec:viamr}.  Our implementations of these methods use the Firedrake finite element library and produce conforming meshes with no hanging nodes.  Two methods are of the tag-and-refine type, only differing by the analysis technique used to identify which elements to tag.  For these methods skeleton-based refinement \cite{PlazaCarey2000} is applied after tagging, as implemented within PETSc's DMPlex component \cite{petsc-user-ref}.
-
-The third method is goal-oriented and metric-based \cite{Alauzet2010,Wallworketal2020}.  This method constructs an intermediate representation of the size, shape, and orientation of the refinement, namely a tensor-valued Riemannian metric, and then the mesh is actually refined using the MMG mesh library \cite{DapognyDobrzynskiFrey2014}.
+\renewcommand{\labelenumi}{(\roman{enumi})}
+\begin{enumerate}
+\item The unstructured diffusion operator (UDO) method discretely identifies elements adjacent to the computed free boundary, employing a graph-based approach to tag neighboring elements for refinement.  It generalizes the bitmap image processing operation of dilation [CITE!] to unstructured meshes.
+\item The variable-coefficient diffusion (VCD) method computes a node-wise indicator function for the computed active set.  This indicator becomes the initial iterate in a single step of a time-dependent heat equation problem.  Solving this problem has the effect of smoothing the indicator about the free boundary.  The smoothed result is then averaged over each element and thresholded for element tagging.
+\item The averaged-metric (AVM) method computes an intermediate representation of the size, shape, and orientation of the new mesh, namely a tensor-valued Riemannian metric \cite{Alauzet2010}.  Specifically, we generate the metric by averaging the Hessian of the computed solution with an isotropic metric generated from the same diffused active set indicator as in VCD.  Then the mesh is actually refined using the MMG mesh library \cite{DapognyDobrzynskiFrey2014}.  This permits controlled anisotropy \cite{Wallworketal2020} to reduce inactive set solution norm error.
+\end{enumerate}
 
 % PROBABLY NOT NEEDED: Traditional AMR for PDE problems \citep{BangerthRannacher2003} computes error indicators within the solution domain based on analysis of an FE solution computed on the current mesh.  These methods are designed to increase mesh resolution or polynomial degree \cite{Demkowicz2007} by means of a local error estimator, for some goal, the quantity of interest $J(\cdot)$. The dual weighted residual (DWR) method \cite{RannacherSuttmeier1997} begins with a posteriori or a priori analysis of the quantity $J(u) - J(u_h)$.  Estimates of this error quantity are then decomposed into local element-wise error estimators which can be used as a heuristic to tag elements for refinement.
 
-The constraint of $u \geq \psi$ makes VI problems nonlinear (even if the operator is linear).  Thus an iterative solver is required.  Our solver is a VI-adapted Newton method with a reduced-space line search (RSLS) \cite{BensonMunson2006}, implemented in PETSc \cite{petsc-user-ref}.  Such a numerical method does not converge until the active and inactive sets stabilize on the given mesh, so that the discrete free boundary is identified.  Upon stabilizaiton, the domain of quadratic convergence can be entered, giving convergence in a few more iterations.  Newton solvers like RSLS can therefore only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009}, and overall convergence is roughly proportional to the number of grid spaces between the initial iterate free boundary and the solution free boundary \citep{Bueler2021}.  Using the meshes generated here as coarse grids for a multilevel solver, for example the FASCD solver in \cite{BuelerFarrell2024}, is one path to a scalable solution process for VIs.
-
-In the first method from Section \ref{sec:viamr}, which we call the variable-coefficient diffusion (VCD) method, we compute a node-wise indicator function for the active set for use as an initial iterate in a single step of a time-dependent heat equation problem.  Solving a single step of this problem has the effect of smoothing the indicator about the free boundary.  The smoothed result is then averaged over each element and thresholded for refinement tagging.
-
-The second method, called unstructured diffusion operator (UDO), focuses on the discrete identification of elements adjacent to the free boundary, employing a graph-based approach to mark neighboring elements for refinement.  This generalizes the bitmap image processing operation of dilation [cite] to unstructured meshes.
-
-FIXME 3RD METHOD
+Our focus in this paper is on AMR performance, and not solver performance.  However, regarding solvers, the constraint of $u \geq \psi$ makes VI problems nonlinear, even if the operator is linear, and thus an iterative solver is required.  Our solver is a VI-adapted Newton method with a reduced-space line search (RSLS) \cite{BensonMunson2006}, implemented in PETSc \cite{petsc-user-ref}.  Such a numerical method does not converge until the active and inactive sets stabilize on the given mesh, equivalently that the discrete free boundary is identified.  Upon stabilization, the domain of quadratic convergence can be entered, giving convergence in a few more iterations when the operator is well-behaved.  Newton solvers like RSLS can therefore only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009}, and overall convergence becomes roughly proportional to the number of grid spaces between the initial iterate free boundary and the solution free boundary \citep{Bueler2021}.  Such poor performance could be substantially improved by using the AMR meshes generated here as coarse grids for a multilevel solver, for example that in \cite{BuelerFarrell2024}, a possible path to highly-scalable solutions of obstacle problems.
 
 FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCES and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries. 
 
@@ -147,56 +147,59 @@ FIXME TABLE OF ACRONYMS
 
 \section{Variational inequalities and their finite element approximation} \label{sec:vifem}
 
-In this section we summarize some basic theory of the VI formulation of unilateral obstacle problems in Banach spaces.  Under a hypothesis of coercivity we have continuum well-posedness even for nonlinear operators.  Our extension of the Falk \cite{Falk1974} technique for VIs, which generalizes Cea's lemma \cite{ElmanSilvesterWathen2014} for PDE problems, then gives an upper bound on the FE norm error, and a convergence argument.  The same Falk-type inequality illuminates why targeted mesh refinement around the free boundary provides improved solutions.
+In this section we summarize some of the basic theory of the VI formulation of unilateral obstacle problems in Banach spaces.  Under a hypothesis of coercivity we have continuum well-posedness even for nonlinear operators.  Then our extension of the Falk \cite{Falk1974} technique for VIs, which generalizes Cea's lemma \cite{ElmanSilvesterWathen2014} for PDE problems, gives an upper bound on the FE norm error and a convergence argument.  The same Falk-type inequality illuminates why targeted mesh refinement around the computed free boundary will generate improved solutions.
 
-For a bounded, open domain $\Omega \subset \RR^d$, $d=2,3$, with Lipschitz boundary \cite{Ciarlet2002}, let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}, with norm denoted $\|\cdot\|$.  For simplicity we will assume continuous problem data, possessing well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$, and assume $g\in C(\partial \Omega)$ satisfies $g \ge \psi|_{\partial\Omega}$.  As for the classical obstacle problem \eqref{eq:classical:admissible}, let
+For a bounded, open domain $\Omega \subset \RR^d$ with Lipschitz boundary \cite{Ciarlet2002}, let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}, with norm denoted $\|\cdot\|$.  For simplicity we will assume continuous problem data, having well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$, and assume $g\in C(\partial \Omega)$ satisfies $g \ge \psi|_{\partial\Omega}$.  As for the classical obstacle problem \eqref{eq:classical:admissible}, define the admissible subset
 \begin{equation} \label{eq:admissible}
 \cK = \{v \in \cX \,:\, v \ge \psi \text{ and } v|_{\partial \Omega} = g\}
 \end{equation}
-be the admissible subset.  Note that $\cK\subset \cX$ is closed and convex, and also that $\psi\in\cK$.
+Note that $\cK\subset \cX$ is closed and convex.  Observe that generally $\psi\notin\cK$, except in applications where $g = \psi|_{\partial\Omega}$, for example in Section \ref{sec:app}.
 
-Let $\cX'$ be the dual space of $\cX$, with application of a linear functional denoted $\omega[v] \in \RR$ for $\omega \in \cX'$ and $v\in \cX$, and with norm $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:\cK \to \cX'$ be a given continuous operator (function), generally nonlinear, and let $\ell\in \cX'$ be given.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in \cK$ so that
+Let $\cX'$ be the dual space of $\cX$, with application of $\omega \in \cX'$ to $v\in \cX$ denoted $\omega[v] \in \RR$.  The norm on $\cX'$ is $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:\cK \to \cX'$ be a given operator (function), generally nonlinear, and let $\ell\in \cX'$ be given.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in \cK$ so that
 \begin{equation} \label{eq:vi}
 F(u)[v - u] \ge \ell[v - u] \quad \text{ for all } v \in \cK.
 \end{equation}
-This problem generalizes the classical obstacle problem \eqref{eq:classical:vi}.
 
-The VI problems considered here can be analyzed within the framework of monotonicity and coercivity.  We say $F$ is monotone if $(F(v) - F(w))[v - w] \ge 0$ for all $v,w \in \cK$, and that $F$ is $q$-coercive, for $q>1$, if there is $\alpha>0$ so that
+The VI problems considered here can be analyzed within the framework of coercivity and continuity.  First, we say $F$ is monotone if $(F(v) - F(w))[v - w] \ge 0$ for all $v,w \in \cK$.  Now $F$ is $q$-coercive, for $q>1$, if there is $\alpha>0$ so that
 \begin{equation} \label{eq:coercive}
 (F(v) - F(w))[v - w] \ge \alpha \|v-w\|^q
 \end{equation}
-for all $v,w \in \cK$.  Note that if $F$ is $q$-coercive then it is also monotone, indeed strictly monotone in the sense that $(F(v) - F(w))[v - w] > 0$ for $v\ne w$.  It is a well-known fact that if $F$ is continuous and $q$-coercive then VI \eqref{eq:vi} is well-posed \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.
+for all $v,w \in \cK$.  Note that if $F$ is $q$-coercive then it is also monotone, indeed strictly monotone ($(F(v) - F(w))[v - w] > 0$ for $v\ne w$).  Let $B_R$ be the ball around the origin in $\cX$ of radius $R>0$.  We say $F$ is Lipschitz on bounded subsets (of its domain) if for $R>0$ there is $C(R)>0$ so that for all $v,w \in B_R\cap \cK$ we have $\|F(v)-F(w)\|' \le C(R) \|v-w\|$, equivalently
+\begin{equation} \label{eq:lipschitz}
+\left|(F(v)-F(w))[z]\right| \le C(R) \|v-w\| \|z\| \quad \text{ for all } z \in \cX.
+\end{equation}
+If $F$ satisfies this condition then it is continuous.  It is well-known that if $F$ is continuous and $q$-coercive then the solution to VI \eqref{eq:vi} exists and is unique \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.
 
-The classical obstacle problem in weak form, inequality \eqref{eq:classical:vi}, has $\cX=W^{1,2}(\Omega) = H^1(\Omega)$, i.e.~$p=2$, and $F(u)[v] = \int_\Omega \grad u \cdot \grad v$.  Here $F$ is linear and defined on all of $\cX$, while $F$ in \eqref{eq:vi} might be only defined on $K$.  Also $F$ is $2$-coercive in the classical problem, because the (weak) Laplacian is uniformly elliptic \cite{Evans2010}; of course \eqref{eq:classical:vi} is well-posed.  Problem \eqref{eq:classical:vi} is also the first-order optimality condition for the minimization of a continuous, quadratic objective function over the admissible set $\cK$, but as noted earlier we will not need this optimization structure at any point.
+The classical obstacle problem in weak form, inequality \eqref{eq:classical:vi}, has $\cX=W^{1,2}(\Omega) = H^1(\Omega)$, i.e.~$p=2$, and $F(u)[v] = \int_\Omega \grad u \cdot \grad v$.  Here $F$ is linear and defined on all of $\cX$, while $F$ in \eqref{eq:vi} might be only defined on $K$.  Also $F$ is $2$-coercive in the classical problem, because the (weak) Laplacian is uniformly elliptic \cite{Evans2010}, and it is clearly Lipschitz over all of $\cX$ with constant $C=1$.
 
-Returning to the general case with $\cX = W^{1,p}(\Omega)$ and $p>1$, note that the residual would be zero almost everywhere ($F(u)-\ell=0$) in a PDE case, i.e.~without an inequality constraint.  By contrast, for a VI over $\cK\subset \cX$, defined by \eqref{eq:admissible}, we only know that $F(u)-\ell=0$ a.e.~in the unknown inactive set $I_u$.  On the other hand, although the residual may be highly irregular ($F(u)-\ell\in X'$), in the active set it is at least nonnegative.  Thus the following lemma states a precise complementarity problem associated to the VI weak form \eqref{eq:vi}; compare \eqref{eq:classical:ncp} for the classical obstacle problem.
+Returning to the general case with $\cX = W^{1,p}(\Omega)$ and $p>1$, note that the residual would be zero almost everywhere ($F(u)-\ell=0$) if the inequality constraint were absent (i.e.~in a PDE case).  By contrast, for a VI over $\cK$ defined by \eqref{eq:admissible} we only know that $F(u)-\ell=0$ a.e.~within the unknown inactive set $I_u$.  On the other hand, although the residual may be highly irregular, as $F(u)-\ell\in \cX'$, in the active set $A_u$ it is at least nonnegative.  The following lemma states the general complementarity problem associated to the VI weak form \eqref{eq:vi}; compare \eqref{eq:classical:ncp} for the classical obstacle problem.
 
-\begin{lemma} \cite[Theorem 6.22]{KinderlehrerStampacchia1980}. Suppose $u\in \cK$ solves \eqref{eq:vi}.  Then $F(u)-\ell$ is a positive Borel measure $d\mu_u$ supported in the active set $A_u$, and so if $w\in\cX$ then
+\begin{lemma} \cite[Theorem II.6.9]{KinderlehrerStampacchia1980}.  Suppose $u\in \cK$ solves \eqref{eq:vi}.  Then $F(u)-\ell$ is a positive Radon measure $d\mu_u$ supported in the active set $A_u$, and so if $w\in\cX$ then
 \begin{equation}
 (F(u)-\ell)[w] = \int_{A_u} w\, d\mu_u. \label{eq:measure}
 \end{equation}
 \end{lemma}
 
-Let $\cX_h \subset \cX \cap C(\bar\Omega)$ be a finite-dimensional FE subspace.\footnote{Not that our FE method is conforming in the PDE sense \cite{ElmanSilvesterWathen2014}, but admissibility for the VI case is more subtle, as seen in stating Theorem \ref{thm:genfalk}.}  For simplicity we will assume that $\partial \Omega$ is polygonal and that there is $g_h\in\cX_h$ such that $g_h=g$ exactly along $\partial \Omega$.  Let $\psi_h \in \cX_h$ be the FE obstacle, assumed to satisfy the compatibility requirement that $\psi_h \le g_h$ along $\partial\Omega$.  Note that $\psi_h$ might be an interpolant or projection of the continuum obstacle $\psi$, but no specific relationship is implied for now.  Define the FE admissible set
+Now let $\cX_h \subset \cX \cap C(\bar\Omega)$ be a finite-dimensional FE subspace.  For simplicity we will assume that $\partial \Omega$ is polygonal and that there is $g_h\in\cX_h$ such that $g_h=g$ exactly along $\partial \Omega$.  Let $\psi_h \in \cX_h$ be the FE obstacle, assumed to satisfy the compatibility requirement that $\psi_h \le g_h$ along $\partial\Omega$.  Note that $\psi_h$ might be an interpolant or projection of the continuum obstacle $\psi$, but no specific relationship is implied for now.  Define the FE admissible set
 \begin{equation} \label{eq:fe:admissible}
 \cK_h = \{v_h \in \cX_h \,:\, v_h \ge \psi_h \text{ and } v_h|_{\partial \Omega} = g_h|_{\partial\Omega}\}.
 \end{equation}
-If also $\psi_h \ge \psi$ then $\cK_h\subset \cK$, but otherwise not; we will consider this issue again below.  Our FE method seeks $u_h\in\cK_h$ such that
+If also $\psi_h \ge \psi$ then $\cK_h\subset \cK$, but otherwise not; we will consider this issue again below.  Our FE method seeks $u_h\in\cK_h$ satisfying the VI problem
 \begin{equation} \label{eq:fe:vi}
 F(u_h)[v_h - u_h] \ge \ell[v_h - u_h] \quad \text{ for all } v_h \in \cK_h.
 \end{equation}
 
-The following theorem generalizes that of Falk \cite{Falk1974}; see also Theorem 5.1.1 in \cite{Ciarlet2002}.  A further generalization, allowing non-conforming operators $F_h\approx F$, is Theorem 6.3 in \cite{Bueler2024}; this adds a fourth term to the bound.
+The following theorem generalizes that of Falk \cite{Falk1974}; see also Theorem 5.1.1 in \cite{Ciarlet2002}.\footnote{Theorem 6.3 in \cite{Bueler2024} extends Theorem \ref{thm:genfalk} to non-conforming operators $F_h\approx F$; this adds a fourth term to the bound.}
 
-\begin{theorem} \label{thm:genfalk}  For $1<q<\infty$, define the conjugate exponent $q'=q/(q-1)$.  Assume that either $F$ is $q$-coercive over $\cX$, or that $\cK_h\subset \cK$ and $F$ is $q$-coercive over $\cK$, in either case with constant $\alpha>0$.  Assume similarly that either $F$ is Lipschitz on bounded sets of $\cX$ or that $\cK_h\subset \cK$ and $F$ is Lipschitz on bounded subsets of $\cK$.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c=c(R_h,\alpha)>0$, not otherwise depending on $u$ or $u_h$, so that
+\begin{theorem} \label{thm:genfalk}  For $1<q<\infty$, define the conjugate exponent $q'=q/(q-1)$.  Assume that either $F$ is $q$-coercive over $\cX$, or that $\cK_h\subset \cK$ and $F$ is $q$-coercive over $\cK$, with coercivity constant $\alpha>0$.  In either case, assume that $F$ is Lipschitz on bounded sets of its domain.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c(R_h,\alpha)>0$, not otherwise depending on $u$ or $u_h$, so that
 \begin{align}
 \|u-u_h\|^q &\le \frac{2}{\alpha} \inf_{v\in\cK} \int_{A_u} (v-u_h)\,d\mu_u \label{eq:falk} \\
    &\quad\, + \frac{2}{\alpha} \inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u \notag \\
-   &\quad\, + c \inf_{v_h\in\cK_h} \|v_h - u\|^{q'}. \notag
+   &\quad\, + c(R_h,\alpha) \inf_{v_h\in\cK_h} \|v_h - u\|^{q'}. \notag
 \end{align}
 \end{theorem}
 
-\begin{proof}  For arbitrary $v\in\cK$ and $v_h\in\cK_h$, rewrite \eqref{eq:vi} and \eqref{eq:fe:vi} as $F(u)[u] \le F(u)[v] + \ell[u-v]$ and $F(u_h)[u_h] \le F(u_h)[v_h] + \ell[u_h-v_h]$.  It follows from these inequalities, and $q$-coercivity of $F$, that
+\begin{proof}  For arbitrary $v\in\cK$ and $v_h\in\cK_h$, rewrite \eqref{eq:vi} and \eqref{eq:fe:vi} as $F(u)[u] \le F(u)[v] + \ell[u-v]$ and $F(u_h)[u_h] \le F(u_h)[v_h] + \ell[u_h-v_h]$.  It follows from these inequalities, and $q$-coercivity of $F$ over a set containing $u$ and $u_h$, that
 \begin{align}
 \alpha \|u-u_h\|^q &\le \left(F(u)-F(u_h)\right)[u-u_h] \label{eq:falkdance} \\
   &= F(u)[u] + F(u_h)[u_h] - F(u)[u_h] - F(u_h)[u] \notag \\
@@ -206,7 +209,7 @@ The following theorem generalizes that of Falk \cite{Falk1974}; see also Theorem
   &= \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u] \notag \\
   &\qquad + \left(F(u)-F(u_h)\right)[u-v_h] \notag
 \end{align}
-Since $u,u_h\in B_{R_h} = \{w\in\cX\,:\,\|w\|\le R_h\}$, by the Lipschitz assumption there is $C(R_h)>0$ so that
+Since $u,u_h\in B_{R_h} = \{w\in\cX\,:\,\|w\|\le R_h\}$, by the Lipschitz assumption \eqref{eq:lipschitz} there is $C(R_h)>0$ so that the last term from \eqref{eq:falkdance} has bound
 \begin{equation}
 \left(F(u)-F(u_h)\right)[u-v_h] \le C(R_h) \|u-u_h\|\|u-v_h\|. \label{eq:falklip}
 \end{equation}
@@ -220,7 +223,7 @@ where $\tilde C(\eps) = (\eps q)^{-q'/q} {q'}^{-1}$.  Choose $\eps>0$ so that $C
 \frac{\alpha}{2} \|u-u_h\|^q &\le \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u]  \label{eq:abstract:five} \\
   &\qquad + C(R_h) \tilde C(\eps) \|u-v_h\|^{q'} \notag
 \end{align}
-Apply the Lemma, note $u=\psi$ a.e.~in $A_u$, and take infimums to show \eqref{eq:falk}.  Also note that $c=2 C(R_h) \tilde C(\eps)/\alpha$.
+Apply the Lemma, note $u=\psi$ a.e.~in $A_u$, and take infimums to show \eqref{eq:falk}.  Note that $c(R_h,\alpha)=2 C(R_h) \tilde C(\eps)/\alpha$.
 \end{proof}
 
 FIXME PDE case
