@@ -16,10 +16,10 @@ Now activate the virtual environment (venv). Typically something like:
 source ~/venv-firedrake/bin/activate
 ```
 
-Now pip install [shapely](https://pypi.org/project/shapely/), siphash24, and [ngspetsc](https://github.com/NGSolve/ngsPETSc) in the venv:
+Now pip install [shapely](https://pypi.org/project/shapely/), siphash24, vtk, and [ngspetsc](https://github.com/NGSolve/ngsPETSc) in the venv:
 
 ```
-pip install shapely siphash24 ngspetsc
+pip install shapely siphash24 vtk ngspetsc
 ```
 
 ## Installation of VI-AMR
