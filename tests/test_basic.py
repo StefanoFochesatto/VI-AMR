@@ -148,9 +148,6 @@ def test_petsc4py_refine_vces():
     ru = Function(rV).interpolate(u)  # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
 
-    #VTKFile(f"petsc4py_result_refine_1.pvd").write(ru)
-
-
 
 def test_refine_vces_petsc4py_firedrake():
     mesh = RectangleMesh(5, 5, 4.0, 4.0)  # Firedrake utility mesh, not netgen
@@ -162,19 +159,14 @@ def test_refine_vces_petsc4py_firedrake():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-
-    #VTKFile(f"result_0.pvd").write(u)
     mark = z.vcesmark(mesh, u, psi)
     rmesh = z.refinemarkedelements(mesh, mark)
     rmesh.coordinates.dat.data[:] -= 2.0  # why? see note on "Features which rely on the coordinates field of a mesh’s PETSc DM", at https://www.firedrakeproject.org/mesh-coordinates.html
-
-    
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 73
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u)  # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
-    #VTKFile(f"result_1.pvd").write(ru)
 
 
 def test_overlapping_jaccard():

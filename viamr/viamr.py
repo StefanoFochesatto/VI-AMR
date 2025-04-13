@@ -7,7 +7,6 @@ from firedrake.output import VTKFile
 from firedrake.utils import IntType
 import firedrake.cython.dmcommon as dmcommon
 
-
 from pyop2.mpi import MPI
 
 from shapely.geometry import MultiLineString
