@@ -476,11 +476,12 @@ class VIAMR(OptionsManager):
             MultiLineString(E1), MultiLineString(E2), 0.99
         )
 
-    def meshreport(self, mesh):
+    def meshreport(self, mesh, indent=2):
         """Print standard mesh report.  Valid in parallel."""
         nv, ne, hmin, hmax = self.meshsizes(mesh)
+        indentstr = indent * ' '
         PETSc.Sys.Print(
-            f"current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]"
+            f"{indentstr}current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]"
         )
         return None
 

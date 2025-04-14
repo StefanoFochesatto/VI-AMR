@@ -5,9 +5,9 @@ print = PETSc.Sys.Print # enables correct printing in parallel
 import numpy as np
 from viamr import VIAMR
 
-levels = 2
-#h_initial = 0.10
-h_initial = 0.03
+refinements = 5
+m_initial = 30
+m_data = 500
 outfile = "result_blisters.pvd"
 
 def normal2d(mesh, x0, y0, sigma):
@@ -17,11 +17,21 @@ def normal2d(mesh, x0, y0, sigma):
     dsqr = (x - x0)**2 + (y - y0)**2
     return C * exp(- dsqr / (2.0 * sigma**2))
 
+def eval_fsource(mesh):
+    f_ufl = -17.0 + 0.6 * normal2d(mesh, 0.3, 0.8, 0.04) \
+                  + 0.5 * normal2d(mesh, 0.8, 0.35, 0.02) \
+                  + 0.4 * normal2d(mesh, 0.8, 0.25, 0.03) \
+                  + 0.4 * normal2d(mesh, 0.1, 0.3, 0.02) \
+                  + 0.3 * normal2d(mesh, 0.3, 0.32, 0.02) \
+                  + 0.4 * normal2d(mesh, 0.4, 0.2, 0.02)
+    return f_ufl
+
 params = {  
     "snes_type": "vinewtonrsls",
     "snes_vi_zero_tolerance": 1.0e-12,
     "snes_linesearch_type": "basic",
-    "snes_monitor": None,
+    #"snes_monitor": None,
+    #"snes_vi_monitor": None,
     "snes_converged_reason": None,
     "snes_rtol": 1.0e-8,
     "snes_atol": 1.0e-12,
@@ -31,27 +41,33 @@ params = {
     "pc_type": "lu",
     "pc_factor_mat_solver_type": "mumps"}
 
-m = int(np.ceil(1.0 / h_initial))
-initial_mesh = UnitSquareMesh(m, m)
+print(f'evaluating data f(x,y) on fine ({m_data} x {m_data} CG2) data mesh ...')
+datamesh = UnitSquareMesh(m_data, m_data)
+dataV = FunctionSpace(datamesh, "CG", 2)
+fdata = Function(dataV, name="f_data(x,y)")
+fdata.interpolate(eval_fsource(datamesh))
+
+datafile = 'result_data.pvd'
+print(f'writing data f(x,y) to {datafile} ...')
+VTKFile(datafile).write(fdata)
+
+initial_mesh = UnitSquareMesh(m_initial, m_initial)
 
 amr = VIAMR()
-meshhierarchy = [initial_mesh]
-for i in range(levels + 1):
+meshhierarchy = [initial_mesh, ]
+for i in range(refinements + 1):
     mesh = meshhierarchy[i]
     print(f'solving on mesh {i} ...')
     amr.meshreport(mesh)
 
     V = FunctionSpace(mesh, "CG", 1)
+    # cross-mesh interpolation from data mesh:
+    fsource = Function(V, name="f_source(x,y)").interpolate(fdata)
     if i == 0:
-        u = Function(V, name="u")
+        u = Function(V, name="u_h(x,y)")
     else:
-        # cross-mesh interpolation from coarser mesh
-        u = Function(V, name="u").interpolate(u)
-
-    f_ufl = -3.0 + 0.4 * normal2d(mesh, 0.3, 0.8, 0.06) \
-                 + 0.5 * normal2d(mesh, 0.8, 0.35, 0.05) \
-                 + 0.4 * normal2d(mesh, 0.8, 0.25, 0.06)
-    fsource = Function(V, name='fsource').interpolate(f_ufl)
+        # cross-mesh interpolation from coarser mesh:
+        u = Function(V, name="u_h(x,y)").interpolate(u)
 
     v = TestFunction(V)
     F = inner(grad(u), grad(v)) * dx - fsource * v * dx
@@ -61,17 +77,16 @@ for i in range(levels + 1):
     solver = NonlinearVariationalSolver(problem, solver_parameters=params, options_prefix="s")
     lb = Function(V).interpolate(Constant(0.0))
     ub = Function(V).interpolate(Constant(PETSc.INFINITY))
-    #spmore = {
-    #    "snes_converged_reason": None,
-    #    "snes_vi_monitor": None,
-    #}
     solver.solve(bounds=(lb, ub))
-    if i == levels:
+
+    if i == refinements:
         break
-    mark = amr.vcesmark(mesh, u, lb, bracket=[0.2, 0.9])
-    mesh = mesh.refine_marked_elements(mark)
+
+    # apply VCD AMR
+    mark = amr.vcesmark(mesh, u, lb, bracket=[0.15, 0.95])
+    mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
 outfile = 'result_blisters.pvd'
-print(f'done ... writing to {outfile} ...')
+print(f'done ... writing solution u(x,y) and f(x,y) to {outfile} ...')
 VTKFile(outfile).write(u, fsource)
