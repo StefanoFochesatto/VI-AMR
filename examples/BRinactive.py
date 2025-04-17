@@ -1,10 +1,12 @@
 from firedrake import *
 from firedrake.output import VTKFile
+from firedrake.petsc import PETSc
+print = PETSc.Sys.Print # enables correct printing in parallel
 from viamr import VIAMR
 from viamr.utility import LShapedDomainProblem
+
 levels = 6
 outfile = "result_LShaped.pvd"
-
 
 # Solve Obstacle Problem over domain,
 # Mesh filtering functionality in dmplextransform to setup inactive dirichlet problem? Looks like matt is working on porting to firedrake
@@ -19,17 +21,20 @@ outfile = "result_LShaped.pvd"
 #   finite element computations. SIAM Journal on Numerical Analysis, 15(4), 736-754.
 #   https://www.jstor.org/stable/pdf/2156851.pdf
 
-def estimate_error(mesh, uh):
+def estimate_error(mesh, uh, f=Constant(0.0)):
+    '''Return Babuška-Rheinboldt residual error estimator
+    for the Poisson equation  - div(grad u) = f.'''
+
+    # mesh quantities
+    h = CellDiameter(mesh)
+    v = CellVolume(mesh)
+    n = FacetNormal(mesh)
+
+    # cell-wise error estimator
     W = FunctionSpace(mesh, "DG", 0)
     eta_sq = Function(W)
     w = TestFunction(W)
-    f = Constant(0.0)
-    h = CellDiameter(mesh)  # symbols for mesh quantities
-    n = FacetNormal(mesh)
-    v = CellVolume(mesh)
-
-    # Babuska-Rheinboldt error estimator
-    G = (  # compute cellwise error estimator
+    G = (
         inner(eta_sq / v, w)*dx
         - inner(h**2 * (f + div(grad(uh)))**2, w) * dx
         - inner(h('+')/2 * jump(grad(uh), n)**2, w('+')) * dS
@@ -41,7 +46,8 @@ def estimate_error(mesh, uh):
     solve(G == 0, eta_sq, solver_parameters=sp)
     eta = Function(W).interpolate(sqrt(eta_sq))  # compute eta from eta^2
 
-    with eta.dat.vec_ro as eta_:  # compute estimate for error in energy norm
+    # compute scalar estimate for total error in energy norm (works in parallel too)
+    with eta.dat.vec_ro as eta_:
         error_est = sqrt(eta_.dot(eta_))
     return (eta, error_est)
 
@@ -64,26 +70,24 @@ if __name__ == "__main__":
         if i == levels:
             break
         
-        # Generate Inactive DWR mark
-        (eta, error_est) = estimate_error(mesh, u)
+        # Generate Inactive BR mark
+        (eta, _) = estimate_error(mesh, u)
         CG1, DG0 = amr.spaces(mesh)
         elemactiveindicator = amr.elemactive(u, lb)
         eleminactiveindicator = Function(DG0).interpolate(conditional(elemactiveindicator>0.5, 0, 1))
         etaInactive = Function(DG0).interpolate(eta * eleminactiveindicator)
         etaInactive.rename("etaInactive")
-        markDWR = Function(DG0)
         with etaInactive.dat.vec_ro as eta_:
             eta_max = eta_.max()[1]
-
         theta = 0.5
         should_refine = conditional(gt(etaInactive, theta*eta_max), 1, 0)
-        markDWR.interpolate(should_refine)
+        markBR = Function(DG0).interpolate(should_refine)
         
         # Generate Free Boundary mark
         markFB = amr.vcdmark(mesh, u, lb, bracket=[.4, .6])
         
         # Union and Refine
-        markUnion = Function(DG0).interpolate((markDWR + markFB) - (markDWR*markFB))
+        markUnion = Function(DG0).interpolate((markBR + markFB) - (markBR * markFB))
         mesh = mesh.refine_marked_elements(markUnion)
         meshHist.append(mesh)
 
