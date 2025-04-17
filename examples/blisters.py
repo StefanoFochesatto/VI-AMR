@@ -94,7 +94,7 @@ for i in range(refinements + 1):
     # apply VCD AMR
     if i == refinements:
         break
-    mark = amr.vcesmark(mesh, u, lb, bracket=[0.15, 0.95])
+    mark = amr.vcdmark(mesh, u, lb, bracket=[0.15, 0.95])
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
