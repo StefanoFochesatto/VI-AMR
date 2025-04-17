@@ -22,6 +22,7 @@ mesh = Mesh(ngmesh, distribution_parameters={
 
 amr = VIAMR()
 for i in range(refinements + 1):
+    print(f'solving on mesh {i} ...')
     amr.meshreport(mesh)
     # obstacle and solution are in P1 or Q1
     V = FunctionSpace(mesh, "CG", 1)
@@ -62,6 +63,7 @@ for i in range(refinements + 1):
         "snes_stol": 1.0e-12,
         "snes_vi_zero_tolerance": 1.0e-12,
         "snes_converged_reason": None,
+        "snes_vi_monitor": None,
         "ksp_type": "preonly",
         "pc_type": "lu",
         "pc_factor_mat_solver_type": "mumps",

@@ -44,7 +44,7 @@ params = {
     "snes_vi_zero_tolerance": 1.0e-12,
     "snes_linesearch_type": "basic",
     #"snes_monitor": None,
-    #"snes_vi_monitor": None,
+    "snes_vi_monitor": None,
     "snes_converged_reason": None,
     "snes_rtol": 1.0e-8,
     "snes_atol": 1.0e-12,
