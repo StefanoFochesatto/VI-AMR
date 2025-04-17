@@ -481,7 +481,7 @@ class VIAMR(OptionsManager):
 
     def hausdorff(self, E1, E2):
         return shapely.hausdorff_distance(
-            MultiLineString(E1), MultiLineString(E2), 0.99
+            shapely.MultiLineString(E1), shapely.MultiLineString(E2), 0.99
         )
 
     # FIXME: checks for when free boundary is emptyset
