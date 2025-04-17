@@ -5,7 +5,14 @@ print = PETSc.Sys.Print # enables correct printing in parallel
 import numpy as np
 from viamr import VIAMR
 
-refinements = 5  # 5 -> 10^5 elements, 8 -> 10^6 elements, 11 -> 10^7 elements
+# mesh complexity at levels, measured in approximate elements:
+#   refine_inactive=False
+#     5: 9e4, 6: 2e5, 7: 4e5, 8: 8e5, 9: 2e6, 10: 3e6, 11: 6e6, 12: ??
+#   refine_inactive=True
+#     5: 4e5, 6: 1e6, 7: 5e6, 8: 2e7, 9: ??
+
+refine_inactive = False  # optionally mark *all* inactive elements for refinement
+refinements = 5
 m_initial = 30
 m_data = 500
 outfile = "result_blisters.pvd"
@@ -91,10 +98,14 @@ for i in range(refinements + 1):
     ifrac = assemble(ielem * dx)
     print(f'  inactive fraction {ifrac:.6f}')
 
-    # apply VCD AMR
+    # apply VCD AMR, optionally marking all inactive
     if i == refinements:
         break
     mark = amr.vcdmark(mesh, u, lb, bracket=[0.15, 0.95])
+    if refine_inactive:
+        imark = amr.eleminactive(u, lb)
+        _, DG0 = amr.spaces(mesh)
+        mark = Function(DG0).interpolate((mark + imark) - (mark * imark))
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
