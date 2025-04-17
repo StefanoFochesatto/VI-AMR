@@ -18,15 +18,21 @@ def normal2d(mesh, x0, y0, sigma):
     return C * exp(- dsqr / (2.0 * sigma**2))
 
 def eval_fsource(mesh):
-    f_ufl = -17.0 + 0.6 * normal2d(mesh, 0.3, 0.8, 0.04) \
-                  + 0.5 * normal2d(mesh, 0.8, 0.35, 0.02) \
-                  + 0.4 * normal2d(mesh, 0.8, 0.25, 0.03) \
-                  + 0.4 * normal2d(mesh, 0.1, 0.3, 0.02) \
-                  + 0.3 * normal2d(mesh, 0.3, 0.32, 0.02) \
-                  + 0.4 * normal2d(mesh, 0.4, 0.2, 0.02)
+    xysw = [(0.3, 0.8, 0.04, 0.6),
+            (0.8, 0.35, 0.02, 0.5),
+            (0.8, 0.25, 0.03, 0.4),
+            (0.1, 0.3, 0.02, 0.4),
+            (0.3, 0.32, 0.02, 0.3),
+            (0.4, 0.2, 0.02, 0.4),
+            (0.8, 0.66, 0.01, 0.2),
+            (0.78, 0.75, 0.01, 0.1),
+            (0.7, 0.82, 0.01, 0.2)]
+    f_ufl = -17.0
+    for (x, y, sigma, weight) in xysw:
+        f_ufl += weight * normal2d(mesh, x, y, sigma)
     return f_ufl
 
-params = {  
+params = {
     "snes_type": "vinewtonrsls",
     "snes_vi_zero_tolerance": 1.0e-12,
     "snes_linesearch_type": "basic",
@@ -41,14 +47,14 @@ params = {
     "pc_type": "lu",
     "pc_factor_mat_solver_type": "mumps"}
 
-print(f'evaluating data f(x,y) on fine ({m_data} x {m_data} CG2) data mesh ...')
+print(f'evaluating source data f(x,y) on fine ({m_data} x {m_data} CG2) data mesh ...')
 datamesh = UnitSquareMesh(m_data, m_data)
 dataV = FunctionSpace(datamesh, "CG", 2)
 fdata = Function(dataV, name="f_data(x,y)")
 fdata.interpolate(eval_fsource(datamesh))
 
 datafile = 'result_data.pvd'
-print(f'writing data f(x,y) to {datafile} ...')
+print(f'writing source f(x,y) to {datafile} ...')
 VTKFile(datafile).write(fdata)
 
 initial_mesh = UnitSquareMesh(m_initial, m_initial)
@@ -74,15 +80,20 @@ for i in range(refinements + 1):
     bcs = DirichletBC(V, Constant(0.0), (1, 2, 3, 4))
     problem = NonlinearVariationalProblem(F, u, bcs)
 
+    # solve the VI
     solver = NonlinearVariationalSolver(problem, solver_parameters=params, options_prefix="s")
     lb = Function(V).interpolate(Constant(0.0))
     ub = Function(V).interpolate(Constant(PETSc.INFINITY))
     solver.solve(bounds=(lb, ub))
 
-    if i == refinements:
-        break
+    # evaluate inactive fraction
+    ielem = amr.eleminactive(u, lb)
+    ifrac = assemble(ielem * dx)
+    print(f'  inactive fraction {ifrac:.6f}')
 
     # apply VCD AMR
+    if i == refinements:
+        break
     mark = amr.vcesmark(mesh, u, lb, bracket=[0.15, 0.95])
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
