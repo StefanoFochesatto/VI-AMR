@@ -240,9 +240,12 @@ class VIAMR(OptionsManager):
         return elemborder
 
 
-    def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
-        """Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
-        Valid in parallel."""
+    def vcdmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
+        """Mark mesh using Variable Coefficient Diffusion (VCD) algorithm.
+        Conceptually, the algorithm computes a strict nodal active set
+        indicator and then it diffuses using variable diffusivity using a
+        single backward Euler time step for the heat equation.  (Equivalently
+        we take a single time-step of variable duration.) Valid in parallel."""
 
         # Compute nodal active set indicator within some tolerance
         CG1, DG0 = self.spaces(mesh)
@@ -261,23 +264,21 @@ class VIAMR(OptionsManager):
         a = w * v * dx + timestep * inner(grad(w), grad(v)) * dx
         L = nodalactive * v * dx
         u = Function(CG1, name="Smoothed Nodal Active Indicator")
+        #FIXME consider some solver; probably not this one: sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(a == L, u)
 
         if returnSmooth:
             return u
-
         else:
             # Compute average over elements by interpolation into DG0
             DG0 = FunctionSpace(mesh, "DG", 0)
             uDG0 = Function(DG0, name="Smoothed Nodal Active Indicator as DG0")
             uDG0.interpolate(u)
-
             # Applying thresholding parameters
-            mark = Function(DG0, name="VCES Marking")
+            mark = Function(DG0, name="VCD Marking")
             mark.interpolate(
                 conditional(uDG0 > bracket[0], conditional(uDG0 < bracket[1], 1, 0), 0)
             )
-
             return mark
 
     def setmetricparameters(self, **kwargs):
@@ -308,7 +309,7 @@ class VIAMR(OptionsManager):
         metric.compute_hessian(u)
         metric.normalise()
         return metric
-    
+
 
     def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50], hessian = True):
         """Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the

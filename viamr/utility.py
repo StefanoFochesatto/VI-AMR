@@ -17,8 +17,6 @@ except ImportError:
 from netgen.geom2d import SplineGeometry
 
 
-
-
 class BaseObstacleProblem(ABC, OptionsManager):
     def __init__(self, **kwargs):
         self.TriHeight = kwargs.pop("TriHeight", 0.1)
