@@ -9,8 +9,12 @@ import firedrake.cython.dmcommon as dmcommon
 
 from pyop2.mpi import MPI
 
-from shapely.geometry import MultiLineString
-import shapely
+try:
+    import shapely
+except ImportError:
+    print("ImportError.  Unable to import shapely.  Exiting.")
+    import sys
+    sys.exit(0)
 
 
 class VIAMR(OptionsManager):
@@ -35,6 +39,15 @@ class VIAMR(OptionsManager):
         hmin = float(mesh.comm.allreduce(min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
         hmax = float(mesh.comm.allreduce(max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
         return nvertices, nelements, hmin, hmax
+
+    def meshreport(self, mesh, indent=2):
+        """Print standard mesh report.  Valid in parallel."""
+        nv, ne, hmin, hmax = self.meshsizes(mesh)
+        indentstr = indent * ' '
+        PETSc.Sys.Print(
+            f"{indentstr}current mesh: {nv} vertices, {ne} elements, h in [{hmin:.5f},{hmax:.5f}]"
+        )
+        return None
 
     def nodalactive(self, u, lb):
         """Compute nodal active set indicator in same function space as u.
@@ -226,7 +239,7 @@ class VIAMR(OptionsManager):
         
         return elemborder
 
-    
+
     def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
         """Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
         Valid in parallel."""
@@ -332,10 +345,7 @@ class VIAMR(OptionsManager):
 
         return VImetric
     
-    
-    
-    
-    
+
     # Computes Babuška Rheinboldt(1978) error estimator, returns marking function on only inactive set.
     # Error estimator computation is from
     #   https://github.com/pefarrell/icerm2024/blob/main/slides.pdf  (slide 109)
@@ -441,8 +451,6 @@ class VIAMR(OptionsManager):
         
         return refinedmesh
 
-    
-    
 
     def jaccard(self, active1, active2):
         """Compute the Jaccard metric from two element-wise active
@@ -473,17 +481,8 @@ class VIAMR(OptionsManager):
 
     def hausdorff(self, E1, E2):
         return shapely.hausdorff_distance(
-            MultiLineString(E1), MultiLineString(E2), 0.99
+            shapely.MultiLineString(E1), shapely.MultiLineString(E2), 0.99
         )
-
-    def meshreport(self, mesh, indent=2):
-        """Print standard mesh report.  Valid in parallel."""
-        nv, ne, hmin, hmax = self.meshsizes(mesh)
-        indentstr = indent * ' '
-        PETSc.Sys.Print(
-            f"{indentstr}current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]"
-        )
-        return None
 
     # FIXME: checks for when free boundary is emptyset
     def freeboundarygraph(self, u, lb, type="coords"):
