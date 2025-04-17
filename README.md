@@ -62,13 +62,15 @@ Once the docker container is up and running, you can activate the python environ
 
 ## Usage
 
-These basic examples demonstrate refinement with VCD and UDO.  The sphere problem has a known exact solution while the spiral problem does not.  First make sure that the firedrake virtual environment is active.  Then do:
+These basic examples demonstrate refinement with VCD and UDO, respectively.  First make sure that the firedrake virtual environment is active.  Then do:
 
 ```
 cd examples/
 python3 sphere.py
 python3 spiral.py
 ```
+
+The sphere problem has a known exact solution while the spiral problem does not.
 
 View the output fields in `result_*.pvd` using [Paraview](https://www.paraview.org/).  These files contain the obstacle `psi`, the solution `u`, and the gap `u - psi`. The `result_sphere.pvd` file also contains the numerical error `|u - uexact|`.
 

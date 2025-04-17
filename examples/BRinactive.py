@@ -6,12 +6,10 @@ levels = 6
 outfile = "result_LShaped.pvd"
 
 
-
 # Solve Obstacle Problem over domain,
 # Mesh filtering functionality in dmplextransform to setup inactive dirichlet problem? Looks like matt is working on porting to firedrake
 # Compute error estimate
 # Union FB and DWR marks
-
 
 # following function is from
 #   https://github.com/pefarrell/icerm2024/blob/main/slides.pdf  (slide 109)
@@ -48,9 +46,6 @@ def estimate_error(mesh, uh):
     return (eta, error_est)
 
 
-
-
-
 if __name__ == "__main__":
     problem = LShapedDomainProblem(TriHeight=.25)
     amr = VIAMR()
@@ -85,7 +80,7 @@ if __name__ == "__main__":
         markDWR.interpolate(should_refine)
         
         # Generate Free Boundary mark
-        markFB = amr.vcesmark(mesh, u, lb, bracket=[.4, .6])
+        markFB = amr.vcdmark(mesh, u, lb, bracket=[.4, .6])
         
         # Union and Refine
         markUnion = Function(DG0).interpolate((markDWR + markFB) - (markDWR*markFB))
@@ -94,6 +89,5 @@ if __name__ == "__main__":
 
     V = u.function_space()
     gap = Function(V, name="gap = u-lb").interpolate(u - lb)
-
 
     VTKFile(outfile).write(u, lb, gap)

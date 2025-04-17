@@ -5,7 +5,7 @@ print = PETSc.Sys.Print # enables correct printing in parallel
 import numpy as np
 from viamr import VIAMR
 
-refinements = 5
+refinements = 5  # 5 -> 10^5 elements, 8 -> 10^6 elements, 11 -> 10^7 elements
 m_initial = 30
 m_data = 500
 outfile = "result_blisters.pvd"

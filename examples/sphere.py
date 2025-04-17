@@ -26,7 +26,7 @@ for i in range(levels + 1):
     if i == levels:
         break
     # alternative:  mark = amr.udomark(mesh, u, lb, n=2)
-    mark = amr.vcesmark(mesh, u, lb, bracket=[0.2, 0.9])
+    mark = amr.vcdmark(mesh, u, lb, bracket=[0.2, 0.9])
     mesh = mesh.refine_marked_elements(mark)
     meshHist.append(mesh)
 

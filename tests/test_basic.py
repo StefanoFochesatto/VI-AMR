@@ -47,12 +47,12 @@ def test_mark_none():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     mark = z.udomark(mesh, psi, psi)  # all active
     assert norm(mark, 'L1') == 0.0
-    mark = z.vcesmark(mesh, psi, psi)  # all active
+    mark = z.vcdmark(mesh, psi, psi)  # all active
     assert norm(mark, 'L1') == 0.0
     lift = Function(CG1).interpolate(psi + 1.0)
     mark = z.udomark(mesh, lift, psi)  # all inactive
     assert norm(mark, 'L1') == 0.0
-    mark = z.vcesmark(mesh, lift, psi)  # all inactive
+    mark = z.vcdmark(mesh, lift, psi)  # all inactive
     assert norm(mark, 'L1') == 0.0
 
 
@@ -109,7 +109,7 @@ def test_refine_udo_parallelUDO():
     assert r1CG1.dim() == r2CG1.dim()
 
 
-def test_refine_vces():
+def test_refine_vcd():
     mesh = get_netgen_mesh(TriHeight=1.2)
     z = VIAMR(debug=True)
     CG1, _ = z.spaces(mesh)
@@ -120,7 +120,7 @@ def test_refine_vces():
     unorm0 = norm(u)
     #VTKFile(f"result_refine_0.pvd").write(u)
 
-    mark = z.vcesmark(mesh, u, psi)
+    mark = z.vcdmark(mesh, u, psi)
     rmesh = mesh.refine_marked_elements(mark)
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 49
@@ -131,7 +131,7 @@ def test_refine_vces():
     #VTKFile(f"netgen_result_refine_1.pvd").write(ru)
 
 
-def test_petsc4py_refine_vces():
+def test_petsc4py_refine_vcd():
     mesh = get_netgen_mesh(TriHeight=1.2)
     z = VIAMR(debug=True)
     CG1, _ = z.spaces(mesh)
@@ -140,7 +140,7 @@ def test_petsc4py_refine_vces():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = z.vcesmark(mesh, u, psi)
+    mark = z.vcdmark(mesh, u, psi)
     rmesh = z.refinemarkedelements(mesh, mark)
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 49
@@ -149,7 +149,7 @@ def test_petsc4py_refine_vces():
     assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
 
 
-def test_refine_vces_petsc4py_firedrake():
+def test_refine_vcd_petsc4py_firedrake():
     mesh = RectangleMesh(5, 5, 4.0, 4.0)  # Firedrake utility mesh, not netgen
     mesh.coordinates.dat.data[:] -= 2.0
     z = VIAMR(debug=True)
@@ -159,7 +159,7 @@ def test_refine_vces_petsc4py_firedrake():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = z.vcesmark(mesh, u, psi)
+    mark = z.vcdmark(mesh, u, psi)
     rmesh = z.refinemarkedelements(mesh, mark)
     rmesh.coordinates.dat.data[:] -= 2.0  # why? see note on "Features which rely on the coordinates field of a mesh’s PETSc DM", at https://www.firedrakeproject.org/mesh-coordinates.html
     rCG1, _ = z.spaces(rmesh)
@@ -268,12 +268,12 @@ if __name__ == "__main__":
     test_spaces()
     test_mark_none()
     test_refine_udo()
-    test_refine_vces()
+    test_refine_vcd()
     test_overlapping_jaccard()
     test_nonoverlapping_jaccard()
     test_symmetry_jaccard()
     test_overlapping_and_nonoverlapping_hausdorff()
     test_refine_udo_parallelUDO()
     test_parallel_udo()
-    test_petsc4py_refine_vces()
-    test_refine_vces_petsc4py_firedrake()
+    test_petsc4py_refine_vcd()
+    test_refine_vcd_petsc4py_firedrake()
