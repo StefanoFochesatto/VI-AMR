@@ -281,6 +281,43 @@ class VIAMR(OptionsManager):
             )
             return mark
 
+    def br_estimate_error_poisson(self, uh, f=Constant(0.0)):
+        '''Return a posteriori Babuška-Rheinboldt residual error estimator
+        for uh which (approximately) solves the Poisson equation
+          - div(grad u) = f
+        Returns the estimator eta and a scalar estimate for the total error
+        in energy norm.  This function is on slide 109 of
+          https://github.com/pefarrell/icerm2024/blob/main/slides.pdf
+        The original source is perhaps
+          Babuška, I., & Rheinboldt, W. C. (1978). Error estimates for adaptive
+          finite element computations. SIAM Journal on Numerical Analysis,
+          15(4), 736-754.  https://www.jstor.org/stable/pdf/2156851.pdf
+        FIXME this should be more flexible, and at least correspond to
+          - A div(grad u) = f
+        for A>0'''
+        # mesh quantities
+        mesh = uh.function_space().mesh()
+        h = CellDiameter(mesh)
+        v = CellVolume(mesh)
+        n = FacetNormal(mesh)
+        # cell-wise error estimator
+        _, DG0 = self.spaces(mesh)
+        eta_sq = Function(DG0)
+        w = TestFunction(DG0)
+        G = (
+            inner(eta_sq / v, w)*dx
+            - inner(h**2 * (f + div(grad(uh)))**2, w) * dx
+            - inner(h('+')/2 * jump(grad(uh), n)**2, w('+')) * dS
+            - inner(h('-')/2 * jump(grad(uh), n)**2, w('-')) * dS
+        )
+        # Each cell is an independent 1x1 solve, so Jacobi is exact
+        sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
+        solve(G == 0, eta_sq, solver_parameters=sp)
+        eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
+        with eta.dat.vec_ro as eta_:
+            total_error_est = sqrt(eta_.dot(eta_))
+        return (eta, total_error_est)
+
     def setmetricparameters(self, **kwargs):
         self.target_complexity = kwargs.pop("target_complexity", 3000.0)
         self.h_min = kwargs.pop("h_min", 1.0e-7)
