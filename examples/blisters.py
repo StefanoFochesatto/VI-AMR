@@ -10,8 +10,10 @@ from viamr import VIAMR
 #     5: 9e4, 6: 2e5, 7: 4e5, 8: 8e5, 9: 2e6, 10: 3e6, 11: 6e6, 12: ??
 #   refine_inactive=True
 #     5: 4e5, 6: 1e6, 7: 5e6, 8: 2e7, 9: ??
+# FIXME evaluate for BR case ... and make options easier to understand
 
 refine_inactive = False  # optionally mark *all* inactive elements for refinement
+refine_br = False  # optionally mark inactive elements according to B&R method
 refinements = 5
 m_initial = 30
 m_data = 500
@@ -98,14 +100,17 @@ for i in range(refinements + 1):
     ifrac = assemble(ielem * dx)
     print(f'  inactive fraction {ifrac:.6f}')
 
-    # apply VCD AMR, optionally marking all inactive
+    # apply VCD AMR, optionally marking all inactive or by B&R indicator
     if i == refinements:
         break
     mark = amr.vcdmark(mesh, u, lb, bracket=[0.15, 0.95])
-    if refine_inactive:
-        imark = amr.eleminactive(u, lb)
+    if refine_inactive or refine_br:
+        if refine_br:
+            (imark, _, _) = amr.br_mark_poisson(u, lb, f=fsource)
+        else:
+            imark = amr.eleminactive(u, lb)
         _, DG0 = amr.spaces(mesh)
-        mark = Function(DG0).interpolate((mark + imark) - (mark * imark))
+        mark = Function(DG0).interpolate((mark + imark) - (mark * imark)) # union
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
