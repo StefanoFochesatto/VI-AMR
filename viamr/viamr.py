@@ -281,12 +281,12 @@ class VIAMR(OptionsManager):
             )
             return mark
 
-    def br_estimate_error_poisson(self, uh, f=Constant(0.0)):
-        '''Return a posteriori Babuška-Rheinboldt residual error estimator
-        for uh which (approximately) solves the Poisson equation
+    def br_mark_poisson(self, uh, lb, f=Constant(0.0)):
+        '''Return marking for the inactive set by using the a posteriori
+        Babuška-Rheinboldt residual error estimator for the Poisson equation
           - div(grad u) = f
-        Returns the estimator eta and a scalar estimate for the total error
-        in energy norm.  This function is on slide 109 of
+        Returns the marking mark, estimator eta, and a scalar estimate for
+        the total error in energy norm.  This function is on slide 109 of
           https://github.com/pefarrell/icerm2024/blob/main/slides.pdf
         The original source is perhaps
           Babuška, I., & Rheinboldt, W. C. (1978). Error estimates for adaptive
@@ -314,9 +314,15 @@ class VIAMR(OptionsManager):
         sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
-        with eta.dat.vec_ro as eta_:
-            total_error_est = sqrt(eta_.dot(eta_))
-        return (eta, total_error_est)
+        # generate inactive BR marking
+        theta = 0.5   # mark where eta is larger than theta fraction of eta values
+        imark = self.eleminactive(uh, lb)
+        ieta = Function(DG0, name='eta on inactive set').interpolate(eta * imark)
+        with ieta.dat.vec_ro as ieta_:
+            emax = ieta_.max()[1]
+            total_error_est = sqrt(ieta_.dot(ieta_))
+        mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
+        return (mark, eta, total_error_est)
 
     def setmetricparameters(self, **kwargs):
         self.target_complexity = kwargs.pop("target_complexity", 3000.0)

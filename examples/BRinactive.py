@@ -32,22 +32,13 @@ for i in range(levels + 1):
         break
 
     # generate inactive BR marking
-    (eta, _) = amr.br_estimate_error_poisson(u)
-    _, DG0 = amr.spaces(mesh)
-    elemactiveindicator = amr.elemactive(u, lb)
-    eleminactiveindicator = Function(DG0).interpolate(conditional(elemactiveindicator>0.5, 0, 1))
-    etaInactive = Function(DG0).interpolate(eta * eleminactiveindicator)
-    etaInactive.rename("etaInactive")
-    with etaInactive.dat.vec_ro as eta_:
-        eta_max = eta_.max()[1]
-    theta = 0.5
-    should_refine = conditional(gt(etaInactive, theta*eta_max), 1, 0)
-    markBR = Function(DG0).interpolate(should_refine)
+    (markBR, _, _) = amr.br_mark_poisson(u, lb)
 
     # generate free boundary marking by VCD
     markFB = amr.vcdmark(mesh, u, lb, bracket=[.4, .6])
 
     # union markings, and refine
+    _, DG0 = amr.spaces(mesh)
     markUnion = Function(DG0).interpolate((markBR + markFB) - (markBR * markFB))
     mesh = mesh.refine_marked_elements(markUnion)
     meshHist.append(mesh)
