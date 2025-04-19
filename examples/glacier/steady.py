@@ -13,13 +13,15 @@ By default (-prob cap) we generate a random, but smooth, bed topography.  Option
 Data-based problem (-data DATA.nc):
     FIXME: WIP
 
-The solver is vinewtonrsls + mumps.  We applies AMR by the VCD method, FIXME: optionally with
-all of the inactive set marked for refinement.  (Note UD0 is not currently parallel.)
+The solver is vinewtonrsls + mumps.  We applies AMR by the VCD method.  (Note UD0
+is not currently parallel.)  The default refinement mode is to alternate VCD-only
+on even refinements and VCD *with all of the inactive set marked* on odd refinements.
 
 Examples:
   python3 steady.py -opvd cap.pvd
-  mpiexec -n 4 steady.py -opvd cap4.pvd
   python3 steady.py -prob dome -opvd dome.pvd
+  python3 steady.py -irefine -opvd capi.pvd
+  mpiexec -n 4 python3 steady.py -irefine -refine 4 -prob range -opvd range4.pvd
 
 Works in serial only:
   python3 steady.py -jaccard
@@ -30,18 +32,21 @@ parser.add_argument('-jaccard', action='store_true', default=False,
                     help='use VIAMR.jaccard() to evaluate glaciated area convergence')
 parser.add_argument('-m', type=int, default=20, metavar='M',
                     help='number of cells in each direction [default=20]')
-parser.add_argument('-method', type=str, default='picard', metavar='X',
-                    choices = ['picard','direct'],
-                    help='choose primal FE method from {picard,direct}')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
                     help='output file name for Paraview format (.pvd)')
 parser.add_argument('-picard', type=int, default=5, metavar='P',
                     help='number of Picard iterations in solving SIA [default=5]')
 parser.add_argument('-prob', type=str, default='cap', metavar='X',
                     choices = ['cap','dome','range'],
-                    help='choose problem from {cap,dome,range}')
+                    help='choose problem from {cap, dome, range}')
 parser.add_argument('-refine', type=int, default=2, metavar='R',
                     help='number of AMR refinements [default 2]')
+parser.add_argument('-rmethod', type=str, default='alternate', metavar='X',
+                    choices = ['alternate','vcdonly','always'],
+                    help='choose refinement agenda from {alternate, vcdonly, always}')
+parser.add_argument('-smethod', type=str, default='picard', metavar='X',
+                    choices = ['picard','direct'],
+                    help='choose primal FE solver method from {picard, direct}')
 args, passthroughoptions = parser.parse_known_args()
 
 import numpy as np
@@ -126,6 +131,10 @@ for i in range(args.refine + 1):
             eactive = amr.elemactive(s, lb)
         mark = amr.vcdmark(mesh, s, lb)  # good
         #mark = amr.udomark(mesh, s, lb, n=1)  # not in parallel, but otherwise good
+        if ((args.rmethod == 'alternate' and i % 2 == 1) or args.rmethod == 'always'):
+            imark = amr.eleminactive(s, lb)
+            _, DG0 = amr.spaces(mesh)
+            mark = Function(DG0).interpolate((mark + imark) - (mark * imark)) # union
         mesh = amr.refinemarkedelements(mesh, mark)
 
     # primal function space on current mesh
@@ -173,7 +182,7 @@ for i in range(args.refine + 1):
     lower = Function(V).interpolate(Constant(0.0))
     upper = Function(V).interpolate(Constant(PETSc.INFINITY))
 
-    if args.method == 'picard':
+    if args.smethod == 'picard':
         # Picard iterate the tilted p-Laplacian problem
         for k in range(args.picard):
             printpar(f'  Picard iteration {k+1} ...')
@@ -183,13 +192,13 @@ for i in range(args.refine + 1):
             solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
             solver.solve(bounds=(lower, upper))
             uold = Function(V).interpolate(u)
-    elif args.method == 'direct':
+    elif args.smethod == 'direct':
         F = weakform(u, v, a, lb)
         problem = NonlinearVariationalProblem(F, u, bcs)
         solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
         solver.solve(bounds=(lower, upper))
     else:
-        raise NotImplementedError('unknown option to -method')
+        raise NotImplementedError('unknown option to -smethod')
 
     # update true geometry variables
     H = Function(V, name="H = thickness").interpolate(u**omega)

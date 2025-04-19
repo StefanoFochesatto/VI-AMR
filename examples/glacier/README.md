@@ -8,7 +8,7 @@ To run a default steady-state glacier simulation for a synthetic glacier do
 ```
 python3 steady.py
 ```
-or for a more interesting case, and a Paraview-readable output,
+or for a more interesting case with Paraview-readable output,
 ```
 python3 steady.py -refine 4 -prob range -opvd result_range.pvd
 ```
