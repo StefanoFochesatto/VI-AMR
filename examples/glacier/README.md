@@ -2,7 +2,7 @@
 
 ## synthetic examples
 
-Remember to activate the Firedrake virtual environment.  Note that your Firedrake installation must include NetGen integration, `firedrake-install --netgen`.
+Remember to activate the Firedrake virtual environment.
 
 To run a default steady-state glacier simulation for a synthetic glacier do
 ```
@@ -10,7 +10,7 @@ python3 steady.py
 ```
 or for a more interesting case, and a Paraview-readable output,
 ```
-python3 steady.py -prob range -opvd result_range.pvd
+python3 steady.py -refine 4 -prob range -opvd result_range.pvd
 ```
 
 ## an example which uses data for bed topography
