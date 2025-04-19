@@ -12,8 +12,8 @@ from viamr import VIAMR
 #     5: 4e5, 6: 1e6, 7: 5e6, 8: 2e7, 9: ??
 # FIXME evaluate for BR case ... and make options easier to understand
 
-refine_inactive = False  # optionally mark *all* inactive elements for refinement
-refine_br = False  # optionally mark inactive elements according to B&R method
+refine_br = True         # True = mark inactive elements according to B&R method
+refine_inactive = False  # True = mark *all* inactive elements for refinement
 refinements = 5
 m_initial = 30
 m_data = 500
