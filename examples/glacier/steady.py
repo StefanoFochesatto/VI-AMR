@@ -1,25 +1,28 @@
 # TODO * allow other strategies than alternating AMR & uniform?
 
 from argparse import ArgumentParser, RawTextHelpFormatter
+
 parser = ArgumentParser(description="""
-Solves 2D steady, isothermal shallow ice approximation glacier obstacle problem.
-Synthetic problem (default):
-    Domain is a square [0,L]^2 where L = 1800.0 km. By default generates
-    a random, but smooth, bed topography.  Option -prob dome solves in
-    a flat bed case where the exact solution is known, and -prob range
-    generates a disconnected glacier.
+Solves a 2D steady, isothermal shallow ice approximation glacier obstacle problem.
+
+Synthetic problem (default):  The domain is a square [0,L]^2 where L = 1800.0 km.
+By default (-prob cap) we generate a random, but smooth, bed topography.  Option
+-prob dome solves a flat bed case where the exact solution is known.  Option
+-prob range generates a disconnected glacier.
+
 Data-based problem (-data DATA.nc):
-    FIXME WIP
-Solver is vinewtonrsls + mumps.
-Applies VIAMR VCES method because UD0 is not currently parallel.
-Refinement schedule is alternation with uniform refinement.
+    FIXME: WIP
+
+The solver is vinewtonrsls + mumps.  We applies AMR by the VCD method, FIXME: optionally with
+all of the inactive set marked for refinement.  (Note UD0 is not currently parallel.)
+
 Examples:
   python3 steady.py -opvd cap.pvd
+  mpiexec -n 4 steady.py -opvd cap4.pvd
   python3 steady.py -prob dome -opvd dome.pvd
+
 Works in serial only:
   python3 steady.py -jaccard
-Also runs in parallel:
-  mpiexec -n 4 steady.py -opvd cap4.pvd
 """, formatter_class=RawTextHelpFormatter)
 parser.add_argument('-data', metavar='FILE', type=str, default='',
                     help='read "topg" variable from NetCDF file (.nc)')
@@ -30,8 +33,6 @@ parser.add_argument('-m', type=int, default=20, metavar='M',
 parser.add_argument('-method', type=str, default='picard', metavar='X',
                     choices = ['picard','direct'],
                     help='choose primal FE method from {picard,direct}')
-parser.add_argument('-onelevel', action='store_true', default=False,
-                    help='no AMR refinements; use Firedrake to generate uniform mesh')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
                     help='output file name for Paraview format (.pvd)')
 parser.add_argument('-picard', type=int, default=5, metavar='P',
@@ -43,31 +44,22 @@ parser.add_argument('-refine', type=int, default=2, metavar='R',
                     help='number of AMR refinements [default 2]')
 args, passthroughoptions = parser.parse_known_args()
 
-# up to 12 levels of refinement according to schedule
-rdict = {'u': 'uniform',  # each triangle becomes 4
-         'v': 'VCES',     # apply vcesmark() with default parameters
-         'd': 'UDO'}      # apply udomark() with n=1
-rsched = [None, 'u', 'v', 'u', 'v', 'u', 'v', 'u', 'v', 'u', 'v', 'u', 'v']
-# FIXME allow alternative schedules
-
 import numpy as np
 import petsc4py
 petsc4py.init(passthroughoptions)
+
 from firedrake import *
 from firedrake.output import VTKFile
 from firedrake.petsc import PETSc
 printpar = PETSc.Sys.Print
+
 from viamr import VIAMR
 
 from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps
 from datanetcdf import DataNetCDF
 
 assert args.m >= 1, 'at least one cell in mesh'
-if args.onelevel:
-    if args.data:
-        raise NotImplementedError('incompatible arguments -onelevel -data')
-    args.refine = 0
-    printpar('not using refinement; uniform mesh generated with Firedrake')
+assert args.refine >= 0, 'cannot refine a negative number of times'
 
 # read data for bed topography into numpy array
 if args.data:
@@ -81,28 +73,13 @@ if args.data:
 else:
     printpar(f'generating synthetic {args.m} x {args.m} initial mesh for problem {args.prob} ...')
 
-if args.onelevel:
+if args.data:
+    # generate netgen mesh compatible with data mesh, but unstructured
+    # and at user (-m) resolution, typically lower
+    mesh = topg_nc.ngmesh(args.m)
+else:
     # generate via Firedrake
     mesh = RectangleMesh(args.m, args.m, L, L)
-else:
-    if args.data:
-        # generate netgen mesh compatible with data mesh, but unstructured
-        # and at user (-m) resolution, typically lower
-        mesh = topg_nc.ngmesh(args.m)
-    else:
-        # prepare for AMR by generating via netgen
-        try:
-            import netgen
-        except ImportError:
-            printpar("ImportError.  Unable to import NetGen.  Exiting.")
-            import sys
-            sys.exit(0)
-        from netgen.geom2d import SplineGeometry
-        geo = SplineGeometry()
-        geo.AddRectangle(p1=(0.0, 0.0), p2=(L, L), bc="rectangle")
-        trih = L / args.m
-        ngmsh = geo.GenerateMesh(maxh=trih)
-        mesh = Mesh(ngmsh)
 
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
@@ -140,23 +117,16 @@ def weakformZ(u, v, a, Z):
 
 
 # outer mesh refinement loop
+amr = VIAMR(debug=True)
 for i in range(args.refine + 1):
-    if i > 0 and args.jaccard:
-        # generate active set indicator so we can evaluate Jaccard index
-        eactive = VIAMR(debug=True).elemactive(s, lb)
-
-    # mark and refine according to schedule
-    if rsched[i] is not None:
-        if rsched[i] == 'u':
-            W = FunctionSpace(mesh, "DG", 0)
-            mark = Function(W).interpolate(Constant(1.0))  # mark everybody
-        elif rsched[i] == 'v':
-            mark = VIAMR().vcesmark(mesh, s, lb)  # good
-        elif rsched[i] == 'd':
-            mark = VIAMR().udomark(mesh, s, lb, n=1)  # not in parallel, but otherwise good
-        else:
-            raise NotImplementedError
-        mesh = mesh.refine_marked_elements(mark)  # NetGen gives next mesh
+    # mark and refine
+    if i > 0:
+        if args.jaccard:
+            # generate active set indicator so we can evaluate Jaccard index
+            eactive = amr.elemactive(s, lb)
+        mark = amr.vcdmark(mesh, s, lb)  # good
+        #mark = amr.udomark(mesh, s, lb, n=1)  # not in parallel, but otherwise good
+        mesh = amr.refinemarkedelements(mesh, mark)
 
     # primal function space on current mesh
     V = FunctionSpace(mesh, "CG", 1)
@@ -196,9 +166,8 @@ for i in range(args.refine + 1):
     u = Function(V, name="u = transformed thickness").interpolate(uold)
 
     # set-up for solve on current mesh
-    nv, ne, hmin, hmax = VIAMR().meshsizes(mesh)
-    rstr = '' if rsched[i] is None else f' (after refine by {rdict[rsched[i]]})'
-    printpar(f'solving level {i}{rstr}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
+    nv, ne, hmin, hmax = amr.meshsizes(mesh)
+    printpar(f'solving level {i}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
     v = TestFunction(V)
     bcs = DirichletBC(V, Constant(0.0), "on_boundary")
     lower = Function(V).interpolate(Constant(0.0))
@@ -237,9 +206,8 @@ for i in range(args.refine + 1):
 
     # report active set agreement between consecutive meshes using Jaccard index
     if i > 0 and args.jaccard:
-        z = VIAMR(debug=True)
-        neweactive = z.elemactive(s, lb)
-        jac = z.jaccard(eactive, neweactive)
+        neweactive = amr.elemactive(s, lb)
+        jac = amr.jaccard(eactive, neweactive)
         printpar(f'  glaciated areas Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]' )
         eactive = neweactive
 
