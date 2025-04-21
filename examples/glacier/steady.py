@@ -90,6 +90,7 @@ sp = {"snes_type": "vinewtonrsls",
     "snes_atol": 1.0e-8,
     "snes_stol": 1.0e-5,
     #"snes_monitor": None,
+    #"snes_vi_monitor": None,
     "snes_converged_reason": None,
     "snes_linesearch_type": "bt",
     "snes_linesearch_order": "1",
@@ -107,13 +108,15 @@ def Phi(u, b):
     return - (1.0 / omega) * (u + 1.0)**phi * grad(b)  # FIXME the +1 regularization seems needed?
 
 # -method direct
-def weakform(u, v, a, b):
+def weakform(u, a, b):
+    v = TestFunction(u.function_space())
     du_tilt = grad(u) - Phi(u, b)
     Dp = inner(du_tilt, du_tilt)**((p-2)/2)
     return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
 
 # -method picard
-def weakformZ(u, v, a, Z):
+def weakformZ(u, a, Z):
+    v = TestFunction(u.function_space())
     du_tilt = grad(u) - Z
     Dp = inner(du_tilt, du_tilt)**((p-2)/2)
     return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
@@ -175,7 +178,6 @@ for i in range(args.refine + 1):
     # set-up for solve on current mesh
     nv, ne, hmin, hmax = amr.meshsizes(mesh)
     printpar(f'solving level {i}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
-    v = TestFunction(V)
     bcs = DirichletBC(V, Constant(0.0), "on_boundary")
     lower = Function(V).interpolate(Constant(0.0))
     upper = Function(V).interpolate(Constant(PETSc.INFINITY))
@@ -184,14 +186,14 @@ for i in range(args.refine + 1):
         # Picard iterate the tilted p-Laplacian problem
         for k in range(args.picard):
             printpar(f'  Picard iteration {k+1} ...')
-            Z = Phi(uold, lb)
-            F = weakformZ(u, v, a, Z)
+            Ztilt = Phi(uold, lb)
+            F = weakformZ(u, a, Ztilt)
             problem = NonlinearVariationalProblem(F, u, bcs)
             solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
             solver.solve(bounds=(lower, upper))
             uold = Function(V).interpolate(u)
     elif args.smethod == 'direct':
-        F = weakform(u, v, a, lb)
+        F = weakform(u, a, lb)
         problem = NonlinearVariationalProblem(F, u, bcs)
         solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
         solver.solve(bounds=(lower, upper))
