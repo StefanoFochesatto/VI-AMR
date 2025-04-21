@@ -1,12 +1,15 @@
 from firedrake import *
 from firedrake.output import VTKFile
+from firedrake.petsc import PETSc
+print = PETSc.Sys.Print # enables correct printing in parallel
 from viamr import VIAMR
 from viamr.utility import SphereObstacleProblem
 
-levels = 4
+levels = 5
+h_initial = 0.10
 outfile = "result_sphere.pvd"
 
-problem = SphereObstacleProblem(TriHeight=.10)
+problem = SphereObstacleProblem(TriHeight=h_initial)
 amr = VIAMR()
 mesh = problem.setInitialMesh()
 meshHist = [mesh]
@@ -22,8 +25,8 @@ for i in range(levels + 1):
     u, lb = problem.solveProblem(mesh=mesh, u=u, moreparams=spmore)
     if i == levels:
         break
-    mark = amr.udomark(mesh, u, lb, n=2)
-    # alternative:  mark = amr.vcesmark(mesh, u, lb)
+    # alternative:  mark = amr.udomark(mesh, u, lb, n=2)
+    mark = amr.vcdmark(mesh, u, lb, bracket=[0.2, 0.9])
     mesh = mesh.refine_marked_elements(mark)
     meshHist.append(mesh)
 

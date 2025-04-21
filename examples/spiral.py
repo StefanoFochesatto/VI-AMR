@@ -1,12 +1,15 @@
 from firedrake import *
 from firedrake.output import VTKFile
+from firedrake.petsc import PETSc
+print = PETSc.Sys.Print # enables correct printing in parallel
 from viamr import VIAMR
 from viamr.utility import SpiralObstacleProblem
 
 levels = 4
+h_initial = 0.10
 outfile = "result_spiral.pvd"
 
-problem = SpiralObstacleProblem(TriHeight=.10)
+problem = SpiralObstacleProblem(TriHeight=h_initial)
 amr = VIAMR()
 mesh = problem.setInitialMesh()
 meshHist = [mesh]
@@ -23,7 +26,8 @@ for i in range(levels + 1):
     if i == levels:
         break
     mark = amr.udomark(mesh, u, lb, n=2)
-    # alternative:  mark = amr.vcesmark(mesh, u, lb)
+    # FIXME allow alternative?:  mark = amr.udomarkParallel(mesh, u, lb)
+    # alternative:  mark = amr.vcdmark(mesh, u, lb)
     mesh = mesh.refine_marked_elements(mark)
     meshHist.append(mesh)
 

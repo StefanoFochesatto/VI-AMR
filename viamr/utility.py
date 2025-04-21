@@ -13,11 +13,8 @@ try:
 except ImportError:
     print("ImportError.  Unable to import NetGen.  Exiting.")
     import sys
-
     sys.exit(0)
 from netgen.geom2d import SplineGeometry
-
-
 
 
 class BaseObstacleProblem(ABC, OptionsManager):

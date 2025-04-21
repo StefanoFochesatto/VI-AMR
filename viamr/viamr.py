@@ -7,11 +7,14 @@ from firedrake.output import VTKFile
 from firedrake.utils import IntType
 import firedrake.cython.dmcommon as dmcommon
 
-
 from pyop2.mpi import MPI
 
-from shapely.geometry import MultiLineString
-import shapely
+try:
+    import shapely
+except ImportError:
+    print("ImportError.  Unable to import shapely.  Exiting.")
+    import sys
+    sys.exit(0)
 
 
 class VIAMR(OptionsManager):
@@ -36,6 +39,15 @@ class VIAMR(OptionsManager):
         hmin = float(mesh.comm.allreduce(min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
         hmax = float(mesh.comm.allreduce(max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
         return nvertices, nelements, hmin, hmax
+
+    def meshreport(self, mesh, indent=2):
+        """Print standard mesh report.  Valid in parallel."""
+        nv, ne, hmin, hmax = self.meshsizes(mesh)
+        indentstr = indent * ' '
+        PETSc.Sys.Print(
+            f"{indentstr}current mesh: {nv} vertices, {ne} elements, h in [{hmin:.5f},{hmax:.5f}]"
+        )
+        return None
 
     def nodalactive(self, u, lb):
         """Compute nodal active set indicator in same function space as u.
@@ -227,10 +239,13 @@ class VIAMR(OptionsManager):
         
         return elemborder
 
-    
-    def vcesmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
-        """Mark mesh using Variable Coefficient Elliptic Smoothing (VCES) algorithm.
-        Valid in parallel."""
+
+    def vcdmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
+        """Mark mesh using Variable Coefficient Diffusion (VCD) algorithm.
+        Conceptually, the algorithm computes a strict nodal active set
+        indicator and then it diffuses using variable diffusivity using a
+        single backward Euler time step for the heat equation.  (Equivalently
+        we take a single time-step of variable duration.) Valid in parallel."""
 
         # Compute nodal active set indicator within some tolerance
         CG1, DG0 = self.spaces(mesh)
@@ -249,24 +264,65 @@ class VIAMR(OptionsManager):
         a = w * v * dx + timestep * inner(grad(w), grad(v)) * dx
         L = nodalactive * v * dx
         u = Function(CG1, name="Smoothed Nodal Active Indicator")
+        #FIXME consider some solver; probably not this one: sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(a == L, u)
 
         if returnSmooth:
             return u
-
         else:
             # Compute average over elements by interpolation into DG0
             DG0 = FunctionSpace(mesh, "DG", 0)
             uDG0 = Function(DG0, name="Smoothed Nodal Active Indicator as DG0")
             uDG0.interpolate(u)
-
             # Applying thresholding parameters
-            mark = Function(DG0, name="VCES Marking")
+            mark = Function(DG0, name="VCD Marking")
             mark.interpolate(
                 conditional(uDG0 > bracket[0], conditional(uDG0 < bracket[1], 1, 0), 0)
             )
-
             return mark
+
+    def br_mark_poisson(self, uh, lb, f=Constant(0.0)):
+        '''Return marking for the inactive set by using the a posteriori
+        Babuška-Rheinboldt residual error estimator for the Poisson equation
+          - div(grad u) = f
+        Returns the marking mark, estimator eta, and a scalar estimate for
+        the total error in energy norm.  This function is on slide 109 of
+          https://github.com/pefarrell/icerm2024/blob/main/slides.pdf
+        The original source is perhaps
+          Babuška, I., & Rheinboldt, W. C. (1978). Error estimates for adaptive
+          finite element computations. SIAM Journal on Numerical Analysis,
+          15(4), 736-754.  https://www.jstor.org/stable/pdf/2156851.pdf
+        FIXME this should be more flexible, and at least correspond to
+          - A div(grad u) = f
+        for A>0'''
+        # mesh quantities
+        mesh = uh.function_space().mesh()
+        h = CellDiameter(mesh)
+        v = CellVolume(mesh)
+        n = FacetNormal(mesh)
+        # cell-wise error estimator
+        _, DG0 = self.spaces(mesh)
+        eta_sq = Function(DG0)
+        w = TestFunction(DG0)
+        G = (
+            inner(eta_sq / v, w)*dx
+            - inner(h**2 * (f + div(grad(uh)))**2, w) * dx
+            - inner(h('+')/2 * jump(grad(uh), n)**2, w('+')) * dS
+            - inner(h('-')/2 * jump(grad(uh), n)**2, w('-')) * dS
+        )
+        # Each cell is an independent 1x1 solve, so Jacobi is exact
+        sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
+        solve(G == 0, eta_sq, solver_parameters=sp)
+        eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
+        # generate inactive BR marking
+        theta = 0.5   # mark where eta is larger than theta fraction of eta values
+        imark = self.eleminactive(uh, lb)
+        ieta = Function(DG0, name='eta on inactive set').interpolate(eta * imark)
+        with ieta.dat.vec_ro as ieta_:
+            emax = ieta_.max()[1]
+            total_error_est = sqrt(ieta_.dot(ieta_))
+        mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
+        return (mark, eta, total_error_est)
 
     def setmetricparameters(self, **kwargs):
         self.target_complexity = kwargs.pop("target_complexity", 3000.0)
@@ -296,7 +352,7 @@ class VIAMR(OptionsManager):
         metric.compute_hessian(u)
         metric.normalise()
         return metric
-    
+
 
     def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50], hessian = True):
         """Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the
@@ -334,10 +390,7 @@ class VIAMR(OptionsManager):
 
         return VImetric
     
-    
-    
-    
-    
+
     # Computes Babuška Rheinboldt(1978) error estimator, returns marking function on only inactive set.
     # Error estimator computation is from
     #   https://github.com/pefarrell/icerm2024/blob/main/slides.pdf  (slide 109)
@@ -443,8 +496,6 @@ class VIAMR(OptionsManager):
         
         return refinedmesh
 
-    
-    
 
     def jaccard(self, active1, active2):
         """Compute the Jaccard metric from two element-wise active
@@ -475,16 +526,8 @@ class VIAMR(OptionsManager):
 
     def hausdorff(self, E1, E2):
         return shapely.hausdorff_distance(
-            MultiLineString(E1), MultiLineString(E2), 0.99
+            shapely.MultiLineString(E1), shapely.MultiLineString(E2), 0.99
         )
-
-    def meshreport(self, mesh):
-        """Print standard mesh report.  Valid in parallel."""
-        nv, ne, hmin, hmax = self.meshsizes(mesh)
-        PETSc.Sys.Print(
-            f"current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}]"
-        )
-        return None
 
     # FIXME: checks for when free boundary is emptyset
     def freeboundarygraph(self, u, lb, type="coords"):

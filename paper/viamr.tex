@@ -51,7 +51,7 @@
 
 %\articletype{ARTICLE TEMPLATE}% Specify the article type or omit as appropriate
 
-\title{Adaptive mesh refinement for locating free boundaries in obstacle problems}
+\title{Fast adaptive mesh refinement for obstacle problems}
 
 \author{
 \name{G.~Stefano Fochesatto\thanks{CONTACT G.~Stefano Fochesatto Email: gsfochesatto@alaska.edu} and Ed Bueler}
@@ -102,6 +102,18 @@ be the admissible set for solutions, a closed and convex subset of $\cX$.  For $
 \end{equation}
 
 Section \ref{sec:vifem} will recall some of the theory of such VIs, generalized to coercive nonlinear operators over Banach spaces, and their finite element (FE) approximation.  A conforming FE approximation uses the same weak form as the continuum VI, but now over a discrete space constructed on a mesh with characteristic size $h>0$; see \eqref{eq:fe:vi}.  Similarly to the situation for PDEs \cite{ElmanSilvesterWathen2014}, because the exact solution $u$ and the FE solution $u_h$ solve VIs, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori}.  These norm errors are again related to the approximation properties of the FE space, but also to new VI-specific concerns regarding differences in admissibility (i.e.~between continuum and FE admissible sets).  An extension of the Falk \cite{Falk1974} technique for \emph{a priori} norm error estimation for VIs is therefore provided in Section \ref{sec:vifem}.
+
+\begin{example} FIXME example to illustrate idea that active sets can be large, and this would be a barrier to DWR-type green's function weighting
+
+\begin{figure}[H]
+\noindent \hspace{-1mm} \mbox{\includegraphics[width=0.32\textwidth]{static/spiral.png} \,
+\includegraphics[width=0.32\textwidth]{static/sphere.png} \,
+\includegraphics[width=0.32\textwidth]{static/blisters.png}}
+\caption{The measure of the active set (black) of the solution of a classical obstacle problem can vary from small (left) to large (right).  The middle image is for the same problem as Figure \ref{fig:ball}.  All three examples are considered in Section \ref{sec:results}.}
+\label{fig:activesizes}
+\end{figure}
+
+\end{example}
 
 However, the geometrical mesh error in locating the free-boundary $\Gamma_u$, by itself, largely explains the behaviour of the numerical error $\|u-u_h\|$.  This fact is only weakly acknowledged in the FE literature for VIs \cite[for example]{Suttmeier2008}, but it is clearly seen in the following 1D example.
 
