@@ -327,6 +327,7 @@ class VIAMR(OptionsManager):
         if hessian:
             VImetric = freeboundaryMetric.copy(deepcopy=True)
             solutionMetric = self.metricfromhessian(mesh, u)
+            solutionMetric.normalise()
             VImetric.average(freeboundaryMetric, weights=weights)
         else:
             VImetric = freeboundaryMetric.copy(deepcopy=True)

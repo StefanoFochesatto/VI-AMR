@@ -2,60 +2,45 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from viamr.utility import SphereObstacleProblem
-from netgen.geom2d import CSG2d, EdgeInfo as EI, Solid2d
 from viamr import VIAMR
 
+# for debugging
+import os
+os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
 
-geo = CSG2d()
 
-rect = Solid2d([
-    (-2, -2),
-    (-2, 2),
-    (2, 2),
-    (2, -2),
-], mat="rect", bc="boundary")
-
-r = 0.697965148223374
-fbres = .001
-circle = Solid2d([
-    (0, -r),
-    EI((r,  -r), maxh=fbres),  # control point for quadratic spline
-    (r, 0),
-    EI((r,  r), maxh=fbres),  # spline with maxh
-    (0, r),
-    EI((-r,  r), maxh=fbres),
-    (-r, 0),
-    EI((-r, -r), maxh=fbres),  # spline with bc
-])
-
-geo.Add(circle)
-geo.Add(rect)
-ngmsh = geo.GenerateMesh(maxh=.01)
-labels = [i+1 for i,
-          name in enumerate(ngmsh.GetRegionNames(codim=1)) if name in ["boundary"]]
-ExactMesh = Mesh(ngmsh)
-
-problem_instance = SphereObstacleProblem()
-amr_instance = VIAMR()
-
+problem = SphereObstacleProblem(TriHeight=.25)
+amr = VIAMR()
+ExactMesh = problem.setInitialMesh()
 ExactU = None
-for i in range(15):
-    ExactU, lb = problem_instance.solveProblem(
-        mesh=ExactMesh, u=ExactU, bdry=labels)
+
+nv, ne, hmin, hmax = amr.meshsizes(ExactMesh)
+for i in range(4):
+    ExactU, lb = problem.solveProblem(mesh = ExactMesh, u = ExactU)
     ExactU.rename("ExactU")
+
+        
     DG0 = FunctionSpace(ExactMesh, "DG", 0)
-    if i % 2:
-        mark = Function(DG0).interpolate(Constant(1.0))
-    else:
-        mark = amr_instance.vcesmark(ExactMesh, ExactU, lb)
-    ExactMesh = ExactMesh.refine_marked_elements(mark)
 
-ExactU, lb = problem_instance.solveProblem(
-    mesh=ExactMesh, u=ExactU, bdry=labels)
-ExactU.rename("exactU")
+    resUFL = Constant(0.0) + div(grad(ExactU))
+    FBmark = amr.vcesmark(ExactMesh, ExactU, lb)
+    BRmark = amr.BRinactivemark(ExactMesh, ExactU, lb, resUFL=resUFL, theta = .50, markFB=FBmark)
+    mark = amr.union(FBmark, BRmark)
+    ExactMesh = amr.refinemarkedelements(ExactMesh, mark)
+    
 
 
-# Open issue won't run in parallel: https://github.com/firedrakeproject/firedrake/issues/3783
+
+mh = MeshHierarchy(ExactMesh, 4)
+ExactMesh = mh[-1]
+
+ExactU = Function(FunctionSpace(ExactMesh, "CG", 1)).interpolate(ExactU)
+
+ExactU, lb = problem.solveProblem(mesh=ExactMesh, u=ExactU, FASCD=True)
+ExactU.rename("ExactU")
+
+VTKFile("Test.pvd").write(ExactU)
+# Open issue won't run in parallel with netgen mesh: https://github.com/firedrakeproject/firedrake/issues/3783
 with CheckpointFile("ExactSolution.h5", 'w') as afile:
     afile.save_mesh(ExactMesh)
     afile.save_function(ExactU)

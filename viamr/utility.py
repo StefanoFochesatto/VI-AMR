@@ -147,12 +147,22 @@ class SphereObstacleProblem(BaseObstacleProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def setInitialMesh(self):
-        geo = SplineGeometry()
-        geo.AddRectangle(p1=(-2, -2), p2=(2, 2), bc="rectangle")
-        ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
-        mesh = Mesh(ngmsh, distribution_parameters={
-                    "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+    def setInitialMesh(self, filename = None, netgen = True):
+        if filename == None:
+            if netgen:
+                geo = SplineGeometry()
+                geo.AddRectangle(p1=(-2, -2), p2=(2, 2), bc="rectangle")
+                ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
+                mesh = Mesh(ngmsh, distribution_parameters={
+                            "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+            else:
+                mesh = RectangleMesh(nx=int(4/self.TriHeight), ny=int(4/self.TriHeight), Lx=4, Ly=4, originX=-2, originY=-2, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+
+            
+        else:
+            mesh = Mesh(filename, distribution_parameters={
+                        "partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+            
         return mesh
 
     def setObstacleUFL(self, V):

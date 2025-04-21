@@ -140,7 +140,7 @@ Three AMR methods are described in Section \ref{sec:viamr}.  Our implementations
 
 Our focus in this paper is on AMR performance, and not solver performance.  However, regarding solvers, the constraint of $u \geq \psi$ makes VI problems nonlinear, even if the operator is linear, and thus an iterative solver is required.  Our solver is a VI-adapted Newton method with a reduced-space line search (RSLS) \cite{BensonMunson2006}, implemented in PETSc \cite{petsc-user-ref}.  Such a numerical method does not converge until the active and inactive sets stabilize on the given mesh, equivalently that the discrete free boundary is identified.  Upon stabilization, the domain of quadratic convergence can be entered, giving convergence in a few more iterations when the operator is well-behaved.  Newton solvers like RSLS can therefore only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009}, and overall convergence becomes roughly proportional to the number of grid spaces between the initial iterate free boundary and the solution free boundary \citep{Bueler2021}.  Such poor performance could be substantially improved by using the AMR meshes generated here as coarse grids for a multilevel solver, for example that in \cite{BuelerFarrell2024}, a possible path to highly-scalable solutions of obstacle problems.
 
-FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCES and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries. 
+FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCD and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries. 
 
 FIXME TABLE OF ACRONYMS
 
@@ -267,16 +267,16 @@ Note that this choice of functional has the property that $\phi^*_i(\phi_j) = \d
   v_i = \frac{1}{area(\triangle_i)}\int_{\triangle_i} u \, dx.
 \end{equation}
 
-We propose two strategies for adaptive refinement of variational inequalities, which we call Variable Coefficient Elliptic Smoothing (VCES) and Unstructured Dilation Operator (UDO). These methods are designed to enhance mesh resolution at the free boundary found when solving the VI. These methods are the Estimate and Tag steps in Algorithm 2. They effectively control the error associated with approximating the free boundary, as observed in Section 3.3 and illustrated in Figure 3.4. Note that Firedrake/Netgen is used for the Solve and Refine steps in Algorithim 2.
+We propose two strategies for adaptive refinement of variational inequalities, which we call Variable Coefficient Diffusion (VCD) and Unstructured Dilation Operator (UDO). These methods are designed to enhance mesh resolution at the free boundary found when solving the VI. These methods are the Estimate and Tag steps in Algorithm 2. They effectively control the error associated with approximating the free boundary, as observed in Section 3.3 and illustrated in Figure 3.4. Note that Firedrake/Netgen is used for the Solve and Refine steps in Algorithim 2.
 
-The first strategy is called Variable Coefficient Elliptic Smoothing (VCES). The idea is to use the residual $u^k - \psi$ and a positive tolerance to construct $s_0$, a node-wise indicator function for the active set. This indicator function is used as the initial condition of a variable-coefficient and time-dependent heat equation problem which has the effect of smoothing this indicator near the free boundary. This heat equation problem is solved for a single timestep via implicit Euler, the result of which, we'll call $s_1$. This problem is a linear elliptic PDE, hence "elliptic smoothing"
+The first strategy is called Variable Coefficient Diffusion (VCD). The idea is to use the residual $u^k - \psi$ and a positive tolerance to construct $s_0$, a node-wise indicator function for the active set. This indicator function is used as the initial condition of a variable-coefficient and time-dependent heat equation problem which has the effect of smoothing this indicator near the free boundary. This heat equation problem is solved for a single timestep via implicit Euler, the result of which, we'll call $s_1$. This problem is a linear elliptic PDE, hence "elliptic smoothing"
 \begin{equation}
   \frac{1}{\Delta t}(s_1 - s_0) = \nabla^2 s_1.
 \end{equation}
 Our choice of timestep $\Delta t_i = \frac{1}{2}(\text{avg}(\text{diam}(\triangle_i)))^2$ where $\triangle_i$ is the set of all elements incident to vertex $i$. This choice depends on the element, thus "variable coefficient". Varying the timestep based off of neighboring element diameter has the effect of applying the same amount diffusion across all elements regardless of size. The result is then interpolated into a DG0 space and thresholded to produce the refinement indicator, as in Algorithim 2. There are various parameters to consider with this technique. The choice of timestep and thresholding parameters will substantially affect the "distance" about which the free boundary is resolved. 
 
 \begin{algorithm}[H]
-	\caption{Variable Coefficient Elliptic Smoothing Element Tagging for VIs}\label{alg:cap}
+	\caption{Variable Coefficient Diffusion Element Tagging for VIs}\label{alg:cap}
 	\begin{algorithmic}[1]
 		\Require $tol \in \mathbb{R}$, $u^k \in K_\psi, \psi \in V$, $W$ is DG0 FE space.
 		\Require Threshold parameters $0\leq \alpha < \beta \leq 1$.
@@ -555,7 +555,7 @@ Figure 5.1 illustrates the VCES algorithm applied to a one-dimensional obstacle 
     \caption{Refinement indicator function $I$.}
   \end{subfigure}
   \vspace*{.25cm}
-  \caption{Illustration of Variable Coefficient Elliptic Smoothing algorithm.}
+  \caption{Illustration of Variable Coefficient Diffusion algorithm.}
 \end{figure}
 
 Support for unstructured meshes in Firedrake comes from the DMPlex class in PETSc, as developed by \citet{lange_flexible_2015}. DMPlex is a data management object which can store the topology (connectivity of mesh entities) and geometry (coordinates) of a discretization. In the DMPlex object every mesh entity is assigned a unique index. The connectivity of a mesh is stored as a layered directed acyclic graph (DAG) in which a "covering" relation specifies the edges of the graph. For example, for a tetrahedral element in a 3d mesh, a face is covered by 3 edges and a tetrahedral cell is covered by 4 faces. Each layer represents a class of mesh entity i.e vertices, edges, etc. Below is an example of how a single tetrahedral cell is represented by DMPlex.

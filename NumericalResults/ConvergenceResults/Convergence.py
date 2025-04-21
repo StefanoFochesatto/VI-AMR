@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run convergence script with specified parameters.")
     parser.add_argument('-t', '--initTriHeight', type=float,
-                        default=0.7, help='Initial triangle height')
+                        default=.7, help='Initial triangle height')
     parser.add_argument('-i', '--maxIterations', type=int,
                         default=7, help='Maximum number of iterations')
     parser.add_argument('-m', '--method', type=str, 
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # Load in data about exact solution
     with CheckpointFile("ExactSolution.h5", 'r') as afile:
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh # this might be fixed in new firedrake builds 
-        exactMesh = afile.load_mesh('Default')
+        exactMesh = afile.load_mesh()
         exactU = afile.load_function(exactMesh, "ExactU")
     exactV = FunctionSpace(exactMesh, "CG", 1)
 
@@ -85,23 +85,23 @@ if __name__ == "__main__":
         
         
         # Big switch style statement for methods
-        if method == methodlist[0]: # vces
+        if method == methodlist[0]:  # vces
             mtic = time.perf_counter()
             mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = mesh.refine_marked_elements(mark)
+            mesh = amr_instance.refinemarkedelements(mesh, mark)
             rtoc = time.perf_counter()
-            
-        elif method == methodlist[1]: # udo 
+
+        elif method == methodlist[1]:  # udo
             mtic = time.perf_counter()
             mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = mesh.refine_marked_elements(mark)
+            mesh = amr_instance.refinemarkedelements(mesh, mark)
             rtoc = time.perf_counter()
-            
-        elif method == methodlist[2]: # metric isotropic only
+
+        elif method == methodlist[2]:  # metric isotropic only
             mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesAdaptVertexCounts[i])# Corresponds to only freeboundary metric applied
             VImetric = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1], hessian = False)
@@ -110,28 +110,7 @@ if __name__ == "__main__":
             mesh = adapt(mesh, VImetric)
             rtoc = time.perf_counter()
 
-        
-        elif method == methodlist[3]: # vces + uniform
-            CG1, DG0 = amr_instance.spaces(mesh)
-            mtic = time.perf_counter()
-            h = max(mesh.cell_sizes.dat.data)
-            ratio = HError/(h**2)
-            switch = math.isclose(ratio, 1, rel_tol=.1)
-            if HError < h**2 or switch: # uniform
-                mark = Function(DG0).interpolate(Constant(1.0))
-                mtoc = time.perf_counter()
-                rtic = time.perf_counter()
-                mesh = mesh.refine_marked_elements(mark)
-                rtoc = time.perf_counter()
-                
-            else: #adapt
-                mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
-                mtoc = time.perf_counter()
-                rtic = time.perf_counter()
-                mesh = mesh.refine_marked_elements(mark)
-                rtoc = time.perf_counter()
-                
-        elif method == methodlist[4]: # udo + uniform
+        elif method == methodlist[3]:  # vces + uniform
             CG1, DG0 = amr_instance.spaces(mesh)
             mtic = time.perf_counter()
             h = max(mesh.cell_sizes.dat.data)
@@ -141,17 +120,37 @@ if __name__ == "__main__":
                 mark = Function(DG0).interpolate(Constant(1.0))
                 mtoc = time.perf_counter()
                 rtic = time.perf_counter()
-                mesh = mesh.refine_marked_elements(mark)
+                mesh = amr_instance.refinemarkedelements(mesh, mark, isUniform = True)
                 rtoc = time.perf_counter()
-                
+
+            else:  # adapt
+                mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
+                mtoc = time.perf_counter()
+                rtic = time.perf_counter()
+                mesh = amr_instance.refinemarkedelements(mesh, mark)
+                rtoc = time.perf_counter()
+
+        elif method == methodlist[4]:  # udo + uniform
+            CG1, DG0 = amr_instance.spaces(mesh)
+            mtic = time.perf_counter()
+            h = max(mesh.cell_sizes.dat.data)
+            ratio = HError/(h**2)
+            switch = math.isclose(ratio, 1, rel_tol=.1)
+            if HError < h**2 or switch:  # uniform
+                mtoc = time.perf_counter()
+                mark = Function(DG0).interpolate(Constant(1.0))
+                rtic = time.perf_counter()
+                mesh = amr_instance.refinemarkedelements(mesh, mark, isUniform = True)
+                rtoc = time.perf_counter()
+
             else:  # adapt
                 mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
                 mtoc = time.perf_counter()
                 rtic = time.perf_counter()
-                mesh = mesh.refine_marked_elements(mark)
+                mesh = amr_instance.refinemarkedelements(mesh, mark)
                 rtoc = time.perf_counter()
-                
-        elif method == methodlist[5]: # metric isotropic + hessian
+
+        elif method == methodlist[5]:  # metric isotropic + hessian
             mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesHybridVertexCounts[i])# Corresponds to equal averaging of freeboundary and hessian based metrics.
             VImetric = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
@@ -160,35 +159,37 @@ if __name__ == "__main__":
             mesh = adapt(mesh, VImetric)
             rtoc = time.perf_counter()
             
-        elif method == methodlist[6]: # vces + br on inactive set
+        elif method == methodlist[6]:  # vces + br on inactive set
             mtic = time.perf_counter()
             markFB = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
             resUFL = Constant(0.0) + div(grad(u))
-            markBR = amr_instance.BRinactivemark(mesh, u, lb, resUFL, .5, markFB)
+            markBR = amr_instance.BRinactivemark(
+                mesh, u, lb, resUFL, .5, markFB)
             mark = amr_instance.union(markFB, markBR)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = mesh.refine_marked_elements(mark)
+            mesh = amr_instance.refinemarkedelements(mesh, mark)
             rtoc = time.perf_counter()
-            
-        elif method == methodlist[7]: # udo + br on inactive set
+
+        elif method == methodlist[7]:  # udo + br on inactive set
             mtic = time.perf_counter()
             markFB = amr_instance.udomarkParallel(mesh, u, lb, n=3)
             resUFL = Constant(0.0) + div(grad(u))
-            markBR = amr_instance.BRinactivemark(mesh, u, lb, resUFL, .5, markFB)
+            markBR = amr_instance.BRinactivemark(
+                mesh, u, lb, resUFL, .5, markFB)
             mark = amr_instance.union(markFB, markBR)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = mesh.refine_marked_elements(mark)
+            mesh = amr_instance.refinemarkedelements(mesh, mark)
             rtoc = time.perf_counter()
-        
-        elif method == methodlist[8]: # uniform
+
+        elif method == methodlist[8]:  # uniform
             CG1, DG0 = amr_instance.spaces(mesh)
-            mtic = time.perf_counter()
             mark = Function(DG0).interpolate(Constant(1.0))
+            mtic = time.perf_counter()
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
-            mesh = mesh.refine_marked_elements(mark)
+            mesh = amr_instance.refinemarkedelements(mesh, mark, isUniform = True)
             rtoc = time.perf_counter()
 
             

@@ -100,5 +100,5 @@ Time is not clear to me. Should we time from the end of the solve to the constru
 
  - Time vs L2
  - Time vs Jaccard
- - Time vs Hausdorff
+ - Time vs Hausdorff['vcesBR', 'udoBR', 'metricIsoHess'] c
  - dof vs solve time

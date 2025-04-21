@@ -38,6 +38,9 @@ for i in MeshSizes:
     # Define Dirichlet Boundary Conditions and Obstacle
     x = SpatialCoordinate(mesh)[0]  # <- use [0] in one-dimensional case
     psi_ufl = .5 - x**2
+    # The discrete solution is not continuum admissible with this example, because interpolating the continuum obstacle 
+    # gives a discrete obstacle is lower. 
+    # Maybe replace this with R+ operator in FASCD
     lb = Function(V).interpolate(psi_ufl)
     gbdry = Function(V).interpolate(Constant(0.0))
     bdry_ids = (1, 2)
