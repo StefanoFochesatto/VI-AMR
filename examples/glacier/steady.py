@@ -1,5 +1,3 @@
-# TODO * allow other strategies than alternating AMR & uniform?
-
 from argparse import ArgumentParser, RawTextHelpFormatter
 
 parser = ArgumentParser(description="""
