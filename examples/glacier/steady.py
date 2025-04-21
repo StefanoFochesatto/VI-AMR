@@ -18,7 +18,6 @@ on even refinements and VCD *with all of the inactive set marked* on odd refinem
 Examples:
   python3 steady.py -opvd cap.pvd
   python3 steady.py -prob dome -opvd dome.pvd
-  python3 steady.py -irefine -opvd capi.pvd
   mpiexec -n 4 python3 steady.py -irefine -refine 4 -prob range -opvd range4.pvd
 
 Works in serial only:
@@ -32,8 +31,10 @@ parser.add_argument('-m', type=int, default=20, metavar='M',
                     help='number of cells in each direction [default=20]')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
                     help='output file name for Paraview format (.pvd)')
-parser.add_argument('-picard', type=int, default=5, metavar='P',
-                    help='number of Picard iterations in solving SIA [default=5]')
+parser.add_argument('-freeze', action='store_true', default=False,
+                    help='iterate on frozen "tilt", instead of straight Newton')
+parser.add_argument('-freezecount', type=int, default=5, metavar='P',
+                    help='number of frozen-tilt iterations [default=5]')
 parser.add_argument('-prob', type=str, default='cap', metavar='X',
                     choices = ['cap','dome','range'],
                     help='choose problem from {cap, dome, range}')
@@ -42,9 +43,9 @@ parser.add_argument('-refine', type=int, default=2, metavar='R',
 parser.add_argument('-rmethod', type=str, default='alternate', metavar='X',
                     choices = ['alternate','vcdonly','always'],
                     help='choose refinement agenda from {alternate, vcdonly, always}')
-parser.add_argument('-smethod', type=str, default='picard', metavar='X',
-                    choices = ['picard','direct'],
-                    help='choose primal FE solver method from {picard, direct}')
+parser.add_argument('-weakform', type=str, default='primal', metavar='X',
+                    choices = ['primal','mixed'],
+                    help='choose weak form from {primal, mixed}')
 args, passthroughoptions = parser.parse_known_args()
 
 import numpy as np
@@ -86,12 +87,14 @@ else:
 
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
+    "snes_vi_zero_tolerance": 1.0e-3,  # roughly within 1 part in 10^-12 for u=H^{8/3}
     "snes_rtol": 1.0e-8,
     "snes_atol": 1.0e-8,
     "snes_stol": 1.0e-5,
     #"snes_monitor": None,
     #"snes_vi_monitor": None,
     "snes_converged_reason": None,
+    #"snes_linesearch_type": "basic",
     "snes_linesearch_type": "bt",
     "snes_linesearch_order": "1",
     "snes_max_it": 1000,
@@ -100,27 +103,45 @@ sp = {"snes_type": "vinewtonrsls",
     "pc_factor_mat_solver_type": "mumps"}
 
 # transformed SIA
-p = n + 1
-omega = (p - 1) / (2*p)
-phi = (p + 1) / (2*p)
+p = n + 1                # typical:  p = 4
+omega = (p - 1) / (2*p)  #           omega = 3/8
+phi = (p + 1) / (2*p)    #           phi = 5/8
+r = p / (p - 1)          #           r = 4/3
 
 def Phi(u, b):
     return - (1.0 / omega) * (u + 1.0)**phi * grad(b)  # FIXME the +1 regularization seems needed?
 
-# -method direct
-def weakform(u, a, b):
+# FIXME failed ultraweak form ...
+# def P(q):
+#     gam = Gamma * omega**(p-1)
+#     C = gam**(-1.0/(p-1))
+#     return C * (inner(q, q) + 0.01)**((r - 2)/2)  # FIXME mixed regularization 0.01 too critical here
+# def weakformMIXED(qu, a, b):
+#    q, u = split(qu)
+#    w, v = TestFunctions(qu.function_space())
+#    return (div(q) - a) * v * dx - u * div(w) * dx + inner(P(q) * q - Phi(u, b), w) * dx
+
+def weakform_mixed(qu, a, b, Z=None):
+    q, u = split(qu)
+    w, v = TestFunctions(qu.function_space())
+    if Z is not None:
+        du_tilt = grad(u) - Z
+    else:
+        du_tilt = grad(u) - Phi(u, b)
+    Dp = inner(du_tilt, du_tilt)**((p-2)/2)
+    gam = Gamma * omega**(p-1)
+    return (div(q) - a) * v * dx(degree=2) \
+           + inner(q + gam * Dp * du_tilt, w) * dx(degree=4)  # results non-sensical with quadrature degree 1 (though best for accuracy in dome test!?)
+# OBSERVATION:  looking at solution q shows last term needs sufficient quadrature degree, possibly BDM degree plus 2?
+
+def weakform_primal(u, a, b, Z=None):
     v = TestFunction(u.function_space())
-    du_tilt = grad(u) - Phi(u, b)
+    if Z is not None:
+        du_tilt = grad(u) - Z
+    else:
+        du_tilt = grad(u) - Phi(u, b)
     Dp = inner(du_tilt, du_tilt)**((p-2)/2)
     return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
-
-# -method picard
-def weakformZ(u, a, Z):
-    v = TestFunction(u.function_space())
-    du_tilt = grad(u) - Z
-    Dp = inner(du_tilt, du_tilt)**((p-2)/2)
-    return Gamma * omega**(p-1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
-
 
 # outer mesh refinement loop
 amr = VIAMR(debug=True)
@@ -138,8 +159,16 @@ for i in range(args.refine + 1):
             mark = Function(DG0).interpolate((mark + imark) - (mark * imark)) # union
         mesh = amr.refinemarkedelements(mesh, mark)
 
-    # primal function space on current mesh
-    V = FunctionSpace(mesh, "CG", 1)
+    if args.weakform == 'mixed':
+        # spaces for flux q and transformed thickness u on current mesh
+        W = FunctionSpace(mesh, "BDM", 1)
+        V = FunctionSpace(mesh, "CG", 1)
+        Z = W * V
+    elif args.weakform == 'primal':
+        # space for transformed thickness u on current mesh
+        V = FunctionSpace(mesh, "CG", 1)
+    else:
+        raise NotImplementedError('unknown option to -weakform')
 
     # obstacle and source term
     if args.data:
@@ -149,7 +178,6 @@ for i in range(args.refine + 1):
         c1 = (6.3e-8 - c0) / 3.6e3
         a_lapse = c0 + c1 * topg
         a = Function(V).interpolate(conditional(nearb > 0.0, -1.0e-6, a_lapse)) # also cross-mesh re nearb
-        #VTKFile('data.pvd').write(lb, a)
     else:
         x = SpatialCoordinate(mesh)
         if args.prob == 'dome':
@@ -173,34 +201,62 @@ for i in range(args.refine + 1):
         uold = Function(V).interpolate(u)
         # remove sign flaws from cross-mesh interpolation
         uold = Function(V).interpolate(conditional(uold < 0.0, 0.0, uold))
-    u = Function(V, name="u = transformed thickness").interpolate(uold)
+
+    if args.weakform == 'mixed':
+        qu = Function(Z)
+        qu.subfunctions[1].interpolate(uold)
+    else:
+        u = Function(V, name="u = transformed thickness").interpolate(uold)
 
     # set-up for solve on current mesh
     nv, ne, hmin, hmax = amr.meshsizes(mesh)
-    printpar(f'solving level {i}: {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
-    bcs = DirichletBC(V, Constant(0.0), "on_boundary")
-    lower = Function(V).interpolate(Constant(0.0))
-    upper = Function(V).interpolate(Constant(PETSc.INFINITY))
+    printpar(f'solving problem {args.prob} using weak form {args.weakform} on mesh level {i}:')
+    printpar(f'  {nv} vertices, {ne} elements, h in [{hmin/1e3:.3f},{hmax/1e3:.3f}] km ...')
 
-    if args.smethod == 'picard':
-        # Picard iterate the tilted p-Laplacian problem
-        for k in range(args.picard):
-            printpar(f'  Picard iteration {k+1} ...')
-            Ztilt = Phi(uold, lb)
-            F = weakformZ(u, a, Ztilt)
-            problem = NonlinearVariationalProblem(F, u, bcs)
-            solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
-            solver.solve(bounds=(lower, upper))
-            uold = Function(V).interpolate(u)
-    elif args.smethod == 'direct':
-        F = weakform(u, a, lb)
-        problem = NonlinearVariationalProblem(F, u, bcs)
-        solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
-        solver.solve(bounds=(lower, upper))
+    if args.weakform == 'mixed':
+        ninf, inf = PETSc.NINFINITY, PETSc.INFINITY
+        lower = Function(Z)
+        lower.subfunctions[0].dat.data[:] = ninf
+        lower.subfunctions[1].dat.data[:] = 0.0
+        upper = Function(Z)
+        upper.subfunctions[0].dat.data[:] = inf
+        upper.subfunctions[1].dat.data[:] = inf
+        bcs = [DirichletBC(Z.sub(0), as_vector([0.0, 0.0]), "on_boundary"),]
     else:
-        raise NotImplementedError('unknown option to -smethod')
+        lower = Function(V).interpolate(Constant(0.0))
+        upper = Function(V).interpolate(Constant(PETSc.INFINITY))
+        bcs = [DirichletBC(V, Constant(0.0), "on_boundary"),]
+
+    if args.freeze:  # add outer loop in this case
+        for k in range(args.freezecount):
+            printpar(f'  freeze tilt iteration {k+1} ...')
+            Ztilt = Phi(uold, lb)
+            if args.weakform == 'mixed':
+                F = weakform_mixed(qu, a, lb, Z=Ztilt)
+                problem = NonlinearVariationalProblem(F, qu, bcs=bcs)
+            else:
+                F = weakform_primal(u, a, lb, Z=Ztilt)
+                problem = NonlinearVariationalProblem(F, u, bcs=bcs)
+            solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="s")
+            solver.solve(bounds=(lower, upper))
+            if args.weakform == 'mixed':
+                q, u = qu.subfunctions
+            uold = Function(V).interpolate(u)
+    else:
+        if args.weakform == 'mixed':
+            F = weakform_mixed(qu, a, lb)
+            problem = NonlinearVariationalProblem(F, qu, bcs=bcs)
+        else:
+            F = weakform_primal(u, a, lb)
+            problem = NonlinearVariationalProblem(F, u, bcs=bcs)
+        solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="s")
+        solver.solve(bounds=(lower, upper))
 
     # update true geometry variables
+    if args.weakform == 'mixed':
+        q, u = qu.subfunctions
+        q.rename("q = ice flux")
+        u.rename("u = transformed thickness")
     H = Function(V, name="H = thickness").interpolate(u**omega)
     s = Function(V, name="s = surface elevation").interpolate(lb + H)
 
@@ -227,14 +283,18 @@ if args.opvd:
     U = Function(VectorFunctionSpace(mesh, 'CG', degree=2))
     U.project(secpera * U_ufl)  # smoother than .interpolate()
     U.rename("U = surface velocity (m/a)")
-    Q = Function(VectorFunctionSpace(mesh, 'DG', degree=1))
-    Q.interpolate(U * (s - lb))
-    Q.rename("Q = UH = volume flux (m^2/a)")
+    if args.weakform != 'mixed':
+        q = Function(FunctionSpace(mesh, 'BDM', 1))
+        q.interpolate(U * (s - lb))
+        q.rename("q = UH = *post-computed* ice flux")
+    rank = Function(FunctionSpace(mesh, 'DG', 0))
+    rank.dat.data[:] = mesh.comm.rank
+    rank.rename('rank')
     printpar('writing to %s ...' % args.opvd)
     if args.prob == 'dome':
-        VTKFile(args.opvd).write(a,u,s,H,U,Q,sexact,sdiff)
+        VTKFile(args.opvd).write(a,u,s,H,U,q,sexact,sdiff,rank)
     else:
         Gb = Function(VectorFunctionSpace(mesh, 'DG', degree=0))
         Gb.interpolate(grad(lb))
         Gb.rename('Gb = grad(b)')
-        VTKFile(args.opvd).write(a,u,s,H,U,Q,lb,Gb)
+        VTKFile(args.opvd).write(a,u,s,H,U,q,lb,Gb,rank)
