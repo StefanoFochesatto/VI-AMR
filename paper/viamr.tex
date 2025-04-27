@@ -143,7 +143,7 @@ Three AMR methods are described in Section \ref{sec:viamr}.  Our implementations
 
 \renewcommand{\labelenumi}{(\roman{enumi})}
 \begin{enumerate}
-\item The unstructured diffusion operator (UDO) method discretely identifies elements adjacent to the computed free boundary, employing a graph-based approach to tag neighboring elements for refinement.  It generalizes the bitmap image processing operation of dilation [CITE!] to unstructured meshes.
+\item The unstructured diffusion operator (UDO) method discretely identifies elements adjacent to the computed free boundary, employing a graph-based approach to tag neighboring elements for refinement.  It generalizes the bitmap image processing operation of dilation \cite{Serra1983} to unstructured meshes.
 \item The variable-coefficient diffusion (VCD) method computes a node-wise indicator function for the computed active set.  This indicator becomes the initial iterate in a single step of a time-dependent heat equation problem.  Solving this problem has the effect of smoothing the indicator about the free boundary.  The smoothed result is then averaged over each element and thresholded for element tagging.
 \item The averaged-metric (AVM) method computes an intermediate representation of the size, shape, and orientation of the new mesh, namely a tensor-valued Riemannian metric \cite{Alauzet2010}.  Specifically, we generate the metric by averaging the Hessian of the computed solution with an isotropic metric generated from the same diffused active set indicator as in VCD.  Then the mesh is actually refined using the MMG mesh library \cite{DapognyDobrzynskiFrey2014}.  This permits controlled anisotropy \cite{Wallworketal2020} to reduce inactive set solution norm error.
 \end{enumerate}
