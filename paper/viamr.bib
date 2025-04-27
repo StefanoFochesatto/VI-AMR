@@ -5,6 +5,16 @@
 	year = {2010},
 }
 
+@article{Alnaesetal2014,
+author = {Aln\ae{}s, Martin S. and Logg, Anders and \O{}lgaard, Kristian B. and Rognes, Marie E. and Wells, Garth N.},
+title = {{Unified Form Language: A domain-specific language for weak formulations of partial differential equations}},
+year = {2014},
+volume = {40},
+number = {2},
+doi = {10.1145/2566630},
+journal = {ACM Trans. Math. Softw.},
+}
+
 @book{BangerthRannacher2003,
 	author = {Bangerth, Wolfgang and Rannacher, Rolf},
 	address = {Basel Berlin},
@@ -12,6 +22,15 @@
 	title = {Adaptive {Finite} {Element} {Methods} for {Differential} {Equations}},
 	publisher = {Birkhäuser},
 	year = {2003},
+}
+
+@article{BeckerRannacher2001,
+  title={An optimal control approach to a posteriori error estimation in finite element methods},
+  author={Becker, Roland and Rannacher, Rolf},
+  journal={Acta Numerica},
+  volume={10},
+  pages={1--102},
+  year={2001},
 }
 
 @Article{BensonMunson2006,
@@ -52,15 +71,6 @@
    pages={A2421--A2444},
 }
 
-@article{DapognyDobrzynskiFrey2014,
-  author={Dapogny, Charles and Dobrzynski, C{\'e}cile and Frey, Pascal},
-  title={Three-dimensional adaptive domain remeshing, implicit domain meshing, and applications to free and moving boundary problems},
-  journal={Journal of Computational Physics},
-  volume={262},
-  pages={358--378},
-  year={2014},
-}
-
 @Book{Ciarlet2002,
   AUTHOR    = {P. Ciarlet},
   TITLE     = {The {F}inite {E}lement {M}ethod for {E}lliptic {P}roblems},
@@ -68,6 +78,15 @@
   PUBLISHER = {SIAM Press},
   ADDRESS   = {Philadelphia},
   YEAR      = {2002},
+}
+
+@article{DapognyDobrzynskiFrey2014,
+  author={Dapogny, Charles and Dobrzynski, C{\'e}cile and Frey, Pascal},
+  title={Three-dimensional adaptive domain remeshing, implicit domain meshing, and applications to free and moving boundary problems},
+  journal={Journal of Computational Physics},
+  volume={262},
+  pages={358--378},
+  year={2014},
 }
 
 @book{Demkowicz2007,
@@ -97,6 +116,14 @@
   YEAR      = {2010},
 }
 
+@book{FacchineiPang2003,
+	author = {Facchinei, Francisco and Pang, Jong-Shi},
+	series = {Springer {Series} in {Operations} {Research}},
+	title = {Finite-{Dimensional} {Variational} {Inequalities} and {Complementarity} {Problems}},
+	publisher = {Springer},
+	year = {2003},
+}
+
 @article{Falk1974,
   title={Error estimates for the approximation of a class of variational inequalities},
   author={R. S. Falk},
@@ -105,6 +132,14 @@
   number={128},
   pages={963--971},
   year={1974}
+}
+
+@manual{FiredrakeUserManual,
+  title        = {Firedrake User Manual},
+  author       = {David A. Ham and Paul H. J. Kelly and Lawrence Mitchell and Colin J. Cotter and Robert C. Kirby and Koki Sagiyama and Nacime Bouziani and Sophia Vorderwuelbecke and Thomas J. Gregory and Jack Betteridge and Daniel R. Shapero and Reuben W. Nixon-Hill and Connor J. Ward and Patrick E. Farrell and Pablo D. Brubeck and India Marsden and Thomas H. Gibson and Miklós Homolya and Tianjiao Sun and Andrew T. T. McRae and Fabio Luporini and Alastair Gregory and Michael Lange and Simon W. Funke and Florian Rathgeber and Gheorghe-Teodor Bercea and Graham R. Markall},
+  organization = {Imperial College London and University of Oxford and Baylor University and University of Washington},
+  year         = {2025},
+  url = {https://www.firedrakeproject.org/firedrake/documentation.html},
 }
 
 @article{GraeserKornhuber2009,
@@ -150,6 +185,26 @@
 	year = {2016},
 }
 
+@inproceedings{LangeKnepleyGorman2015,
+author = {Lange, Michael and Knepley, Matthew G. and Gorman, Gerard J.},
+title = {{Flexible, scalable mesh and data management using PETSc DMPlex}},
+year = {2015},
+publisher = {University of Edinburgh},
+booktitle = {Proceedings of the 3rd International Conference on Exascale Applications and Software},
+pages = {71–76},
+series = {EASC '15}
+}
+
+@article{Langeetal2016,
+  author={Lange, Michael and Mitchell, Lawrence and Knepley, Matthew G and Gorman, Gerard J},
+  title={Efficient mesh management in {Firedrake using PETSc DMPlex}},
+  journal={SIAM Journal on Scientific Computing},
+  volume={38},
+  number={5},
+  pages={S143--S155},
+  year={2016},
+}
+
 @article{PlazaCarey2000,
   author={Plaza, Angel and Carey, Graham F},
   title={Local refinement of simplicial grids based on the skeleton},
@@ -189,6 +244,14 @@
   year={2020},
 }
 
+@article{Betteridgeetal2024,
+  title={{ngsPETSc: A coupling between NETGEN/NGSolve and PETSc}},
+  author={Betteridge, Jack and Farrell, Patrick E and Hochsteger, Matthias and Lackner, Christopher and Sch{\"o}berl, Joachim and Zampini, Stefano and Zerbinati, Umberto},
+  journal={Journal of Open Source Software},
+  volume={9},
+  number={104},
+  year={2024}
+}
 
 @TechReport{petsc-user-ref,
   author        = {Satish Balay and Shrirang Abhyankar and Mark~F. Adams and Steven Benson and Jed
@@ -207,81 +270,9 @@
   year          = {2025}
 }
 
-
-%%%%%%%%%%%%%%%%%%%%
-
-
-@misc{zerbinati_ngspetsc_nodate,
-	title = {{ngsPETSc}: {A} {Coupling} {Between} {NETGEN}/{NGSolve} and {PETSc}},
-	url = {https://github.com/NGSolve/ngsPETSc},
-	year = {2024},
-	language = {en},
-	author = {Zerbinati, Umberto and Farrell, Patrick E and Schoberl, Joachim and Zampini, Stefano},
-}
-
-@article{ham_firedrake_2023,
-	title = {Firedrake user manual},
-	doi = {10.25561/104839},
-	url = {https://www.firedrakeproject.org},
-	author = {Ham, David A and Kelly, Paul HJ and Mitchell, Lawrence and Cotter, Colin J and Kirby, Robert C and Sagiyama, Koki and Bouziani, Nacime and Vorderwuelbecke, Sophia and Gregory, Thomas J and Betteridge, Jack and {others}},
-	year = {2023},
-}
-
-@misc{lange_flexible_2015,
-	title = {Flexible, {Scalable} {Mesh} and {Data} {Management} using {PETSc} {DMPlex}},
-	url = {https://arxiv.org/abs/1505.04633},
-	author = {Lange, Michael and Knepley, Matthew G. and Gorman, Gerard J.},
-	year = {2015},
-}
-
-@article{lange_efficient_2016,
-	title = {Efficient {Mesh} {Management} in {Firedrake} {Using} {PETSc} {DMPlex}},
-	volume = {38},
-	url = {http://dx.doi.org/10.1137/15M1026092},
-	doi = {10.1137/15m1026092},
-	number = {5},
-	journal = {SIAM {Journal} on {Scientific} {Computing}},
-	author = {Lange, Michael and Mitchell, Lawrence and Knepley, Matthew G. and Gorman, Gerard J.},
-	year = {2016},
-	pages = {S143\_S155},
-}
-
 @misc{OpenCV,
 	author = {OpenCV},
 	year = {2024}, 
 	title = {{OpenCV}: {Eroding} and {Dilating}},
 	url = {https://docs.opencv.org/3.4/db/df6/tutorial_erosion_dilatation.html},
-}
-
-@book{braess_finite_2007,
-	address = {Cambridge ; New York},
-	edition = {3rd ed},
-	title = {Finite {Elements}: {Theory}, {Fast} {Solvers}, and {Applications} in {Elasticity} {Theory}},
-	shorttitle = {Finite elements},
-	publisher = {Cambridge University Press},
-	author = {Braess, Dietrich},
-	year = {2007},
-}
-
-@book{facchinei_finite-dimensional_2003,
-	address = {New York},
-	series = {Springer {Series} in {Operations} {Research}},
-	title = {Finite-{Dimensional} {Variational} {Inequalities} and {Complementarity} {Problems}},
-	publisher = {Springer},
-	author = {Facchinei, Francisco and Pang, Jong-Shi},
-	year = {2003},
-}
-
-@article{UnifiedFormLanguage,
-author = {Aln\ae{}s, Martin S. and Logg, Anders and \O{}lgaard, Kristian B. and Rognes, Marie E. and Wells, Garth N.},
-title = {Unified form language: A domain-specific language for weak formulations of partial differential equations},
-year = {2014},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {40},
-number = {2},
-issn = {0098-3500},
-url = {https://doi.org/10.1145/2566630},
-doi = {10.1145/2566630},
-journal = {ACM Trans. Math. Softw.},
 }
