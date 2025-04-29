@@ -78,11 +78,8 @@ for i in range(refinements + 1):
     V = FunctionSpace(mesh, "CG", 1)
     # cross-mesh interpolation from data mesh:
     fsource = Function(V, name="f_source(x,y)").interpolate(fdata)
-    if i == 0:
-        u = Function(V, name="u_h(x,y)")
-    else:
-        # cross-mesh interpolation from coarser mesh:
-        u = Function(V, name="u_h(x,y)").interpolate(u)
+    # cross-mesh interpolation from coarser mesh:
+    u = Function(V, name="u_h(x,y)").interpolate(Constant(0.0) if i == 0 else u)
 
     v = TestFunction(V)
     F = inner(grad(u), grad(v)) * dx - fsource * v * dx
