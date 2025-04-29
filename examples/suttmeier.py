@@ -1,8 +1,8 @@
 # Solve the VI problem in section 10.3 of
 #   F.-T. Suttmeier (2008).  Numerical Solution of Variational Inequalities
 #   by Adaptive Finite Elements, Vieweg + Teubner, Wiesbaden
-# Note there is an apparent typo there, since f(x,y) needs to be negative
-# to generate an active set.
+# Note there is an apparent typo there, since the source f(x,y) needs to be
+# negative to generate an active set.
 
 from firedrake import *
 from firedrake.output import VTKFile
@@ -43,15 +43,15 @@ for i in range(refinements + 1):
 
     # initial iterate by cross-mesh interpolation from coarser mesh
     V = FunctionSpace(mesh, "CG", 1)
-    u = Function(V, name="u_h(x,y)").interpolate(Constant(0.0) if i == 0 else u)
+    u = Function(V, name="u_h").interpolate(Constant(0.0) if i == 0 else u)
 
     # problem data
     x, y = SpatialCoordinate(mesh)
-    psi = Function(V, name="psi(x,y)").interpolate(
+    psi = Function(V, name="psi").interpolate(
         -(((x - 0.5) ** 2 + (y - 0.5) ** 2) ** (3 / 2))
     )
     # typo? from Suttmeier: f = 10.0 * (x - x**2 + y - y **2)
-    fsource = Function(V, name="f(x,y)").interpolate(-10.0 * (x - x ** 2 + y - y ** 2))
+    fsource = Function(V, name="f").interpolate(-10.0 * (x - x ** 2 + y - y ** 2))
 
     # weak form and problem
     v = TestFunction(V)
@@ -80,6 +80,6 @@ for i in range(refinements + 1):
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
-print(f"done ... writing u_h(x,y), psi(x,y), f(x,y), gap=u_h-psi to {outfile} ...")
+print(f"done ... writing u_h, psi, f, gap=u_h-psi to {outfile} ...")
 gap = Function(V, name="gap = u_h - psi").interpolate(u - psi)
 VTKFile(outfile).write(u, psi, fsource, gap)
