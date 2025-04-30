@@ -11,6 +11,8 @@
 \renewcommand\bibfont{\fontsize{10}{12}\selectfont}% Bibliography support using natbib.sty
 
 \usepackage{amsmath}
+\usepackage{stmaryrd}  % \llbracket, \rrbracket
+
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage[T1]{fontenc}
@@ -44,7 +46,12 @@
 \newcommand{\grad}{\nabla}
 \newcommand{\Div}{\nabla\cdot}
 
+\newcommand{\bn}{\mathbf{n}}
+
+\newcommand{\bX}{\mathbf{X}}
+
 \newcommand{\cK}{\mathcal{K}}
+\newcommand{\cT}{\mathcal{T}}
 \newcommand{\cX}{\mathcal{X}}
 
 \begin{document}
@@ -83,7 +90,7 @@ From a solution to \eqref{eq:classical:ncp} we may identify the inactive and act
 \begin{equation}
   I_u = \{x \in \Omega \,:\, u(x) > \psi(x)\}, \quad A_u = \Omega \setminus I_u. \label{eq:classical:sets}
 \end{equation}
-The free boundary $\Gamma_u = \Omega \cap \partial I_u$ is where $I_u$ meets $A_u$ within $\Omega$.  From \eqref{eq:classical:ncp}, $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$, while both Dirichlet ($u=\psi$) and Neumann ($\grad u = \grad \psi$) conditions apply along $\Gamma_u$, in addition to fixed Dirichlet conditions ($u=g$) along $\partial\Omega$.  An example is shown in Figure \ref{fig:ball}, in which $A_u$ is a closed disc of contact and $\Gamma_u$ is a circle.
+The free boundary $\Gamma_u = \Omega \cap \partial I_u$ is where $I_u$ meets $A_u$ within $\Omega$.  From \eqref{eq:classical:ncp}, $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$, the so-called interior condition of the free-boundary problem.  Both Dirichlet ($u=\psi$) and Neumann ($\grad u = \grad \psi$) conditions apply along $\Gamma_u$, in addition to fixed Dirichlet conditions ($u=g$) along $\partial\Omega$.  An example is shown in Figure \ref{fig:ball}, in which $A_u$ is a closed disc of contact and $\Gamma_u$ is a circle.
 
 \begin{figure}[H]
 \centering
@@ -109,7 +116,7 @@ Section \ref{sec:vifem} will recall some of the theory of such VIs, generalized 
 \noindent \hspace{-1mm} \mbox{\includegraphics[width=0.32\textwidth]{static/spiral.png} \,
 \includegraphics[width=0.32\textwidth]{static/sphere.png} \,
 \includegraphics[width=0.32\textwidth]{static/blisters.png}}
-\caption{The measure of the active set (black) of the solution of a classical obstacle problem can vary from small (left) to large (right).  The middle image is for the same problem as Figure \ref{fig:ball}.  All three examples are considered in Section \ref{sec:results}.}
+\caption{The area (measure) of the active set (black) of the solution of a classical obstacle problem can vary from small (left) to large (right).  The middle image is for the same problem as Figure \ref{fig:ball}.  All three examples are considered in Section \ref{sec:results}.}
 \label{fig:activesizes}
 \end{figure}
 
@@ -258,6 +265,16 @@ FIXME PDE case
 FIXME $\cK_h\subset \cK$ case
 
 FIXME so what: if we have accurate free boundary then \dots and active set apparent errors can be ignored
+
+We will also exploit \emph{a posteriori} analysis for obstacle problems, using an error estimator for the PDE problem within the approximate inactive set.  Consider the classical obstacle problem \eqref{eq:classical:ncp} with residual $r(v)=-\nabla^2 v - f$ and interior condition $r(u) = 0$ on $I_u$.  Speaking precisely, suppose $u$ solves VI \eqref{eq:vi} and $u_h$ from $P_1$ solves \eqref{eq:fe:vi}.  For each element $K$ in a triangulation $\cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $e$, and a vector field $X$, with traces $X_L,X_K$ on the element boundaries, let $\left\llbracket X \cdot n \right\rrbracket = X_L \cdot n_L + X_K \cdot n_K$ be the jump of $X$ on $e$.  Define the Babu\v{s}ka--Rheinboldt \cite{BabuskaRheinboldt1979} error estimator
+\begin{equation} \label{eq:brestimator}
+\eta_K^2 = h_K^2 \int_K |r(u_h)|^2\,dx + \frac{h_K}{2} \sum_{e \in \partial K \setminus \partial \Omega} \int_{e} \left\llbracket \grad u_h \cdot n \right\rrbracket^2\,dS,
+\end{equation}
+where $h_K$ is the diameter of $K$.  It can be shown \cite[section 3.2]{AinsworthOden1997} that for the classical Poisson equation problem, the energy error is bounded by these estimators:
+\begin{equation} \label{eq:brbound}
+|u-u_h|_{H^1}^2 = \int_\Omega |\grad(u-u_h)|^2\,dx \le C \sum_{K\in\cT_h} \eta_K^2
+\end{equation}
+The constant $C>0$ is determined by the element-wise and edge-wise approximation properties of the elements, including shape regularity.  The $L^2$ error can be bounded by a similar estimator \cite[section 3.3]{AinsworthOden1997}, which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively.
 
 FIXME compare \cite{Suttmeier2008} re DWR
 
