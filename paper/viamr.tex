@@ -159,9 +159,6 @@ Three AMR methods for VIs are described in Section \ref{sec:viamr}.  Our impleme
 
 Our focus in this paper is on AMR performance, and not solver performance.  However, regarding solvers, the constraint of $u \geq \psi$ makes VI problems nonlinear, even if the operator is linear, and thus an iterative solver is required.  We use a VI-adapted Newton method with a reduced-space line search \cite{BensonMunson2006}, implemented in PETSc \cite{petsc-user-ref}.  Such a numerical method cannot converge quadratically until the active and inactive sets stabilize on the given mesh, equivalently that the discrete free boundary is identified.  Upon stabilization, convergence occurs in a few more iterations when the operator is well-behaved.  Since such Newton solvers only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009}, overall convergence becomes roughly proportional to the number of grid spaces between the initial iterate free boundary and the solution free boundary \citep{Bueler2021}.  Such poor performance could be substantially improved by using the AMR meshes generated here as coarse grids for a multilevel solver like that in \cite{BuelerFarrell2024}, which represents a path to highly-scalable solutions of obstacle problems.
 
-FIXME : I think we need to add that \emph{Grid Sequencing + AMR targeting the free boundary} is the iterative process for how we are "converging"(heuristically at least) to the FB.
-The bulk of vinewton iterations are coming from stabilizing the initial iterate's FB (i think) and thereafter Grid Sequencing is allowing us to make small adjustments as we refine. A gif of the DG0 active set indicator on the sphere problem will show this, the initial iterate is completely above $\psi$ (or zero, then  projects pointwise to be feasible) then the first iteration captures the bulk of the active set, then small adjustments afterwards. On top of this the grid sequencing works best on hierarchal meshes, with metric method  the "grid sequencing" is being done through cross mesh interpolation. 
-
 FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCD and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries.  Table \ref{tab:abbrev} gives the few abbreviations used herein.
 
 \begin{table}[H]
@@ -678,10 +675,16 @@ FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
 
 FIXME
 
+
 \section{Application to determining glaciated areas} \label{sec:app}
 
-
 FIXME
+
+
+\section{Conclusion} \label{sec:conclusion}
+
+FIXME \emph{Grid Sequencing + AMR targeting the free boundary} is the iterative process for how we are converging (heuristically at least) to the FB.  The bulk of vinewton iterations are coming from stabilizing the initial iterate's FB (i think) and thereafter Grid Sequencing is allowing us to make small adjustments as we refine.  A gif of the DG0 active set indicator on the sphere problem will show this, the initial iterate is completely above $\psi$ (or zero, then  projects pointwise to be feasible) then the first iteration captures the bulk of the active set, then small adjustments afterwards. On top of this the grid sequencing works best on hierarchal meshes, with metric method  the "grid sequencing" is being done through cross mesh interpolation.
+
 
 %\section*{Acknowledgements}
 
