@@ -184,7 +184,7 @@ VI        & variational inequality
 
 We start this section with the VI formulation of unilateral obstacle problems in Banach spaces.  Under a hypothesis of coercivity we have continuum well-posedness, even for nonlinear operators.  Then we consider the meaning of ``conforming FE methods'' for such problems, and prove an \emph{a priori} bound on FE norm error which extends the Falk \cite{Falk1974} technique for VIs, itself generalizing Cea's lemma \cite{ElmanSilvesterWathen2014} for PDE problems.  This bound can illuminate why targeted mesh refinement around the computed free boundary will generate improved solutions.  Then we provide a classical \emph{a posteriori} error estimator for PDEs, considering its application in the computed inactive set.  We also aim to correct some misperceptions in the FE literature for VI problems.
 
-For a bounded, open domain $\Omega \subset \RR^d$ with Lipschitz boundary \cite{Ciarlet2002}, let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}.  For simplicity we will assume continuous problem data, allowing well-defined point values, so we suppose $\psi \in \cX \cap C(\bar\Omega)$ and assume $g\in C(\partial \Omega)$ satisfies $g \ge \psi|_{\partial\Omega}$.  As with the classical obstacle problem \eqref{eq:classical:admissible}, define the admissible subset
+For a bounded, open domain $\Omega \subset \RR^d$, $d=2,3$, with Lipschitz boundary \cite{Ciarlet2002}.  In fact, for simplicity we will assume that $\Omega$ is polygonal or polyhedral.  Let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}.  We will assume continuous problem data, allowing well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$ and $g\in C(\partial \Omega)$ satisfy $g \ge \psi|_{\partial\Omega}$.  As with the classical obstacle problem \eqref{eq:classical:admissible}, define the admissible subset
 \begin{equation} \label{eq:admissible}
 \cK = \{v \in \cX \,:\, v \ge \psi \text{ and } v|_{\partial \Omega} = g\}
 \end{equation}
@@ -222,14 +222,33 @@ Returning to the general case with $\cX = W^{1,p}(\Omega)$, note that the residu
 \end{equation}
 \end{lemma}
 
-Now let $\cX_h \subset \cX \cap C(\bar\Omega)$ be a finite-dimensional FE subspace.  For simplicity we will assume that $\partial \Omega$ is polygonal and that there is $g_h\in\cX_h$ such that $g_h=g$ exactly along $\partial \Omega$.  Let $\psi_h \in \cX_h$ be the FE obstacle, assumed to satisfy the compatibility requirement that $\psi_h \le g_h$ along $\partial\Omega$.  Note that $\psi_h$ might be an interpolant or projection of the continuum obstacle $\psi$, but no specific relationship is implied for now.  Define the FE admissible set
+Let $\cT_h$ be a shape-regular finite element partition (triangulation, etc.) of $\Omega$ \cite{AinsworthOden2000,ElmanSilvesterWathen2014}.  Let $\cX_h \subset \cX \cap C(\bar\Omega)$ be a conforming finite-dimensional FE subspace over $\cT_h$.  Here $\cX_h = P_k(\cT_h)$, a Lagrange space, is most common, and our examples will be piecewise-linear ($P_1$).  We will assume that there is $g_h\in\cX_h$ such that $g_h=g$ exactly along $\partial \Omega$.  Let $\psi_h \in \cX_h$ be the FE obstacle, which satisfies the compatibility requirement $\psi_h \le g_h$ along $\partial\Omega$.  Define the (nonempty) FE admissible set
 \begin{equation} \label{eq:fe:admissible}
 \cK_h = \{v_h \in \cX_h \,:\, v_h \ge \psi_h \text{ and } v_h|_{\partial \Omega} = g_h|_{\partial\Omega}\}.
 \end{equation}
-If also $\psi_h \ge \psi$ then $\cK_h\subset \cK$, but otherwise not; we will consider this issue again below.  Our FE method seeks $u_h\in\cK_h$ satisfying the VI problem
+Our FE method seeks $u_h\in\cK_h$ satisfying the VI problem
 \begin{equation} \label{eq:fe:vi}
 F(u_h)[v_h - u_h] \ge \ell[v_h - u_h] \quad \text{ for all } v_h \in \cK_h.
 \end{equation}
+The same argument given for \eqref{eq:vi} shows that \eqref{eq:fe:vi} uniquely defines $u_h$.
+
+Because $\cK_h \subset \cX_h \subset \cX$, we may regard \eqref{eq:fe:vi} as a conforming FE method for \eqref{eq:vi}.  However, the meaning of ``conforming'' is subtle for such an obstacle problem.  No specific relationship between $\psi$ and $\psi_h$ is assumed, although we now consider some possibilities.  If $\psi_h$ is an interpolant ($\psi_h = \Pi_h \psi$) or projection of the continuum obstacle $\psi$ then $\cK_h \approx \cK$ in some sense, but precision is needed for later theory.  There are three levels of approximation, with increasing strength:
+\renewcommand{\labelenumi}{\emph{\roman{enumi})}}
+\begin{enumerate}
+\item $\cK_h \not \subset \cK$
+\item $\cK_h \subset \cK$
+\item $\cK_h = \cK \cap \cX_h$
+\end{enumerate}
+As noted already by Ciarlet, generic situation \emph{i)} will apply if $\psi_h = \Pi_h \psi \in P_1$ for an original obstacle $\psi$ which is not convex over all elements \cite[Figure 5.1.3]{Ciarlet2002}.  Situation \emph{ii)} holds when $\psi_h \ge \psi$, which can be achieved on a given mesh by using a monotone injection operator, i.e.~``$\psi_h = R_h^\oplus \psi$'' if one applies this tool from multilevel VI solvers \cite{BuelerFarrell2024}.  The strong assumption \emph{iii)} is made in \cite{AinsworthOdenLee1993}; it holds if $\psi_h=\psi$, e.g.~if $\psi=0$.
+
+On the other hand, the obstacle $\psi$ and the source function $f$ are data of the problem.  Recall that within a conforming FE approximation of the Poisson equation (PDE) it is assumed that the load-vector integrals are computed exactly, even though quadrature may be required in any implementation.  Similarly here for obstacle problems we should regard the original obstacle as data which has well-defined values, usable as needed to represent the numerical solution in its identified active set.  Following \eqref{eq:classical:sets}, define
+\begin{equation}
+  I_u^h = \{x \in \Omega \,:\, u_h(x) > \psi_h(x)\}, \quad A_u^h = \Omega \setminus I_u^h, \label{eq:fe:sets}
+\end{equation}
+the numerical inactive and active sets defined from the solution to \eqref{eq:fe:vi}.  Over elements $K\in\cT_h$ which are fully contained in $A_u^h$ we may regard the solution as equal to $\psi_h$ or to an interpolant of $\psi$ of arbitrarily higher resolution or order without affecting the computational cost of the solution to \eqref{eq:fe:vi}.
+FIXME Said another way, we do not need to solve for the obstacle \emph{per se}, as we solve for $u_h$.  It is important to distinguish between the numerical errors in $u_h$ arising from mis-locating the free boundary, thus mis-identifying the active and inactive sets, versus the quality of interpolation or approximation of the original obstacle $\psi$ within a correctly-identified active set (i.e.~according to $u_h$).
+
+FIXME FROM HERE
 
 The following theorem generalizes that of Falk \cite{Falk1974}; see also Theorem 5.1.1 in \cite{Ciarlet2002}.\footnote{Theorem 6.3 in \cite{Bueler2024} extends Theorem \ref{thm:genfalk} to non-conforming operators $F_h\approx F$; this adds a fourth term to the bound.}
 
