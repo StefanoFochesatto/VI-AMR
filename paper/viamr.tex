@@ -278,11 +278,11 @@ We will also exploit \emph{a posteriori} analysis for obstacle problems, using a
 \begin{equation} \label{eq:brestimator}
 \eta_K^2 = h_K^2 \int_K |r(u_h)|^2\,dx + \frac{h_K}{2} \sum_{e \in \partial K \setminus \partial \Omega} \int_{e} \left\llbracket \grad u_h \cdot n \right\rrbracket^2\,dS,
 \end{equation}
-where $h_K$ is the diameter of $K$.  It can be shown \cite[section 3.2]{AinsworthOden1997} that for the classical Poisson equation problem, the energy error is bounded by these estimators:
+where $h_K$ is the diameter of $K$.  It can be shown \cite[Chapter 2]{AinsworthOden2000} that for the classical Poisson equation problem, the energy error is bounded by these estimators:
 \begin{equation} \label{eq:brbound}
 |u-u_h|_{H^1}^2 = \int_\Omega |\grad(u-u_h)|^2\,dx \le C \sum_{K\in\cT_h} \eta_K^2
 \end{equation}
-The constant $C>0$ is determined by the element-wise and edge-wise approximation properties of the elements, including shape regularity.  The $L^2$ error can be bounded by a similar estimator \cite[section 3.3]{AinsworthOden1997}, which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively.
+The constant $C>0$ is determined by the element-wise and edge-wise approximation properties of the elements, including shape regularity.  The $L^2$ error can be bounded by a similar estimator \cite[section 2.4]{AinsworthOden2000}, which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively.
 
 FIXME \cite{AinsworthOdenLee1993} re subtle BR analog
 
