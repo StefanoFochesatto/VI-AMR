@@ -68,7 +68,7 @@
 \maketitle
 
 \begin{abstract}
-Free-boundary problems posed as variational inequalities, for example obstacle problems, appear in many scientific and engineering applications.  In the finite element (FE) solution of these problems, the geometrical error in locating the unknown free boundary, equivalently in locating the active and inactive sets, often dominates the overall numerical error.  In this paper we propose, and implement using the Firedrake FE library, adaptive mesh refinement (AMR) strategies which enhance mesh resolution around the free boundary.  These methods mark elements for refinement based on a computed solution.  We consider three methods: (i) an unstructured dilation operator based upon discrete adjacency to the computed free-boundary; (ii) a variable-coefficient diffusion method which thresholds a diffused indicator function for the computed active set; and (iii) a metric-based method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the same diffused active set indicator.  These methods, and certain hybrid strategies based upon a posteriori error estimators in the computed inactive sets, are evaluated by norm error relative to mesh complexity and run-time.  They are also evaluated by geometrical error in active set localization using Jaccard and Hausdorff distances.  Applications include several classical Poisson obstacle problems, and a shallow ice flow problem for predicting the glaciated region in a mountain range.
+Free-boundary problems posed as variational inequalities, for example obstacle problems, appear in many scientific and engineering applications.  In the finite element (FE) solution of these problems, the geometrical error in locating the unknown free boundary, equivalently in locating the active and inactive sets, often dominates the overall numerical error.  In this paper we propose, and implement using the Firedrake FE library, adaptive mesh refinement (AMR) strategies which enhance mesh resolution around the free boundary.  These methods mark elements for refinement based on a computed solution.  We consider three methods: (i) an unstructured dilation operator based upon discrete adjacency to the computed free-boundary; (ii) a variable-coefficient diffusion method which thresholds a diffused indicator function for the computed active set; and (iii) a metric-based method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the same diffused active set indicator.  These methods, and certain hybrid strategies based upon \emph{a posteriori} error estimators in the computed inactive sets, are evaluated by norm error relative to mesh complexity and run-time.  They are also evaluated by geometrical error in active set localization using Jaccard and Hausdorff distances.  Applications include several classical Poisson obstacle problems, and a shallow ice flow problem for predicting the glaciated region in a mountain range.
 \end{abstract}
 
 %\begin{keywords}
@@ -207,7 +207,8 @@ Let $B_R$ be the ball around the origin in $\cX$ of radius $R>0$.  We say $F$ is
 \end{equation}
 If $F$ satisfies \eqref{eq:lipschitz} then it is continuous.  It is well-known that if $F$ is continuous and $q$-coercive, thus continuous over finite-dimensional subsets and strictly monotone, then the solution to VI \eqref{eq:vi} exists and is unique \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.
 
-\begin{example}  In the classical obstacle problem VI \eqref{eq:classical:vi}, $\cX=H^1(\Omega)$, so $p=2$, and
+\begin{example}  \label{example:classicalobstacle}
+In the classical obstacle problem VI \eqref{eq:classical:vi}, $\cX=H^1(\Omega)$, so $p=2$, and
 \begin{equation} \label{eq:classical:bilinearform}
 F(u)[v] = a(u,v) = \int_\Omega \grad u\cdot \grad v\,dx,
 \end{equation}
@@ -234,7 +235,7 @@ The same argument given for \eqref{eq:vi} shows that \eqref{eq:fe:vi} uniquely d
 \begin{equation}
   I_u^h = \{x \in \Omega \,:\, u_h(x) > \psi_h(x)\}, \quad A_u^h = \Omega \setminus I_u^h, \label{eq:fe:sets}
 \end{equation}
-the numerical inactive and active sets, respectively, defined a posteriori from the solution to \eqref{eq:fe:vi}; compare \eqref{eq:classical:sets}.
+the numerical inactive and active sets, respectively, defined \emph{a posteriori} from the solution to \eqref{eq:fe:vi}; compare \eqref{eq:classical:sets}.
 
 Because $\cK_h \subset \cX_h \subset \cX$, we may regard \eqref{eq:fe:vi} as a conforming FE method for \eqref{eq:vi}.  However, this meaning is subtle for an obstacle problem, depending on the relationship between $\psi$ and $\psi_h$.  If $\psi_h$ is an interpolant of $\psi$, denoted $\psi_h = \Pi_h \psi$, or other projection, then $\cK_h \approx \cK$ in some sense.  There are three levels of approximation:
 \renewcommand{\labelenumi}{\emph{\roman{enumi})}}
@@ -243,21 +244,21 @@ Because $\cK_h \subset \cX_h \subset \cX$, we may regard \eqref{eq:fe:vi} as a c
 \item $\cK_h \subset \cK$
 \item $\cK_h = \cK \cap \cX_h$
 \end{enumerate}
-As noted already by Ciarlet, situation \emph{i)} generally applies, for $\cX_h=P_1$ and $\psi_h = \Pi_h \psi$, if $\psi$ is not convex \cite[Figure 5.1.3]{Ciarlet2002}.  Situation \emph{ii)} evidently holds when $\psi_h \ge \psi$.  This can be imposed on a given mesh by using a monotone injection operator, $\psi_h = R^\oplus \psi$, using the operator constructed for multilevel VI solvers \cite{BuelerFarrell2024}; see also \cite{GraeserKornhuber2009}.  The strongest condition \emph{iii)} holds if $\psi_h=\psi$ exactly, for example when $\psi=0$ in the porous dam problems considered by \cite{AinsworthOdenLee1993}.
+As noted already by Ciarlet, situation \emph{i)} generally applies, for $\cX_h=P_1$ and $\psi_h = \Pi_h \psi$, if $\psi$ is not convex \cite[Figure 5.1.3]{Ciarlet2002}.  Situation \emph{ii)} evidently holds when $\psi_h \ge \psi$.  This can be imposed on a given mesh by using a monotone injection operator, $\psi_h = R^\oplus \psi$, using the operator constructed for multilevel VI solvers \cite{BuelerFarrell2024}; see also \cite{GraeserKornhuber2009}.  For a related idea, see the proof of Theorem 5.1.2 in \cite{Ciarlet2002}.  The strongest condition \emph{iii)} holds if $\psi_h=\psi$ exactly, for example when $\psi=0$ in the porous dam problems considered by \cite{AinsworthOdenLee1993}.
 
-Note that the obstacle $\psi$ is given as problem data for VI \eqref{eq:vi}.  Exact values of $\psi$ might be considered to represent the numerical solution within the numerical active set $A_u^h$, especially in elements which are far from the computed free boundary.  To make an analogy, in a conforming FE approximation of the Poisson equation, while conceptually the load-vector integrals using the source function (i.e.~the problem data) are computed exactly, quadrature is required in practice.  For obstacle problems there is an analogous conceptual exactness for values of $\psi$, which must be implemented by interpolation in practice.  Specifically, over elements of the mesh where there is believed to be active-set agreement, $K \subset A_u \cap A_u^h$ for $K\in\cT_h$, the difference (error) $e=u-u_h$ might be addressed post hoc by improved representation of the data $\psi$.  This contrasts with any need to improve the mesh and/or solver generally so as to reduce $\|e\|$, and it constrasts with effects of mis-locating the free boundary.  Such an error generates elements or nodes in the disagreement sets $I_u \cap A_u^h$ or $A_u \cap I_u^h$.  These location errors must be addressed by improved solution of the FE obstacle problem \eqref{eq:fe:vi}, presumably exploiting a posteriori error indicators and AMR.  In summary, while the following theory is fully rigorous and consistent when bounding the error $e=u-u_h$, we will attempt to distinguish between numerical errors arising from mis-locating the exact free boundary, thus mis-identifying the exact active and inactive sets, versus the quality of interpolation or approximation of the original obstacle $\psi$.
+Note that the obstacle $\psi$ is given as problem data for VI \eqref{eq:vi}.  Exact values of $\psi$ might be considered to represent the numerical solution within the numerical active set $A_u^h$, especially in elements which are far from the computed free boundary.  To make an analogy, in a conforming FE approximation of the Poisson equation, while conceptually the load-vector integrals using the source function (i.e.~the problem data) are computed exactly, quadrature is required in practice.  For obstacle problems there is an analogous conceptual exactness for values of $\psi$, which must be implemented by interpolation in practice.  Specifically, over elements of the mesh where there is believed to be active-set agreement, $K \subset A_u \cap A_u^h$ for $K\in\cT_h$, the difference (error) $e=u-u_h$ might be addressed post hoc by improved representation of the data $\psi$.  This contrasts with any need to improve the mesh and/or solver generally so as to reduce $\|e\|$, and it constrasts with effects of mis-locating the free boundary.  Such an error generates elements or nodes in the disagreement sets $I_u \cap A_u^h$ or $A_u \cap I_u^h$.  These location errors must be addressed by improved solution of the FE obstacle problem \eqref{eq:fe:vi}, presumably exploiting \emph{a posteriori} error indicators and AMR.  In summary, while the following theory is fully rigorous and consistent when bounding the error $e=u-u_h$, we will attempt to distinguish between numerical errors arising from mis-locating the exact free boundary, thus mis-identifying the exact active and inactive sets, versus the quality of interpolation or approximation of the original obstacle $\psi$.
 
-The following theorem generalizes that of Falk \cite{Falk1974}; see also Theorem 5.1.1 in \cite{Ciarlet2002}.\footnote{Theorem 6.3 in \cite{Bueler2024} extends Theorem \ref{thm:genfalk} to non-conforming operators $F_h\approx F$; this adds a fourth term to the bound.}
+The following theorem generalizes that of Falk \cite{Falk1974}; see also Theorem 5.1.1 in \cite{Ciarlet2002}.
 
-\begin{theorem} \label{thm:genfalk}  For $1<q<\infty$, define the conjugate exponent $q'=q/(q-1)$.  Assume that either $F$ is $q$-coercive over $\cX$, or that $\cK_h\subset \cK$ and $F$ is $q$-coercive over $\cK$, with coercivity constant $\alpha>0$.  In either case, assume that $F$ is Lipschitz on bounded sets of its domain.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c(R_h,\alpha)>0$, not otherwise depending on $u$ or $u_h$, so that
+\begin{theorem} \label{thm:genfalk}  For $1<q<\infty$, define the conjugate exponent $q'=q/(q-1)$.  Assume that either $F$ is $q$-coercive \eqref{eq:coercive} over $\cX=W^{1,p}(\Omega)$.  Assume that $F$ is Lipschitz on bounded sets of its domain.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c(R_h)>0$, not otherwise depending on $u$ or $u_h$, so that
 \begin{align}
-\|u-u_h\|^q &\le \frac{2}{\alpha} \inf_{v\in\cK} \int_{A_u} (v-u_h)\,d\mu_u \label{eq:falk} \\
-   &\quad\, + \frac{2}{\alpha} \inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u \notag \\
-   &\quad\, + c(R_h,\alpha) \inf_{v_h\in\cK_h} \|v_h - u\|^{q'}. \notag
+\|u-u_h\|^q &\le \frac{2}{\alpha} \bigg( \inf_{v\in\cK} \int_{A_u} (v-u_h)\,d\mu_u \label{eq:falk} \\
+   &\qquad\quad + \inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u \notag \\
+   &\qquad\quad + c(R_h) \inf_{v_h\in\cK_h} \|v_h - u\|^{q'}\bigg). \notag
 \end{align}
 \end{theorem}
 
-\begin{proof}  For arbitrary $v\in\cK$ and $v_h\in\cK_h$, rewrite \eqref{eq:vi} and \eqref{eq:fe:vi} as $F(u)[u] \le F(u)[v] + \ell[u-v]$ and $F(u_h)[u_h] \le F(u_h)[v_h] + \ell[u_h-v_h]$.  It follows from these inequalities, and $q$-coercivity of $F$ over a set containing $u$ and $u_h$, that
+\begin{proof}  For arbitrary $v\in\cK$ and $v_h\in\cK_h$, rewrite \eqref{eq:vi} and \eqref{eq:fe:vi} as $F(u)[u] \le F(u)[v] + \ell[u-v]$ and $F(u_h)[u_h] \le F(u_h)[v_h] + \ell[u_h-v_h]$, respectively.  It follows from these inequalities, and $q$-coercivity of $F$, that
 \begin{align}
 \alpha \|u-u_h\|^q &\le \left(F(u)-F(u_h)\right)[u-u_h] \label{eq:falkdance} \\
   &= F(u)[u] + F(u_h)[u_h] - F(u)[u_h] - F(u_h)[u] \notag \\
@@ -271,40 +272,55 @@ Since $u,u_h\in B_{R_h} = \{w\in\cX\,:\,\|w\|\le R_h\}$, by the Lipschitz assump
 \begin{equation}
 \left(F(u)-F(u_h)\right)[u-v_h] \le C(R_h) \|u-u_h\|\|u-v_h\|. \label{eq:falklip}
 \end{equation}
-Now use Young's inequality with $\eps>0$ \cite[Appendix B.2]{Evans2010}:
+Now use Young's inequality with $\eps>0$ \cite[Appendix B.2]{Evans2010} on \eqref{eq:falklip}.  We have:
 \begin{align}
 \alpha \|u-u_h\|^q &\le \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u]  \label{eq:falkyoung} \\
   &\qquad + C(R_h) \left(\eps\|u-u_h\|^q + \tilde C(\eps) \|u-v_h\|^{q'}\right) \notag
 \end{align}
-where $\tilde C(\eps) = (\eps q)^{-q'/q} {q'}^{-1}$.  Choose $\eps>0$ so that $C(R_h) \eps \le \alpha/2$, and subtract:
+where $\tilde C(\eps) = (\eps q)^{-q'/q} {q'}^{-1}$.  Choose $\eps>0$ so that $C(R_h) \eps \le \alpha/2$.  Then
 \begin{align}
-\frac{\alpha}{2} \|u-u_h\|^q &\le \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u]  \label{eq:abstract:five} \\
+\frac{\alpha}{2} \|u-u_h\|^q &\le \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u]  \label{eq:falkalmost} \\
   &\qquad + C(R_h) \tilde C(\eps) \|u-v_h\|^{q'} \notag
 \end{align}
-Apply the Lemma, note $u=\psi$ a.e.~in $A_u$, and take infimums to show \eqref{eq:falk}.  Note that $c(R_h,\alpha)=2 C(R_h) \tilde C(\eps)/\alpha$.
-\end{proof}
+Apply the Lemma to \eqref{eq:falkalmost}, note $u=\psi$ a.e.~in $A_u$, and take infimums to show \eqref{eq:falk}.\end{proof}
 
-FIXME PDE case
+Theorem 6.3 in \cite{Bueler2024} extends Theorem \ref{thm:genfalk} to non-conforming operators $F_h\approx F$, adding a fourth term ``$(F(u_h)-F_h(u_h))[u_h]$'' to bound \eqref{eq:falk}.  However, we will not need this extended result.
 
-FIXME $\cK_h\subset \cK$ case
+Consider situation \emph{ii)} earlier, namely $\cK_h\subset \cK$.  In this case estimate \eqref{eq:falk} can be simplified.
 
-FIXME so what: if we have accurate free boundary then \dots and active set apparent errors can be ignored
-
-We will also exploit \emph{a posteriori} analysis for obstacle problems, using an error estimator for the PDE problem within the approximate inactive set.  Consider the classical obstacle problem \eqref{eq:classical:ncp} with residual $r(v)=-\nabla^2 v - f$ and interior condition $r(u) = 0$ on $I_u$.  Speaking precisely, suppose $u$ solves VI \eqref{eq:vi} and $u_h$ from $P_1$ solves \eqref{eq:fe:vi}.  For each element $K$ in a triangulation $\cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $e$, and a vector field $X$, with traces $X_L,X_K$ on the element boundaries, let $\left\llbracket X \cdot n \right\rrbracket = X_L \cdot n_L + X_K \cdot n_K$ be the jump of $X$ on $e$.  Define the Babu\v{s}ka--Rheinboldt \cite{BabuskaRheinboldt1979} error estimator
-\begin{equation} \label{eq:brestimator}
-\eta_K^2 = h_K^2 \int_K |r(u_h)|^2\,dx + \frac{h_K}{2} \sum_{e \in \partial K \setminus \partial \Omega} \int_{e} \left\llbracket \grad u_h \cdot n \right\rrbracket^2\,dS,
+\begin{corollary} \label{cor:falkconforming}
+Suppose $\cK_h\subset \cK$, and that $F$ is $q$-coercive \eqref{eq:coercive} over $\cK$.  Keeping the other assumptions of Theorem \ref{thm:genfalk}, the proof goes through as before, but the term in \eqref{eq:falk} with infimum over $\cK$ can be replaced by zero.  Thus
+\begin{equation} \label{eq:falkconforming}
+\|u-u_h\|^q \le \frac{2}{\alpha} \left(\inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u + c(R_h) \inf_{v_h\in\cK_h} \|v_h - u\|^{q'}\right).
 \end{equation}
-where $h_K$ is the diameter of $K$.  It can be shown \cite[Chapter 2]{AinsworthOden2000} that for the classical Poisson equation problem, the energy error is bounded by these estimators:
+Finally, in the unconstrained PDE case, i.e.~where $A_u$ is of $d\mu_u$-measure zero, the bound can be reduced to Cea's lemma for $q$-coercive operators, namely $\|u-u_h\| \le (c/\alpha) \inf_{v_h\in\cK_h} \|v_h - u\|^{1/(q-1)}$.
+\end{corollary}
+
+As is standard in FE theory, the final term in bounds \eqref{eq:falk} and \eqref{eq:falkconforming} can be addressed with interpolation theory \cite{Ciarlet2002,ElmanSilvesterWathen2014}, giving a convergence theorem \cite[Theorem 5.1.2]{Ciarlet2002}.
+
+How to interpret the term
+	$$(\ast) \qquad \inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u$$
+in \eqref{eq:falk} and \eqref{eq:falkconforming}?  Note that $(\ast)$ is unrelated to the FE solution $u_h$.  If $v_h < \psi$ is possible then $(\ast)$ might be negative, but then also situation \emph{i)} must apply, and the first term in \eqref{eq:falk} can counter-act it where $v\ge \psi > u_h$.
+
+In the simpler situation \emph{ii)}, where $\psi_h\ge \psi$ and $\cK_h\subset \cK$, term $(\ast)$ is nonnegative.  It might be large because no $v_h\in\cK_h$ is close to $\psi$ over $A_u$, for instance where $v_h\ge \psi_h \gg \psi$.  On the other hand, it might be large, even if $v_h-\psi$ can be made small over $A_u$, because the source functional $\ell$ causes the residual $F(u)-\ell\ge 0$ to be large in $A_u$.  (Thus $d\mu_u(S)$ is positive and large for some measurable $S\subset A_u$.)  In summary, supposing $\cK_h\subset \cK$, the Corollary \ref{cor:falkconforming} bound is significantly larger than that from Cea's lemma only when the FE functions $v_h$ cannot descend close to the continuum obstacle $\psi$, or when the (exact) residual is large in the (exact) active set $A_u$, or both.
+
+This completes our \emph{a priori} considerations for FE obstacle problem \eqref{eq:fe:vi}.  In Sections \ref{sec:viamr}--\ref{sec:app} we will also exploit an \emph{a posteriori} analysis using an error indicator for the PDE problem within the approximate inactive set.  While our application of this idea to VI problems is heuristically driven, the error indicator itself is presented here as an example for the classical Poisson problem with residual $r(v)=-\nabla^2 v - f$.
+
+\begin{example}  \label{example:br}
+Continuing with the bilinear form from Example \ref{example:classicalobstacle}, suppose $u \in H^1(\Omega)$ solves the weak form equation $a(u,v) = \ell(v) = \int_\Omega f v$ for all $v \in H^1_0(\Omega)$, and $u=g$ on $\partial \Omega$.  Suppose $u_h$ from $P_1$ solves the corresponding finite-dimensional weak form.  For each element $K \in \cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $\gamma$, and a vector field $Z$, with traces $Z_L,Z_K$ on the element boundaries, let $\left\llbracket Z \cdot n \right\rrbracket = Z_L \cdot n_L + Z_K \cdot n_K$ be the jump of $Z$ on $\gamma$.  Define the Babu\v{s}ka--Rheinboldt (BR) \cite{BabuskaRheinboldt1979} error estimator
+\begin{equation} \label{eq:brestimator}
+\eta_K^2 = h_K^2 \int_K |r(u_h)|^2\,dx + \frac{h_K}{2} \sum_{\gamma \in \partial K \setminus \partial \Omega} \int_{\gamma} \left\llbracket \grad u_h \cdot n \right\rrbracket^2\,dS,
+\end{equation}
+where $h_K$ is the diameter of $K$.  It can be shown \cite[Chapter 2]{AinsworthOden2000} that the energy error is bounded by these estimators:
 \begin{equation} \label{eq:brbound}
 |u-u_h|_{H^1}^2 = \int_\Omega |\grad(u-u_h)|^2\,dx \le C \sum_{K\in\cT_h} \eta_K^2
 \end{equation}
 The constant $C>0$ is determined by the element-wise and edge-wise approximation properties of the elements, including shape regularity.  The $L^2$ error can be bounded by a similar estimator \cite[section 2.4]{AinsworthOden2000}, which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively.
+\end{example}
 
-FIXME \cite{AinsworthOdenLee1993} re subtle BR analog
+FIXME compare \cite{AinsworthOdenLee1993}, which is closest to BR for VIs?  compare \cite{Suttmeier2008} re DWR
 
-FIXME compare \cite{Suttmeier2008} re DWR
-
-% POSSIBLY: Traditional AMR for PDE problems \citep{BangerthRannacher2003} computes error indicators within the solution domain based on analysis of an FE solution computed on the current mesh.  These methods are designed to increase mesh resolution or polynomial degree \cite{Demkowicz2007} by means of a local error estimator, for some goal, the quantity of interest $J(\cdot)$. The dual weighted residual (DWR) method \cite{RannacherSuttmeier1997} begins with a posteriori or a priori analysis of the quantity $J(u) - J(u_h)$.  Estimates of this error quantity are then decomposed into local element-wise error estimators which can be used as a heuristic to tag elements for refinement.
+% POSSIBLY: Traditional AMR for PDE problems \citep{BangerthRannacher2003} computes error indicators within the solution domain based on analysis of an FE solution computed on the current mesh.  These methods are designed to increase mesh resolution or polynomial degree \cite{Demkowicz2007} by means of a local error estimator, for some goal, the quantity of interest $J(\cdot)$. The dual weighted residual (DWR) method \cite{RannacherSuttmeier1997} begins with \emph{a posteriori} or \emph{a priori} analysis of the quantity $J(u) - J(u_h)$.  Estimates of this error quantity are then decomposed into local element-wise error estimators which can be used as a heuristic to tag elements for refinement.
 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
