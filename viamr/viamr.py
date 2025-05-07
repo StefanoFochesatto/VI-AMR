@@ -55,7 +55,7 @@ class VIAMR(OptionsManager):
         set is {x : u(x) == lb(x)}, within activetol."""
         if self.debug:
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
-        z = Function(u.function_space(), name="Nodal Active Set Indicator")
+        z = Function(u.function_space(), name="Nodal Active")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
         return z
 
@@ -64,7 +64,7 @@ class VIAMR(OptionsManager):
         if self.debug:
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
-        z = Function(DG0, name="Element Active Set Indicator")
+        z = Function(DG0, name="Element Active")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 1, 0))
         return z
     
@@ -73,7 +73,7 @@ class VIAMR(OptionsManager):
         if self.debug:
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
-        z = Function(DG0, name="Element Active Set Indicator")
+        z = Function(DG0, name="Element Inactive")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
         return z
 
@@ -83,7 +83,7 @@ class VIAMR(OptionsManager):
             assert min(nodalactive.dat.data_ro) >= 0.0
             assert max(nodalactive.dat.data_ro) <= 1.0
         _, DG0 = self.spaces(nodalactive.function_space().mesh())
-        z = Function(DG0, name="Border Elements")
+        z = Function(DG0, name="Element Border")
         z.interpolate(
             conditional(nodalactive > 0, conditional(nodalactive < 1, 1, 0), 0)
         )
@@ -263,7 +263,7 @@ class VIAMR(OptionsManager):
         v = TestFunction(CG1)
         a = w * v * dx + timestep * inner(grad(w), grad(v)) * dx
         L = nodalactive * v * dx
-        u = Function(CG1, name="Smoothed Nodal Active Indicator")
+        u = Function(CG1, name="Smoothed Nodal Active")
         #FIXME consider some solver; probably not this one: sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(a == L, u)
 
@@ -272,7 +272,7 @@ class VIAMR(OptionsManager):
         else:
             # Compute average over elements by interpolation into DG0
             DG0 = FunctionSpace(mesh, "DG", 0)
-            uDG0 = Function(DG0, name="Smoothed Nodal Active Indicator as DG0")
+            uDG0 = Function(DG0, name="Smoothed Nodal Active as DG0")
             uDG0.interpolate(u)
             # Applying thresholding parameters
             mark = Function(DG0, name="VCD Marking")
