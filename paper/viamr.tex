@@ -230,25 +230,22 @@ Our FE method seeks $u_h\in\cK_h$ satisfying the VI problem
 \begin{equation} \label{eq:fe:vi}
 F(u_h)[v_h - u_h] \ge \ell[v_h - u_h] \quad \text{ for all } v_h \in \cK_h.
 \end{equation}
-The same argument given for \eqref{eq:vi} shows that \eqref{eq:fe:vi} uniquely defines $u_h$.
+The same argument given for \eqref{eq:vi} shows that \eqref{eq:fe:vi} uniquely defines $u_h$.  Define
+\begin{equation}
+  I_u^h = \{x \in \Omega \,:\, u_h(x) > \psi_h(x)\}, \quad A_u^h = \Omega \setminus I_u^h, \label{eq:fe:sets}
+\end{equation}
+the numerical inactive and active sets, respectively, defined a posteriori from the solution to \eqref{eq:fe:vi}; compare \eqref{eq:classical:sets}.
 
-Because $\cK_h \subset \cX_h \subset \cX$, we may regard \eqref{eq:fe:vi} as a conforming FE method for \eqref{eq:vi}.  However, the meaning of ``conforming'' is subtle for such an obstacle problem.  No specific relationship between $\psi$ and $\psi_h$ is assumed, although we now consider some possibilities.  If $\psi_h$ is an interpolant ($\psi_h = \Pi_h \psi$) or projection of the continuum obstacle $\psi$ then $\cK_h \approx \cK$ in some sense, but precision is needed for later theory.  There are three levels of approximation, with increasing strength:
+Because $\cK_h \subset \cX_h \subset \cX$, we may regard \eqref{eq:fe:vi} as a conforming FE method for \eqref{eq:vi}.  However, this meaning is subtle for an obstacle problem, depending on the relationship between $\psi$ and $\psi_h$.  If $\psi_h$ is an interpolant of $\psi$, denoted $\psi_h = \Pi_h \psi$, or other projection, then $\cK_h \approx \cK$ in some sense.  There are three levels of approximation:
 \renewcommand{\labelenumi}{\emph{\roman{enumi})}}
 \begin{enumerate}
 \item $\cK_h \not \subset \cK$
 \item $\cK_h \subset \cK$
 \item $\cK_h = \cK \cap \cX_h$
 \end{enumerate}
-As noted already by Ciarlet, generic situation \emph{i)} will apply if $\psi_h = \Pi_h \psi \in P_1$ for an original obstacle $\psi$ which is not convex over all elements \cite[Figure 5.1.3]{Ciarlet2002}.  Situation \emph{ii)} holds when $\psi_h \ge \psi$, which can be achieved on a given mesh by using a monotone injection operator, i.e.~``$\psi_h = R_h^\oplus \psi$'' if one applies this tool from multilevel VI solvers \cite{BuelerFarrell2024}.  The strong assumption \emph{iii)} is made in \cite{AinsworthOdenLee1993}; it holds if $\psi_h=\psi$, e.g.~if $\psi=0$.
+As noted already by Ciarlet, situation \emph{i)} generally applies, for $\cX_h=P_1$ and $\psi_h = \Pi_h \psi$, if $\psi$ is not convex \cite[Figure 5.1.3]{Ciarlet2002}.  Situation \emph{ii)} evidently holds when $\psi_h \ge \psi$.  This can be imposed on a given mesh by using a monotone injection operator, $\psi_h = R^\oplus \psi$, using the operator constructed for multilevel VI solvers \cite{BuelerFarrell2024}; see also \cite{GraeserKornhuber2009}.  The strongest condition \emph{iii)} holds if $\psi_h=\psi$ exactly, for example when $\psi=0$ in the porous dam problems considered by \cite{AinsworthOdenLee1993}.
 
-On the other hand, the obstacle $\psi$ and the source function $f$ are data of the problem.  Recall that within a conforming FE approximation of the Poisson equation (PDE) it is assumed that the load-vector integrals are computed exactly, even though quadrature may be required in any implementation.  Similarly here for obstacle problems we should regard the original obstacle as data which has well-defined values, usable as needed to represent the numerical solution in its identified active set.  Following \eqref{eq:classical:sets}, define
-\begin{equation}
-  I_u^h = \{x \in \Omega \,:\, u_h(x) > \psi_h(x)\}, \quad A_u^h = \Omega \setminus I_u^h, \label{eq:fe:sets}
-\end{equation}
-the numerical inactive and active sets defined from the solution to \eqref{eq:fe:vi}.  Over elements $K\in\cT_h$ which are fully contained in $A_u^h$ we may regard the solution as equal to $\psi_h$ or to an interpolant of $\psi$ of arbitrarily higher resolution or order without affecting the computational cost of the solution to \eqref{eq:fe:vi}.
-FIXME Said another way, we do not need to solve for the obstacle \emph{per se}, as we solve for $u_h$.  It is important to distinguish between the numerical errors in $u_h$ arising from mis-locating the free boundary, thus mis-identifying the active and inactive sets, versus the quality of interpolation or approximation of the original obstacle $\psi$ within a correctly-identified active set (i.e.~according to $u_h$).
-
-FIXME FROM HERE
+Note that the obstacle $\psi$ is given as problem data for VI \eqref{eq:vi}.  Exact values of $\psi$ might be considered to represent the numerical solution within the numerical active set $A_u^h$, especially in elements which are far from the computed free boundary.  To make an analogy, in a conforming FE approximation of the Poisson equation, while conceptually the load-vector integrals using the source function (i.e.~the problem data) are computed exactly, quadrature is required in practice.  For obstacle problems there is an analogous conceptual exactness for values of $\psi$, which must be implemented by interpolation in practice.  Specifically, over elements of the mesh where there is believed to be active-set agreement, $K \subset A_u \cap A_u^h$ for $K\in\cT_h$, the difference (error) $e=u-u_h$ might be addressed post hoc by improved representation of the data $\psi$.  This contrasts with any need to improve the mesh and/or solver generally so as to reduce $\|e\|$, and it constrasts with effects of mis-locating the free boundary.  Such an error generates elements or nodes in the disagreement sets $I_u \cap A_u^h$ or $A_u \cap I_u^h$.  These location errors must be addressed by improved solution of the FE obstacle problem \eqref{eq:fe:vi}, presumably exploiting a posteriori error indicators and AMR.  In summary, while the following theory is fully rigorous and consistent when bounding the error $e=u-u_h$, we will attempt to distinguish between numerical errors arising from mis-locating the exact free boundary, thus mis-identifying the exact active and inactive sets, versus the quality of interpolation or approximation of the original obstacle $\psi$.
 
 The following theorem generalizes that of Falk \cite{Falk1974}; see also Theorem 5.1.1 in \cite{Ciarlet2002}.\footnote{Theorem 6.3 in \cite{Bueler2024} extends Theorem \ref{thm:genfalk} to non-conforming operators $F_h\approx F$; this adds a fourth term to the bound.}
 
