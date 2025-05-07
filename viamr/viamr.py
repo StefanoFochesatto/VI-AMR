@@ -281,10 +281,12 @@ class VIAMR(OptionsManager):
             )
             return mark
 
-    def br_mark_poisson(self, uh, lb, f=Constant(0.0)):
-        '''Return marking for the inactive set by using the a posteriori
-        Babuška-Rheinboldt residual error estimator for the Poisson equation
+    def br_mark_poisson(self, uh, lb, f=Constant(0.0), theta=0.5):
+        '''Return marking within the computed inactive set by using the a posteriori
+        Babuška-Rheinboldt residual error indicator for the Poisson equation
           - div(grad u) = f
+        First the BR indicator eta is computed as a function in DG0.  Then
+        we mark where eta is larger than theta fraction of eta values.
         Returns the marking mark, estimator eta, and a scalar estimate for
         the total error in energy norm.  This function is on slide 109 of
           https://github.com/pefarrell/icerm2024/blob/main/slides.pdf
@@ -310,12 +312,11 @@ class VIAMR(OptionsManager):
             - inner(h('+')/2 * jump(grad(uh), n)**2, w('+')) * dS
             - inner(h('-')/2 * jump(grad(uh), n)**2, w('-')) * dS
         )
-        # Each cell is an independent 1x1 solve, so Jacobi is exact
+        # Each cell is an independent 1x1 solve, so Jacobi is an exact preconditioner
         sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
         # generate inactive BR marking
-        theta = 0.5   # mark where eta is larger than theta fraction of eta values
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name='eta on inactive set').interpolate(eta * imark)
         with ieta.dat.vec_ro as ieta_:
