@@ -321,7 +321,9 @@ class VIAMR(OptionsManager):
         ieta = Function(DG0, name='eta on inactive set').interpolate(eta * imark)
         with ieta.dat.vec_ro as ieta_:
             emax = ieta_.max()[1]
+            #eav = ieta_.sum() / ieta_.getSize()
             total_error_est = sqrt(ieta_.dot(ieta_))
+        #print(f"eav = {eav}  emax = {emax}")  # FIXME use something other than theta and emax to mark?
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
         return (mark, eta, total_error_est)
 

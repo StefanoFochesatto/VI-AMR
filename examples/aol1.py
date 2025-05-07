@@ -75,7 +75,7 @@ for i in range(refinements + 1):
     if i == refinements:
         break
     mark = amr.vcdmark(mesh, u, lb)
-    imark, _, _ = amr.br_mark_poisson(u, lb, f=Constant(-1.0), theta=0.9)
+    imark, _, _ = amr.br_mark_poisson(u, lb, f=Constant(-1.0), theta=0.8)  # FIXME the distribution of eta has lots of elements close to eta.max(), and a few where eta is very small
     #imark = amr.eleminactive(u, lb)
     _, DG0 = amr.spaces(mesh)
     mark = Function(DG0).interpolate((mark + imark) - (mark * imark))  # union
