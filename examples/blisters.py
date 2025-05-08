@@ -113,7 +113,8 @@ for i in range(refinements + 1):
     mark = amr.vcdmark(mesh, u, lb, bracket=[0.15, 0.95])
     if refine_inactive or refine_br:
         if refine_br:
-            (imark, _, _) = amr.br_mark_poisson(u, lb, f=fsource)
+            residual = - div(grad(u)) - fsource
+            (imark, _, _) = amr.br_inactive_mark(u, lb, residual)
         else:
             imark = amr.eleminactive(u, lb)
         _, DG0 = amr.spaces(mesh)

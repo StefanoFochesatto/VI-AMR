@@ -33,7 +33,7 @@ params = {
 
 mesh0 = RectangleMesh(m0, m0, 2.0, 2.0, originX=-2.0, originY=-2.0, diagonal="crossed")
 meshhierarchy = [mesh0, ]
-amr = VIAMR()
+amr = VIAMR(debug=False)  # turn off checking that u >= psi
 for i in range(refinements + 1):
     mesh = meshhierarchy[i]
     print(f"solving on mesh {i} ...")
@@ -83,7 +83,8 @@ for i in range(refinements + 1):
 
     # apply VCD AMR, marking inactive by B&R indicator
     mark = amr.vcdmark(mesh, u, psi)
-    (imark, _, _) = amr.br_mark_poisson(u, psi)
+    residual = - div(grad(u))
+    (imark, _, _) = amr.br_inactive_mark(u, psi, residual)
     _, DG0 = amr.spaces(mesh)
     mark = Function(DG0).interpolate((mark + imark) - (mark * imark))  # union
     mesh = amr.refinemarkedelements(mesh, mark)

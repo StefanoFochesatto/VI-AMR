@@ -54,7 +54,8 @@ for i in range(refinements + 1):
     u = Function(V, name="u_h")
     v = TestFunction(V)
     uexact = Function(V, name="u_exact").interpolate(g_ufl)
-    F = inner(grad(u), grad(v)) * dx - Constant(-1.0) * v * dx
+    fsource = Constant(-1.0)
+    F = inner(grad(u), grad(v)) * dx - fsource * v * dx
     bcs = DirichletBC(V, uexact, (1, 2, 3, 4))
     problem = NonlinearVariationalProblem(F, u, bcs)
 
@@ -75,7 +76,8 @@ for i in range(refinements + 1):
     if i == refinements:
         break
     mark = amr.vcdmark(mesh, u, lb)
-    imark, _, _ = amr.br_mark_poisson(u, lb, f=Constant(-1.0), theta=0.8)  # FIXME the distribution of eta has lots of elements close to eta.max(), and a few where eta is very small
+    residual = - div(grad(u)) - fsource
+    imark, _, _ = amr.br_inactive_mark(u, lb, residual, theta=0.8)  # FIXME the distribution of eta has lots of elements close to eta.max(), and a few where eta is very small
     #imark = amr.eleminactive(u, lb)
     _, DG0 = amr.spaces(mesh)
     mark = Function(DG0).interpolate((mark + imark) - (mark * imark))  # union

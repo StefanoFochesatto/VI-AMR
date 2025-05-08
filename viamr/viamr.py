@@ -105,6 +105,10 @@ class VIAMR(OptionsManager):
         )
         return z
 
+    def union(self, mark1, mark2):
+        markUnion = Function(mark1.function_space()).interpolate((mark1 + mark2) - (mark1*mark2))
+        return markUnion
+
     def _bfs_neighbors(self, mesh, border, levels):
         """Element-wise multi-neighbor lookup using breadth-first search."""
 
@@ -289,22 +293,22 @@ class VIAMR(OptionsManager):
             )
             return mark
 
-    def br_mark_poisson(self, uh, lb, f=Constant(0.0), theta=0.5):
-        '''Return marking within the computed inactive set by using the a posteriori
-        Babuška-Rheinboldt residual error indicator for the Poisson equation
-          - div(grad u) = f
-        First the BR indicator eta is computed as a function in DG0.  Then
+    def br_inactive_mark(self, uh, lb, res_ufl, theta=0.5):
+        '''Return marking within the computed inactive set by using the
+        a posteriori Babuška-Rheinboldt residual error indicator.  The BR
+        indicator eta is computed as a function in DG0.  Then
         we mark where eta is larger than theta fraction of eta values.
         Returns the marking mark, estimator eta, and a scalar estimate for
-        the total error in energy norm.  This function is on slide 109 of
+        the total error in energy norm.  (This last value is only valid for
+        the Poisson equation.)  This function is on slide 109 of
           https://github.com/pefarrell/icerm2024/blob/main/slides.pdf
-        The original source is perhaps
-          Babuška, I., & Rheinboldt, W. C. (1978). Error estimates for adaptive
-          finite element computations. SIAM Journal on Numerical Analysis,
-          15(4), 736-754.  https://www.jstor.org/stable/pdf/2156851.pdf
-        FIXME this should be more flexible, and at least correspond to
-          - A div(grad u) = f
-        for A>0'''
+        See also
+          https://github.com/pefarrell/icerm2024/blob/main/02_netgen/01_l_shaped_adaptivity.py
+        and section 2.2 of
+          M. Ainsworth & J. T. Oden (2000).  A Posteriori Error Estimation in
+          Finite Element Analysis, John Wiley & Sons, Inc., New York.'''
+        # FIXME use something other than theta and emax to mark?  see commented-out
+        #   lines below computing eta average
         # mesh quantities
         mesh = uh.function_space().mesh()
         h = CellDiameter(mesh)
@@ -316,22 +320,22 @@ class VIAMR(OptionsManager):
         w = TestFunction(DG0)
         G = (
             inner(eta_sq / v, w)*dx
-            - inner(h**2 * (f + div(grad(uh)))**2, w) * dx
+            - inner(h**2 * res_ufl**2, w) * dx
             - inner(h('+')/2 * jump(grad(uh), n)**2, w('+')) * dS
             - inner(h('-')/2 * jump(grad(uh), n)**2, w('-')) * dS
         )
-        # Each cell is an independent 1x1 solve, so Jacobi is an exact preconditioner
+        # each cell needs an independent 1x1 solve, so Jacobi is an exact preconditioner
         sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
-        # generate inactive BR marking
+        # generate union of inactive mark and BR mark
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name='eta on inactive set').interpolate(eta * imark)
         with ieta.dat.vec_ro as ieta_:
             emax = ieta_.max()[1]
             #eav = ieta_.sum() / ieta_.getSize()
             total_error_est = sqrt(ieta_.dot(ieta_))
-        #print(f"eav = {eav}  emax = {emax}")  # FIXME use something other than theta and emax to mark?
+        #print(f"eav = {eav}  emax = {emax}")
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
         return (mark, eta, total_error_est)
 
@@ -401,55 +405,7 @@ class VIAMR(OptionsManager):
 
         return VImetric
 
-    # Computes Babuška Rheinboldt(1978) error estimator, returns marking function on only inactive set.
-    # Error estimator computation is from
-    #   https://github.com/pefarrell/icerm2024/blob/main/slides.pdf  (slide 109)
-    #   https://github.com/pefarrell/icerm2024/blob/main/02_netgen/01_l_shaped_adaptivity.py
-    def BRinactivemark(self, mesh, u, lb, resUFL, theta, markFB = None):
-        _ , W = self.spaces(mesh)
-        eta_sq = Function(W)
-        w = TestFunction(W)
-        
-        h = CellDiameter(mesh)  # symbols for mesh quantities
-        n = FacetNormal(mesh)
-        v = CellVolume(mesh)
 
-        # Babuska-Rheinboldt error estimator
-        G = (  # compute cellwise error estimator
-            inner(eta_sq / v, w)*dx
-            - inner(h**2 * (resUFL)**2, w) * dx
-            - inner(h('+')/2 * jump(grad(u), n)**2, w('+')) * dS
-            - inner(h('-')/2 * jump(grad(u), n)**2, w('-')) * dS
-        )
-
-        # Each cell is an independent 1x1 solve, so Jacobi is exact
-        sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
-        solve(G == 0, eta_sq, solver_parameters=sp)
-        eta = Function(W).interpolate(sqrt(eta_sq))  # compute eta from eta^2
-
-        # Thinking about removing the Free Boundary mark from here. 
-        # Mask inactive set 
-        eleminactive = self.eleminactive(u, lb)
-        if markFB == None:
-            etaInactive = Function(W).interpolate(eta * eleminactive)
-        else:
-            etaInactive = Function(W).interpolate(eta * eleminactive* abs(markFB - 1))
-            
-        
-        # Refine all cells greater than theta*eta_max
-        with etaInactive.dat.vec_ro as eta_:
-            eta_max = eta_.max()[1]        
-        refine = conditional(gt(etaInactive, theta*eta_max), 1, 0)
-        mark = Function(W).interpolate(refine)
-        
-        return mark
-            
-            
-    def union(self, mark1, mark2):
-        markUnion = Function(mark1.function_space()).interpolate((mark1 + mark2) - (mark1*mark2))
-        return markUnion
-        
-    
     def refinemarkedelements(self, mesh, indicator, isUniform = False):
         """petsc4py implementation of Netgen's .refine_marked_elements().
         Usually is skeleton-based refinement (SBR; Plaza & Carey, 2000).
