@@ -357,7 +357,7 @@ class VIAMR(OptionsManager):
 
     def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50], hessian = True):
         """Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the
-        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed vces indicator.  These metrics are averaged using the weights."""
+        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged using the weights."""
 
         assert (
             self.metricparameters is not None
@@ -365,12 +365,12 @@ class VIAMR(OptionsManager):
 
         from animate import adapt, RiemannianMetric
 
-        # Construct isotropic metric from abs(grad(smoothed_vces_indicator))
+        # Construct isotropic metric from abs(grad(smoothed_vcd_indicator))
         V, _ = self.spaces(mesh)
         dim = mesh.topological_dimension()
 
         # Get magnitude of gradients
-        s = self.vcesmark(mesh, u, lb, returnSmooth=True)
+        s = self.vcdmark(mesh, u, lb, returnSmooth=True)
         ags = Function(V).interpolate(sqrt(dot(grad(s), grad(s))))
 
         # Constructing metric. Basically "L2" option in metric.compute_isotropic_metric,
