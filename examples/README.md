@@ -12,7 +12,7 @@ The short programs `spiral.py`, `sphere.py`, and `metric.py` show the core abili
 
 ## other examples
 
-Programs `pollutant.py`, `BRinactive.py`, and `DWRinactive.py` are documented only by their source code.
+Program `pollutant.py` is documented only by its source code.
 
 ## animate dependency
 
