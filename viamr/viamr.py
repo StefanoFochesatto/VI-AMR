@@ -18,6 +18,13 @@ except ImportError:
 
 
 class VIAMR(OptionsManager):
+    """VIAMR object manages adaptive mesh refinement based on variational
+    inequality concepts.  The central notion is that refinement near the
+    free boundary will improve solution quality.  Those functions that
+    do not work in parallel, namely udomark() and jaccard(), halt with
+    ValueError.  All other methods should work the same in serial and
+    parallel."""
+
     def __init__(self, **kwargs):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
         # if True, add (slow) extra checking
@@ -123,12 +130,9 @@ class VIAMR(OptionsManager):
         return result
 
     def udomark(self, mesh, u, lb, n=2):
-        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
-        Warning: Not valid in parallel."""
-
-        # generate element-wise indicator for active set
-        elemactive = self.elemactive(u, lb)
-
+        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm."""
+        if mesh.comm.size > 1:
+            raise ValueError("udomark() is not valid in parallel")
         # generate element-wise indicator for border set
         elemborder = self.elemborder(self.nodalactive(u, lb))
 
@@ -505,15 +509,14 @@ class VIAMR(OptionsManager):
         two sets is
             J(S,T) = |S cap T| / |S cup T|,
         that is, the ratio of the area (measure) of the intersection
-        divided by the area of the union.
-        Warning: Not valid in parallel."""
+        divided by the area of the union."""
         # FIXME how to check that active1, active2 are in DG0 spaces?
         # FIXME fails in parallel; the line generating proj2 will throw
         #     AssertionError: Whoever made mesh_B should explicitly mark
         #     mesh_A as having a compatible parallel layout.
-        assert (
-            active1.function_space().mesh()._comm.size == 1
-        ), "jaccard() not valid in parallel"
+        if active1.function_space().mesh()._comm.size > 1 \
+           or active2.function_space().mesh()._comm.size > 1:
+            raise ValueError("jaccard() is not valid in parallel")
         if self.debug:
             for a in [active1, active2]:
                 assert min(a.dat.data_ro) >= 0.0
