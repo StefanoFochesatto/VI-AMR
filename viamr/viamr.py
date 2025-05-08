@@ -22,24 +22,24 @@ class VIAMR(OptionsManager):
     inequality concepts.  The central notion is that refinement near the
     free boundary will improve solution quality.  Those functions that
     do not work in parallel, namely udomark() and jaccard(), halt with
-    ValueError.  All other methods should work the same in serial and
-    parallel."""
+    ValueError on the size of the communicator for the mesh.  All other
+    methods should work the same in serial and parallel."""
 
     def __init__(self, **kwargs):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
-        # if True, add (slow) extra checking
         self.debug = kwargs.pop("debug", True)
         self.metricparameters = None
 
     def spaces(self, mesh, p=1):
         """Return CG{p} and DG{p-1} spaces."""
-        assert isinstance(p, int)
-        assert p >= 1
+        if self.debug:
+            assert isinstance(p, int)
+            assert p >= 1
         return FunctionSpace(mesh, "CG", p), FunctionSpace(mesh, "DG", p - 1)
 
     def meshsizes(self, mesh):
         """Compute number of vertices, number of elements, and range of
-        mesh diameters.  Valid in parallel."""
+        mesh diameters."""
         CG1, DG0 = self.spaces(mesh, p=1)
         nvertices = CG1.dim()
         nelements = DG0.dim()
@@ -48,7 +48,7 @@ class VIAMR(OptionsManager):
         return nvertices, nelements, hmin, hmax
 
     def meshreport(self, mesh, indent=2):
-        """Print standard mesh report.  Valid in parallel."""
+        """Print standard mesh report."""
         nv, ne, hmin, hmax = self.meshsizes(mesh)
         indentstr = indent * ' '
         PETSc.Sys.Print(
@@ -400,7 +400,6 @@ class VIAMR(OptionsManager):
             VImetric = freeboundaryMetric.copy(deepcopy=True)
 
         return VImetric
-    
 
     # Computes Babuška Rheinboldt(1978) error estimator, returns marking function on only inactive set.
     # Error estimator computation is from
@@ -452,7 +451,12 @@ class VIAMR(OptionsManager):
         
     
     def refinemarkedelements(self, mesh, indicator, isUniform = False):
-        """petsc4py implementation of .refine_marked_elements(), works in parallel only tested in 2D. Still working out the kinks on more than one iteration of refinement."""   
+        """petsc4py implementation of Netgen's .refine_marked_elements().
+        Usually is skeleton-based refinement (SBR; Plaza & Carey, 2000).
+        This version works in parallel, but only in 2D when using SBR???
+        See
+          https://petsc.org/release/overview/plex_transform_table/
+        and associated links."""
         # Create Section for DG0 indicator
         tdim = mesh.topological_dimension()
         entity_dofs = np.zeros(tdim+1, dtype=IntType)
@@ -462,49 +466,53 @@ class VIAMR(OptionsManager):
 
         # Pull Plex from mesh
         dm = mesh.topology_dm
-        
+
         # Create an adaptation label to mark cells for refinement
         dm.createLabel('refinesbr')
         adaptLabel = dm.getLabel('refinesbr')
         adaptLabel.setDefaultValue(0)
 
-        # dmcommon provides a python binding for this operation of setting the label given an indicator function data array
+        # dmcommon provides a python binding for this operation of setting
+        # the label given an indicator function data array
         dmcommon.mark_points_with_function_array(
             dm, indicatorSect, 0, indicator.dat.data_with_halos, adaptLabel, 1)
 
-        # Create a DMPlexTransform object to apply the refinement
+        # augment or override options database to indicate type of refinement
+        # For now the only way to set the active label with petsc4py is
+        # with PETSc.Options() because DMPlexTransformSetActive() has no binding.
         opts = PETSc.Options()
         if isUniform:
             opts['dm_plex_transform_type'] = 'refine_regular'
         else:
             opts['dm_plex_transform_active'] = 'refinesbr'
             opts['dm_plex_transform_type'] = 'refine_sbr' # <- skeleton based refinement is what netgen does.
+
+        # Create a DMPlexTransform object to apply the refinement
         dmTransform = PETSc.DMPlexTransform().create(comm = mesh.comm)
         dmTransform.setDM(dm)
-        # For now the only way to set the active label with petsc4py is with PETSc.Options() (DMPlexTransformSetActive() has no binding)
         dmTransform.setFromOptions()
         dmTransform.setUp()
         dmAdapt = dmTransform.apply(dm)
-        
+
         # Labels are no longer needed, not sure if we need to call destroy on them. 
         dmAdapt.removeLabel('refinesbr')
         dm.removeLabel('refinesbr')
         dmTransform.destroy()
-        
+
         # Remove labels to stop further distribution in mesh()
         # dm.distributeSetDefault(False) <- Matt's suggestion
         dmAdapt.removeLabel("pyop2_core")
         dmAdapt.removeLabel("pyop2_owned")
         dmAdapt.removeLabel("pyop2_ghost")
         # ^ Koki's suggestion
-    
+
         # Pull distribution parameters from original dm
         distParams = mesh._distribution_parameters
-        
+
         # Create a new mesh from the adapted dm
         refinedmesh = Mesh(dmAdapt, distribution_parameters = distParams, comm = mesh.comm)
         opts['dm_plex_transform_type'] = 'refine_regular'
-        
+
         return refinedmesh
 
 
