@@ -211,10 +211,10 @@ def test_overlapping_and_nonoverlapping_hausdorff():
     CG1, _ = z.spaces(mesh)
     x, y = SpatialCoordinate(mesh)
     sol1 = Function(CG1).interpolate(Constant(1.0))
-    lb = conditional(x <= .2, 1, 0)
+    lb = Function(CG1).interpolate(conditional(x <= .2, 1, 0))
     _, E1 = z.freeboundarygraph(sol1, lb)
     assert z.hausdorff(E1, E1) == 0
-    lb2 = conditional(x <= .4, 1, 0)
+    lb2 = Function(CG1).interpolate(conditional(x <= .4, 1, 0))
     _, E2 = z.freeboundarygraph(sol1, lb2)
     assert z.hausdorff(E1, E2) == .2
 

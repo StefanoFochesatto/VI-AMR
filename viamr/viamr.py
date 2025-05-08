@@ -21,7 +21,7 @@ class VIAMR(OptionsManager):
     def __init__(self, **kwargs):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
         # if True, add (slow) extra checking
-        self.debug = kwargs.pop("debug", False)
+        self.debug = kwargs.pop("debug", True)
         self.metricparameters = None
 
     def spaces(self, mesh, p=1):
