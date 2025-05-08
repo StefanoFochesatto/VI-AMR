@@ -59,45 +59,54 @@ class VIAMR(OptionsManager):
     def nodalactive(self, u, lb):
         """Compute nodal active set indicator in same function space as u.
         Applies to unilateral obstacle problems with u >= lb.  The active
-        set is {x : u(x) == lb(x)}, within activetol."""
+        set is {x : u(x) == lb(x)}, within activetol.  Active nodes get value 1.0."""
         if self.debug:
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         z = Function(u.function_space(), name="Nodal Active")
-        z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
+        z.interpolate(conditional(abs(u - lb) < self.activetol, 1.0, 0.0))
         return z
 
     def elemactive(self, u, lb):
-        """Compute element active set indicator in DG0."""
+        """Compute element active set indicator in DG0.  Elements are marked
+        active if the DG0 degree of freedom for that element is active, within
+        activetol.  Active elements get value 1.0."""
         if self.debug:
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
         z = Function(DG0, name="Element Active")
-        z.interpolate(conditional(abs(u - lb) < self.activetol, 1, 0))
+        z.interpolate(conditional(abs(u - lb) < self.activetol, 1.0, 0.0))
         return z
     
     def eleminactive(self, u, lb):
-        """Compute element inactive set indicator in DG0."""
+        """Compute element inactive set indicator in DG0.  Elements are marked
+        inactive if the DG0 degree of freedom for that element is inactive, within
+        activetol.  Inactive elements get value 1.0."""
         if self.debug:
             assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
         z = Function(DG0, name="Element Inactive")
-        z.interpolate(conditional(abs(u - lb) < self.activetol, 0, 1))
+        z.interpolate(conditional(abs(u - lb) < self.activetol, 0.0, 1.0))
         return z
 
     def elemborder(self, nodalactive):
-        """From nodal activeset indicator compute bordering element indicator."""
+        """From *nodal* active set indicator nodalactive, computes bordering
+        element indicator.  Crucially uses the fact that the DG0 degree of
+        freedom is strictly inside the element.  (Possibly only works if z is
+        in CG1.)  Returns 1.0 for elements with
+          0 < nodalactive(x_K) < 1
+        at x_K which is the DG0 dof for element K."""
         if self.debug:
             assert min(nodalactive.dat.data_ro) >= 0.0
             assert max(nodalactive.dat.data_ro) <= 1.0
         _, DG0 = self.spaces(nodalactive.function_space().mesh())
         z = Function(DG0, name="Element Border")
         z.interpolate(
-            conditional(nodalactive > 0, conditional(nodalactive < 1, 1, 0), 0)
+            conditional(nodalactive > 0.0, conditional(nodalactive < 1.0, 1.0, 0.0), 0.0)
         )
         return z
 
-    def bfs_neighbors(self, mesh, border, levels, active):
-        """element-wise Fast Multi Neighbor Lookup BFS can Avoid Active Set"""
+    def _bfs_neighbors(self, mesh, border, levels):
+        """Element-wise multi-neighbor lookup using breadth-first search."""
 
         # build dictionary which maps each vertex in the mesh
         # to the cells that are incident to it
@@ -114,9 +123,8 @@ class VIAMR(OptionsManager):
         # loop over all cells to mark neighbors, and store the result in DG0
         result = Function(border.function_space(), name="nNeighbors")
         for i in range(mesh.num_cells()):
-            # If the function value is 1 and the cell is in the active set
-            if border.dat.data[i] == 1 and active.dat.data[i] == 0:
-                # Use a BFS algorithm to find all cells within the specified number of levels
+            if border.dat.data[i] == 1.0:
+                # use BFS to find all cells within the specified number of levels
                 queue = deque([(i, 0)])
                 visited = set()
                 while queue:
@@ -135,12 +143,10 @@ class VIAMR(OptionsManager):
             raise ValueError("udomark() is not valid in parallel")
         # generate element-wise indicator for border set
         elemborder = self.elemborder(self.nodalactive(u, lb))
+        # _bfs_neighbors() constructs N^n(B) indicator
+        return self._bfs_neighbors(mesh, elemborder, n)
 
-        # bfs_neighbors() constructs N^n(B) indicator.  Last argument
-        # is to refine only in active or only in inactive set (currently commented out).
-        return self.bfs_neighbors(mesh, elemborder, n, elemactive)
-    
-    
+
     def udomarkParallel(self, mesh, u, lb, n=2):
         '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements'''
         
@@ -264,7 +270,7 @@ class VIAMR(OptionsManager):
         w = TrialFunction(CG1)
         v = TestFunction(CG1)
         a = w * v * dx + timestep * inner(grad(w), grad(v)) * dx
-        L = nodalactive * v * dx
+        L = (1.0 - nodalactive) * v * dx
         u = Function(CG1, name="Smoothed Nodal Active")
         #FIXME consider some solver; probably not this one: sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(a == L, u)
@@ -540,9 +546,8 @@ class VIAMR(OptionsManager):
         CellVertexMap = mesh.topology.cell_closure
 
         # Get active indicators
-        nodalactive = self.nodalactive(u, lb)  # vertex
         elemactive = self.elemactive(u, lb)  # cell
-        elemborder = self.elemborder(nodalactive)  # bordering cell
+        elemborder = self.elemborder(self.nodalactive(u, lb))  # bordering cell
 
         # Pull Indices
         ActiveSetElementsIndices = [
