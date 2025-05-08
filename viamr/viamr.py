@@ -92,19 +92,19 @@ class VIAMR(OptionsManager):
     def bfs_neighbors(self, mesh, border, levels, active):
         """element-wise Fast Multi Neighbor Lookup BFS can Avoid Active Set"""
 
-        # dictionary to map each vertex to the cells that contain it
+        # build dictionary which maps each vertex in the mesh
+        # to the cells that are incident to it
         vertex_to_cells = {}
-        cell_vertex_map = mesh.topology.cell_closure  # cell to vertex connectivity
-        # Loop over all cells to populate the dictionary
+        closure = mesh.topology.cell_closure  # cell to vertex connectivity
+        # loop over all cells to populate the dictionary
         for i in range(mesh.num_cells()):
             # first three entries correspond to the vertices
-            for vertex in cell_vertex_map[i][:3]:
+            for vertex in closure[i][:3]:
                 if vertex not in vertex_to_cells:
                     vertex_to_cells[vertex] = []
                 vertex_to_cells[vertex].append(i)
 
-        # Loop over all cells to mark neighbors
-        # Create a new DG0 function to store the result
+        # loop over all cells to mark neighbors, and store the result in DG0
         result = Function(border.function_space(), name="nNeighbors")
         for i in range(mesh.num_cells()):
             # If the function value is 1 and the cell is in the active set
@@ -117,7 +117,7 @@ class VIAMR(OptionsManager):
                     if cell not in visited and level <= levels:
                         visited.add(cell)
                         result.dat.data[cell] = 1
-                        for vertex in cell_vertex_map[cell][:3]:
+                        for vertex in closure[cell][:3]:
                             for neighbor in vertex_to_cells[vertex]:
                                 queue.append((neighbor, level + 1))
         return result
@@ -126,13 +126,11 @@ class VIAMR(OptionsManager):
         """Mark mesh using Unstructured Dilation Operator (UDO) algorithm.
         Warning: Not valid in parallel."""
 
-        # generate element-wise and nodal-wise indicators for active set
-        _, DG0 = self.spaces(mesh)
-        nodalactive = self.nodalactive(u, lb)
+        # generate element-wise indicator for active set
         elemactive = self.elemactive(u, lb)
 
-        # generate border element indicator
-        elemborder = self.elemborder(nodalactive)
+        # generate element-wise indicator for border set
+        elemborder = self.elemborder(self.nodalactive(u, lb))
 
         # bfs_neighbors() constructs N^n(B) indicator.  Last argument
         # is to refine only in active or only in inactive set (currently commented out).
