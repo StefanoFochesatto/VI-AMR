@@ -13,15 +13,32 @@
 \usepackage{amsmath}
 \usepackage{stmaryrd}  % \llbracket, \rrbracket
 
-\usepackage{algorithm}
-\usepackage{algpseudocode}
+\usepackage{algorithm2e}
+\RestyleAlgo{ruled}
+%\usepackage{algorithm}
+%\usepackage{algpseudocode}
+%\usepackage{minted}
+
 \usepackage[T1]{fontenc}
 \usepackage{pgfplots}
 \usetikzlibrary{arrows}
 \pgfplotsset{compat=1.16}
 \usepackage{caption}
 \usepackage{subcaption}
-%\usepackage{minted}
+
+\usepackage[kw]{pseudo}
+\pseudoset{%
+left-margin=6mm,%
+topsep=5mm,%
+label=\footnotesize\arabic*,%
+idfont=\texttt,%
+ctfont=\textsl,%
+ct-left=\qquad\qquad(,%
+ct-right=),%
+}
+%\usepackage{float}
+%\newfloat{pseudofloat}{t}{xyz}[section]
+%\floatname{pseudofloat}{Algorithm}
 
 \usepackage[hidelinks]{hyperref}
 
@@ -40,6 +57,7 @@
 \newtheorem{remark}{Remark}
 \newtheorem{notation}{Notation}
 
+%%% author commands
 \newcommand{\RR}{\mathbb{R}}
 
 \newcommand{\eps}{\epsilon}
@@ -53,6 +71,8 @@
 \newcommand{\cK}{\mathcal{K}}
 \newcommand{\cT}{\mathcal{T}}
 \newcommand{\cX}{\mathcal{X}}
+%%% end author commands
+
 
 \begin{document}
 
@@ -92,7 +112,7 @@ From a solution to \eqref{eq:classical:ncp} we may identify the inactive and act
 \end{equation}
 and the free boundary $\Gamma_u = \Omega \cap \partial I_u$ where $I_u$ meets $A_u$ within $\Omega$.  Note that $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$, which is the interior condition of the free-boundary problem.  Both Dirichlet ($u=\psi$) and Neumann ($\grad u = \grad \psi$) conditions apply along $\Gamma_u$, in addition to fixed Dirichlet conditions ($u=g$) along $\partial\Omega$.  An example is shown in Figure \ref{fig:ball}.
 
-\begin{figure}[H]
+\begin{figure}[ht]
 \centering
 \includegraphics[width=0.7\textwidth]{static/obstacle65.pdf}
 \caption{A classical obstacle problem with a hemispherical obstacle.}
@@ -161,7 +181,7 @@ Our focus in this paper is on AMR performance, and not solver performance.  Howe
 
 FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCD and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries.  Table \ref{tab:abbrev} gives the few abbreviations used herein.
 
-\begin{table}[H]
+\begin{table}[ht]
 \centering
 \begin{tabular}{ll}
 AMR       & adaptive mesh refinement \\
@@ -323,9 +343,22 @@ FIXME compare \cite{AinsworthOdenLee1993}, which is closest to BR for VIs?  comp
 % POSSIBLY: Traditional AMR for PDE problems \citep{BangerthRannacher2003} computes error indicators within the solution domain based on analysis of an FE solution computed on the current mesh.  These methods are designed to increase mesh resolution or polynomial degree \cite{Demkowicz2007} by means of a local error estimator, for some goal, the quantity of interest $J(\cdot)$. The dual weighted residual (DWR) method \cite{RannacherSuttmeier1997} begins with \emph{a posteriori} or \emph{a priori} analysis of the quantity $J(u) - J(u_h)$.  Estimates of this error quantity are then decomposed into local element-wise error estimators which can be used as a heuristic to tag elements for refinement.
 
 
-\section{New adaptive mesh refinement strategies} \label{sec:viamr}
+\section{Adaptive mesh refinement strategies} \label{sec:viamr}
 
 To explain our methods for adaptive mesh refinement for VIs, we will first review certain methods for adaptive mesh refinement from the literature for PDEs.  Tagging methods, are a class of adaptive methods which assess the suitability of a mesh element-by-element in computing a Quantity of Interest (QoI) like $L_2$ error or another post computation functional like drag or lift \cite{BangerthRannacher2003}. The main idea behind most tagging methods is the refinement loop:
+
+%\begin{pseudofloat}[h]
+\begin{algorithm}
+\begin{pseudo}
+\pr{icd-tele}(w^J, \{y^i\}_{i=1}^J)\text{:} \\+
+    for $j = 0,\dots,J$: \\+
+        \rm{find} $z^j\in \mathcal{U}^j$ \rm{so that for all} $v \in \mathcal{U}^j$, \\+
+            $\displaystyle \Big<f\Big(w^J + \sum_{i>j} y^i + z^j\Big),v-z^j\Big> \ge $ \\--
+    return $\tilde w^J=w^J + z^J$
+\end{pseudo}
+\caption{Temporary.}\label{alg:tmp}
+\end{algorithm}
+%\end{pseudofloat}
 
 \begin{algorithm}
   \caption{Tag and refine}
