@@ -260,10 +260,11 @@ class VIAMR(OptionsManager):
 
     def vcdmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
         """Mark mesh using Variable Coefficient Diffusion (VCD) algorithm.
-        Conceptually, the algorithm computes a strict nodal active set
-        indicator and then it diffuses using variable diffusivity using a
-        single backward Euler time step for the heat equation.  (Equivalently
-        we take a single time-step of variable duration.) Valid in parallel."""
+        The algorithm computes a strict nodal active set indicator and then
+        diffuses it, using a variable mesh-sized based coefficient, by
+        computing a single backward Euler time step for the corresponding
+        heat equation.  (Equivalently we take a single time-step of variable
+        duration over the mesh.)"""
 
         # Compute nodal active set indicator within some tolerance
         CG1, DG0 = self.spaces(mesh)
@@ -289,9 +290,7 @@ class VIAMR(OptionsManager):
             return u
         else:
             # Compute average over elements by interpolation into DG0
-            DG0 = FunctionSpace(mesh, "DG", 0)
-            uDG0 = Function(DG0, name="Smoothed Nodal Active as DG0")
-            uDG0.interpolate(u)
+            uDG0 = Function(DG0).interpolate(u)
             # Applying thresholding parameters
             mark = Function(DG0, name="VCD Marking")
             mark.interpolate(
@@ -375,9 +374,10 @@ class VIAMR(OptionsManager):
         return metric
 
     def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50], hessian=True):
-        """Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the
-        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged using the weights.
-        """
+        """Implementation of anisotropic metric based refinement which is
+        free-boundary aware. Constructs both the hessian based metric and an
+        isotropic metric computed from the magnitude of the gradient of the
+        smoothed VCD indicator.  These metrics are averaged using the weights."""
 
         assert (
             self.metricparameters is not None

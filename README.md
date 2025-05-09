@@ -1,8 +1,8 @@
 # VI-AMR
 
-This repository contains algorithms for adaptive mesh refinement for variational inequalities, that is, for free boundary problems. The goal is to have targeted refinement near a computed free boundary.
+This repository contains algorithms for adaptive mesh refinement for variational inequalities (VIs).  The methods work when the constraint set is defined by a lower-bound inequality, that is, for unilateral obstacle problems.  A primary goal is to have targeted refinement near a computed free boundary, and to be able to measure location errors in the free boundary.  Refinement in the inactive set using PDE-type error estimators is also supported.
 
-There are two element marking methods, Unstructured Dilation Operator (UDO) and Varable Coefficient Diffusion (VCD). These are methods of the class `VIAMR`, which is implemented in `viamr/viamr.py`.
+We define the class `VIAMR` in `viamr/viamr.py`.  It provides two element marking methods, Unstructured Dilation Operator (UDO) and Varable Coefficient Diffusion (VCD).  It provides a method to refine in the inactive set using the Babuška-Rheinboldt (BR) residual error indicator.  Finally, it also provides a method for anisotropic metric-based refinement which also prefers refinement near the free boundary.
 
 These codes support S. Fochesatto (2024). _Adaptive mesh refinement for variational inequalities_, Master of Science project, UAF, and a paper in progress.
 
