@@ -51,7 +51,7 @@ for i in range(refinements + 1):
         -(((x - 0.5) ** 2 + (y - 0.5) ** 2) ** (3 / 2))
     )
     # typo? from Suttmeier: f = 10.0 * (x - x**2 + y - y **2)
-    fsource = Function(V, name="f").interpolate(-10.0 * (x - x ** 2 + y - y ** 2))
+    fsource = Function(V, name="f").interpolate(-10.0 * (x - x**2 + y - y**2))
 
     # weak form and problem
     v = TestFunction(V)
@@ -73,7 +73,7 @@ for i in range(refinements + 1):
     # apply VCD AMR, marking inactive by B&R indicator
     #   (choose more refinement in active set, relative to default bracket=[0.2, 0.8])
     mark = amr.vcdmark(mesh, u, psi, bracket=[0.1, 0.8])
-    residual = - div(grad(u)) - fsource
+    residual = -div(grad(u)) - fsource
     (imark, _, _) = amr.br_inactive_mark(u, psi, residual)
     # imark = amr.eleminactive(u, psi)  # alternative is to refine all inactive
     mark = amr.unionmarks(mark, imark)

@@ -21,9 +21,9 @@ refinements = 4
 m0 = 10
 outfile = "result_uzawa.pvd"
 
-uzawa_rho = 2.0   # *not clear* what this value should be, as it
-                  #   mixes units of displacement and residual
-uzawa_iter = 6    # minimum iteration count ... ad hoc increase on levels (below)
+uzawa_rho = 2.0  # *not clear* what this value should be, as it
+#   mixes units of displacement and residual
+uzawa_iter = 6  # minimum iteration count ... ad hoc increase on levels (below)
 
 params = {
     "ksp_type": "preonly",
@@ -32,7 +32,9 @@ params = {
 }
 
 mesh0 = RectangleMesh(m0, m0, 2.0, 2.0, originX=-2.0, originY=-2.0, diagonal="crossed")
-meshhierarchy = [mesh0, ]
+meshhierarchy = [
+    mesh0,
+]
 amr = VIAMR(debug=False)  # turn off checking that u >= psi
 for i in range(refinements + 1):
     mesh = meshhierarchy[i]
@@ -68,13 +70,15 @@ for i in range(refinements + 1):
     v = TestFunction(V)
     a = inner(grad(u), grad(v)) * dx
     L = lam * v * dx
-    bcs = [DirichletBC(V, uexact, "on_boundary"), ]
+    bcs = [
+        DirichletBC(V, uexact, "on_boundary"),
+    ]
 
     # solve the *linear PDE* iteratively
     u = Function(V, name="u_h")
-    for k in range(2 * i + uzawa_iter): # more iterations on each level
+    for k in range(2 * i + uzawa_iter):  # more iterations on each level
         solve(a == L, u, bcs=bcs, solver_parameters=params, options_prefix="s")
-        print(f'  |u - u_exact|_2 = {errornorm(u, uexact):.3e}')
+        print(f"  |u - u_exact|_2 = {errornorm(u, uexact):.3e}")
         delta = Function(DG0).interpolate(psi - u)
         lam.interpolate(max_value(Constant(0.0), lam + uzawa_rho * delta))
 
@@ -83,14 +87,16 @@ for i in range(refinements + 1):
 
     # apply VCD AMR, marking inactive by B&R indicator
     mark = amr.vcdmark(mesh, u, psi)
-    residual = - div(grad(u))
+    residual = -div(grad(u))
     (imark, _, _) = amr.br_inactive_mark(u, psi, residual)
     mark = amr.unionmarks(mark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
 print(f"done ...")
-print(f"writing u_h, psi, max(u_h,psi), lam, gap=u_h-psi, uexact, error to {outfile} ...")
+print(
+    f"writing u_h, psi, max(u_h,psi), lam, gap=u_h-psi, uexact, error to {outfile} ..."
+)
 uhadmiss = Function(V, name="u_h (admissible)").interpolate(max_value(u, psi))
 error = Function(V, name="error = |u - u_exact|").interpolate(abs(u - uexact))
 gap = Function(V, name="gap = u_h (admiss) - psi").interpolate(uhadmiss - psi)

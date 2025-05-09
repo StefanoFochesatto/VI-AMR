@@ -2,7 +2,7 @@ from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
 from viamr.utility import SphereObstacleProblem
-from animate import *   # see README.md regarding this dependency
+from animate import *  # see README.md regarding this dependency
 
 outfile = "result_metric.pvd"
 
@@ -28,6 +28,6 @@ uexact.rename("u_exact")
 error = Function(V, name="error = |u - u_exact|")
 error.interpolate(abs(u - uexact))
 
-print(f'|u - u_exact|_2 = {errornorm(u, uexact):.3e}')
-print(f'done ... writing to {outfile} ...')
+print(f"|u - u_exact|_2 = {errornorm(u, uexact):.3e}")
+print(f"done ... writing to {outfile} ...")
 VTKFile(outfile).write(u, lb, gap, uexact, error)

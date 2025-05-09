@@ -14,14 +14,14 @@ print = PETSc.Sys.Print  # enables correct printing in parallel
 refinements = 6
 m_initial = 10
 outfile = "result_aol1.pvd"
-ifracexact = np.pi/2 - 1.0
+ifracexact = np.pi / 2 - 1.0
 
 params = {
     "snes_type": "vinewtonrsls",
     "snes_vi_zero_tolerance": 1.0e-12,
     "snes_linesearch_type": "basic",
     # "snes_monitor": None,
-    #"snes_vi_monitor": None,
+    # "snes_vi_monitor": None,
     "snes_converged_reason": None,
     "snes_rtol": 1.0e-8,
     "snes_atol": 1.0e-12,
@@ -46,7 +46,7 @@ for i in range(refinements + 1):
     # exact solution as Dirichlet boundary data
     # see: page 31 of Ainsworth, Oden, Lee (1993)
     x, y = SpatialCoordinate(mesh)
-    rr = (x + 1) ** 2 + y ** 2
+    rr = (x + 1) ** 2 + y**2
     g_ufl = conditional(lt(rr, 2.0), 0.25 * rr - 0.5 - 0.5 * ln(0.5 * rr), 0.0)
 
     # problem and weak form
@@ -75,8 +75,10 @@ for i in range(refinements + 1):
     # apply VCD AMR, and mark inactive by B&R indicator
     if i == refinements:
         break
-    residual = - div(grad(u)) - fsource
-    imark, _, _ = amr.br_inactive_mark(u, lb, residual, theta=0.8)  # FIXME the distribution of eta has lots of elements close to eta.max(), and a few where eta is very small
+    residual = -div(grad(u)) - fsource
+    imark, _, _ = amr.br_inactive_mark(
+        u, lb, residual, theta=0.8
+    )  # FIXME the distribution of eta has lots of elements close to eta.max(), and a few where eta is very small
     mark = amr.unionmarks(amr.vcdmark(mesh, u, lb), imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)

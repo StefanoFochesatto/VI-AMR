@@ -1,7 +1,8 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from firedrake.petsc import PETSc
-print = PETSc.Sys.Print # enables correct printing in parallel
+
+print = PETSc.Sys.Print  # enables correct printing in parallel
 from viamr import VIAMR
 from viamr.utility import SpiralObstacleProblem
 
@@ -16,7 +17,7 @@ meshHist = [mesh]
 u = None
 for i in range(levels + 1):
     mesh = meshHist[i]
-    print(f'solving on mesh {i} ...')
+    print(f"solving on mesh {i} ...")
     amr.meshreport(mesh)
     spmore = {
         "snes_converged_reason": None,
@@ -34,5 +35,5 @@ for i in range(levels + 1):
 V = u.function_space()
 gap = Function(V, name="gap = u-lb").interpolate(u - lb)
 
-print(f'done ... writing to {outfile} ...')
+print(f"done ... writing to {outfile} ...")
 VTKFile(outfile).write(u, lb, gap)

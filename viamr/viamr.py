@@ -14,6 +14,7 @@ try:
 except ImportError:
     print("ImportError.  Unable to import shapely.  Exiting.")
     import sys
+
     sys.exit(0)
 
 
@@ -50,7 +51,7 @@ class VIAMR(OptionsManager):
     def meshreport(self, mesh, indent=2):
         """Print standard mesh report."""
         nv, ne, hmin, hmax = self.meshsizes(mesh)
-        indentstr = indent * ' '
+        indentstr = indent * " "
         PETSc.Sys.Print(
             f"{indentstr}current mesh: {nv} vertices, {ne} elements, h in [{hmin:.5f},{hmax:.5f}]"
         )
@@ -76,7 +77,7 @@ class VIAMR(OptionsManager):
         z = Function(DG0, name="Element Active")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 1.0, 0.0))
         return z
-    
+
     def eleminactive(self, u, lb):
         """Compute element inactive set indicator in DG0.  Elements are marked
         inactive if the DG0 degree of freedom for that element is inactive, within
@@ -101,14 +102,18 @@ class VIAMR(OptionsManager):
         _, DG0 = self.spaces(nodalactive.function_space().mesh())
         z = Function(DG0, name="Element Border")
         z.interpolate(
-            conditional(nodalactive > 0.0, conditional(nodalactive < 1.0, 1.0, 0.0), 0.0)
+            conditional(
+                nodalactive > 0.0, conditional(nodalactive < 1.0, 1.0, 0.0), 0.0
+            )
         )
         return z
 
     def unionmarks(self, mark1, mark2):
         """Computes the mark which is 1.0 where either mark1==1.0
         or mark2==1.0.  That is, computes the indicator set of the union."""
-        return Function(mark1.function_space()).interpolate((mark1 + mark2) - (mark1*mark2))
+        return Function(mark1.function_space()).interpolate(
+            (mark1 + mark2) - (mark1 * mark2)
+        )
 
     def _bfs_neighbors(self, mesh, border, levels):
         """Element-wise multi-neighbor lookup using breadth-first search."""
@@ -151,37 +156,40 @@ class VIAMR(OptionsManager):
         # _bfs_neighbors() constructs N^n(B) indicator
         return self._bfs_neighbors(mesh, elemborder, n)
 
-
     def udomarkParallel(self, mesh, u, lb, n=2):
-        '''Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements'''
-        
+        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements"""
+
         # Generate element-wise and nodal-wise indicators for active set
         _, DG0 = self.spaces(mesh)
         nodalactive = self.nodalactive(u, lb)
 
         # Generate border element indicator
         elemborder = self.elemborder(nodalactive)
-        
-        mesh.name = 'dmmesh'
-        elemborder.rename('elemborder')
+
+        mesh.name = "dmmesh"
+        elemborder.rename("elemborder")
 
         # Checkpointing to enforce distribution parameters which make UDO possible in parallel
         # This workaround is necessary because:
         # 1. firedrake does not have a way of changing distribution parameters after mesh initialization (feature request)
         # 2. netgen meshes cannot be checkpointed in parallel (issue)
-        # 
+        #
         # In order for this to work we need to use PETSc refinemarkelements instead
         # also instead of checkpointing we could write a warning telling the user to set the correct distribution parameters
-        # 
-        
-        
+        #
+
         DistParams = mesh._distribution_parameters
-        
-        if DistParams['overlap_type'][0].name != 'VERTEX' or DistParams['overlap_type'][1] < 1:
-            #We will error out instead
-            raise ValueError("""Error: For UDO to work ensure that distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization.""")
-            
-            # This workaround works for firedrake meshes, not netgen. It also forces me to return the mesh which is a bad user pattern. 
+
+        if (
+            DistParams["overlap_type"][0].name != "VERTEX"
+            or DistParams["overlap_type"][1] < 1
+        ):
+            # We will error out instead
+            raise ValueError(
+                """Error: For UDO to work ensure that distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
+            )
+
+            # This workaround works for firedrake meshes, not netgen. It also forces me to return the mesh which is a bad user pattern.
             # MPI.COMM_WORLD.Barrier()
             # PETSc.Sys.Print("entered bad params")
             # PETSc.Sys.Print("writing")
@@ -195,63 +203,60 @@ class VIAMR(OptionsManager):
             #     elemborder = afile.load_function(mesh, "elemborder")
             # PETSc.Sys.Print("reading finished")
 
-
-            # # reconstruct DG0 space so result indicator has correct partition    
+            # # reconstruct DG0 space so result indicator has correct partition
             # _, DG0 = self.spaces(mesh)
-    
 
-
-        # Pull dm 
+        # Pull dm
         dm = mesh.topology_dm
-        
+
         # This rest of this should really be written by turning the indicator function into a DMLabel
         # and then writing the dmplex traversal in petsc4py. This is a workaround.
-        
-        
+
         # Generate map from dm to fd indices (I think there is a better way to do this in dmcommon)
         plexelementlist = mesh.cell_closure[:, -1]
-        dm_to_fd = {number: index for index,
-                    number in enumerate(plexelementlist)}
+        dm_to_fd = {number: index for index, number in enumerate(plexelementlist)}
 
         for i in range(n):
             # Pull border elements cell with dmplex cell indices
-            BorderSetElementsIndices = [mesh.cell_closure[:, -1][i] for i, value in enumerate(
-                elemborder.dat.data_ro_with_halos) if value != 0]
-
-
+            BorderSetElementsIndices = [
+                mesh.cell_closure[:, -1][i]
+                for i, value in enumerate(elemborder.dat.data_ro_with_halos)
+                if value != 0
+            ]
 
             # Pull indices of vertices which are incident to said border elements
-            incidentVertices = [dm.getTransitiveClosure(
-                i)[0][4:7] for i in BorderSetElementsIndices]
+            incidentVertices = [
+                dm.getTransitiveClosure(i)[0][4:7] for i in BorderSetElementsIndices
+            ]
 
-     
             # Flatten the list of lists and remove duplicates
             flattened_array = np.ravel(incidentVertices)
             incidentVertices = np.unique(flattened_array)
 
             # Needs to be based of topological dimension
-            # Pull the depth stratum for the vertices           
-            tdim = mesh.topological_dimension() 
+            # Pull the depth stratum for the vertices
+            tdim = mesh.topological_dimension()
             lb = dm.getDepthStratum(tdim)[0]
             ub = dm.getDepthStratum(tdim)[1]
             # Pull all elements which are neighbor to the incidentVertices. This produces the set N(B)
             NeighborSet = []
             for i in incidentVertices:
-                idx = np.where((dm.getTransitiveClosure(i, useCone=False)[0] >= lb) & (dm.getTransitiveClosure(i, useCone=False)[0] < ub))
+                idx = np.where(
+                    (dm.getTransitiveClosure(i, useCone=False)[0] >= lb)
+                    & (dm.getTransitiveClosure(i, useCone=False)[0] < ub)
+                )
                 NeighborSet.extend(dm.getTransitiveClosure(i, useCone=False)[0][idx])
             # Flatten the list of lists and remove duplicates
             NeighborSet = np.ravel(NeighborSet)
             NeighborSet = np.unique(NeighborSet)
-
 
             # Create new elemborder function
             elemborder = Function(DG0).interpolate(Constant(0.0))
 
             for j in NeighborSet:
                 elemborder.dat.data_wo_with_halos[dm_to_fd[j]] = 1
-        
-        return elemborder
 
+        return elemborder
 
     def vcdmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
         """Mark mesh using Variable Coefficient Diffusion (VCD) algorithm.
@@ -277,7 +282,7 @@ class VIAMR(OptionsManager):
         a = w * v * dx + timestep * inner(grad(w), grad(v)) * dx
         L = (1.0 - nodalactive) * v * dx
         u = Function(CG1, name="Smoothed Nodal Active")
-        #FIXME consider some solver; probably not this one: sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
+        # FIXME consider some solver; probably not this one: sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(a == L, u)
 
         if returnSmooth:
@@ -295,7 +300,7 @@ class VIAMR(OptionsManager):
             return mark
 
     def br_inactive_mark(self, uh, lb, res_ufl, theta=0.5):
-        '''Return marking within the computed inactive set by using the
+        """Return marking within the computed inactive set by using the
         a posteriori Babuška-Rheinboldt residual error indicator.  The BR
         indicator eta is computed as a function in DG0.  Then
         we mark where eta is larger than theta fraction of eta values.
@@ -307,7 +312,7 @@ class VIAMR(OptionsManager):
           https://github.com/pefarrell/icerm2024/blob/main/02_netgen/01_l_shaped_adaptivity.py
         and section 2.2 of
           M. Ainsworth & J. T. Oden (2000).  A Posteriori Error Estimation in
-          Finite Element Analysis, John Wiley & Sons, Inc., New York.'''
+          Finite Element Analysis, John Wiley & Sons, Inc., New York."""
         # FIXME use something other than theta and emax to mark?  see commented-out
         #   lines below computing eta average
         # mesh quantities
@@ -320,10 +325,10 @@ class VIAMR(OptionsManager):
         eta_sq = Function(DG0)
         w = TestFunction(DG0)
         G = (
-            inner(eta_sq / v, w)*dx
+            inner(eta_sq / v, w) * dx
             - inner(h**2 * res_ufl**2, w) * dx
-            - inner(h('+')/2 * jump(grad(uh), n)**2, w('+')) * dS
-            - inner(h('-')/2 * jump(grad(uh), n)**2, w('-')) * dS
+            - inner(h("+") / 2 * jump(grad(uh), n) ** 2, w("+")) * dS
+            - inner(h("-") / 2 * jump(grad(uh), n) ** 2, w("-")) * dS
         )
         # each cell needs an independent 1x1 solve, so Jacobi is an exact preconditioner
         sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
@@ -331,12 +336,12 @@ class VIAMR(OptionsManager):
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
         # generate union of inactive mark and BR mark
         imark = self.eleminactive(uh, lb)
-        ieta = Function(DG0, name='eta on inactive set').interpolate(eta * imark)
+        ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         with ieta.dat.vec_ro as ieta_:
             emax = ieta_.max()[1]
-            #eav = ieta_.sum() / ieta_.getSize()
+            # eav = ieta_.sum() / ieta_.getSize()
             total_error_est = sqrt(ieta_.dot(ieta_))
-        #print(f"eav = {eav}  emax = {emax}")
+        # print(f"eav = {eav}  emax = {emax}")
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
         return (mark, eta, total_error_est)
 
@@ -369,10 +374,10 @@ class VIAMR(OptionsManager):
         metric.normalise()
         return metric
 
-
-    def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50], hessian = True):
+    def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50], hessian=True):
         """Implementation of anisotropic metric based refinement which is free boundary aware. Constructs both the
-        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged using the weights."""
+        hessian based metric and an isotropic metric based off of the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged using the weights.
+        """
 
         assert (
             self.metricparameters is not None
@@ -406,8 +411,7 @@ class VIAMR(OptionsManager):
 
         return VImetric
 
-
-    def refinemarkedelements(self, mesh, indicator, isUniform = False):
+    def refinemarkedelements(self, mesh, indicator, isUniform=False):
         """petsc4py implementation of Netgen's .refine_marked_elements().
         Usually is skeleton-based refinement (SBR; Plaza & Carey, 2000).
         This version works in parallel, but only in 2D when using SBR???
@@ -416,7 +420,7 @@ class VIAMR(OptionsManager):
         and associated links."""
         # Create Section for DG0 indicator
         tdim = mesh.topological_dimension()
-        entity_dofs = np.zeros(tdim+1, dtype=IntType)
+        entity_dofs = np.zeros(tdim + 1, dtype=IntType)
         entity_dofs[:] = 0
         entity_dofs[-1] = 1
         indicatorSect, _ = dmcommon.create_section(mesh, entity_dofs)
@@ -425,35 +429,38 @@ class VIAMR(OptionsManager):
         dm = mesh.topology_dm
 
         # Create an adaptation label to mark cells for refinement
-        dm.createLabel('refinesbr')
-        adaptLabel = dm.getLabel('refinesbr')
+        dm.createLabel("refinesbr")
+        adaptLabel = dm.getLabel("refinesbr")
         adaptLabel.setDefaultValue(0)
 
         # dmcommon provides a python binding for this operation of setting
         # the label given an indicator function data array
         dmcommon.mark_points_with_function_array(
-            dm, indicatorSect, 0, indicator.dat.data_with_halos, adaptLabel, 1)
+            dm, indicatorSect, 0, indicator.dat.data_with_halos, adaptLabel, 1
+        )
 
         # augment or override options database to indicate type of refinement
         # For now the only way to set the active label with petsc4py is
         # with PETSc.Options() because DMPlexTransformSetActive() has no binding.
         opts = PETSc.Options()
         if isUniform:
-            opts['dm_plex_transform_type'] = 'refine_regular'
+            opts["dm_plex_transform_type"] = "refine_regular"
         else:
-            opts['dm_plex_transform_active'] = 'refinesbr'
-            opts['dm_plex_transform_type'] = 'refine_sbr' # <- skeleton based refinement is what netgen does.
+            opts["dm_plex_transform_active"] = "refinesbr"
+            opts["dm_plex_transform_type"] = (
+                "refine_sbr"  # <- skeleton based refinement is what netgen does.
+            )
 
         # Create a DMPlexTransform object to apply the refinement
-        dmTransform = PETSc.DMPlexTransform().create(comm = mesh.comm)
+        dmTransform = PETSc.DMPlexTransform().create(comm=mesh.comm)
         dmTransform.setDM(dm)
         dmTransform.setFromOptions()
         dmTransform.setUp()
         dmAdapt = dmTransform.apply(dm)
 
-        # Labels are no longer needed, not sure if we need to call destroy on them. 
-        dmAdapt.removeLabel('refinesbr')
-        dm.removeLabel('refinesbr')
+        # Labels are no longer needed, not sure if we need to call destroy on them.
+        dmAdapt.removeLabel("refinesbr")
+        dm.removeLabel("refinesbr")
         dmTransform.destroy()
 
         # Remove labels to stop further distribution in mesh()
@@ -467,11 +474,10 @@ class VIAMR(OptionsManager):
         distParams = mesh._distribution_parameters
 
         # Create a new mesh from the adapted dm
-        refinedmesh = Mesh(dmAdapt, distribution_parameters = distParams, comm = mesh.comm)
-        opts['dm_plex_transform_type'] = 'refine_regular'
+        refinedmesh = Mesh(dmAdapt, distribution_parameters=distParams, comm=mesh.comm)
+        opts["dm_plex_transform_type"] = "refine_regular"
 
         return refinedmesh
-
 
     def jaccard(self, active1, active2):
         """Compute the Jaccard metric from two element-wise active
@@ -485,8 +491,10 @@ class VIAMR(OptionsManager):
         # FIXME fails in parallel; the line generating proj2 will throw
         #     AssertionError: Whoever made mesh_B should explicitly mark
         #     mesh_A as having a compatible parallel layout.
-        if active1.function_space().mesh()._comm.size > 1 \
-           or active2.function_space().mesh()._comm.size > 1:
+        if (
+            active1.function_space().mesh()._comm.size > 1
+            or active2.function_space().mesh()._comm.size > 1
+        ):
             raise ValueError("jaccard() is not valid in parallel")
         if self.debug:
             for a in [active1, active2]:

@@ -24,9 +24,9 @@ outfile = "result_blisters.pvd"
 def normal2d(mesh, x0, y0, sigma):
     # return UFL expression for one gaussian hump
     x, y = SpatialCoordinate(mesh)
-    C = 1.0 / (2.0 * pi * sigma ** 2)
+    C = 1.0 / (2.0 * pi * sigma**2)
     dsqr = (x - x0) ** 2 + (y - y0) ** 2
-    return C * exp(-dsqr / (2.0 * sigma ** 2))
+    return C * exp(-dsqr / (2.0 * sigma**2))
 
 
 def eval_fsource(mesh):
@@ -42,7 +42,7 @@ def eval_fsource(mesh):
         (0.7, 0.82, 0.01, 0.2),
     ]
     f_ufl = -17.0
-    for (x, y, sigma, weight) in xysw:
+    for x, y, sigma, weight in xysw:
         f_ufl += weight * normal2d(mesh, x, y, sigma)
     return f_ufl
 
@@ -113,7 +113,7 @@ for i in range(refinements + 1):
     mark = amr.vcdmark(mesh, u, lb, bracket=[0.15, 0.95])
     if refine_inactive or refine_br:
         if refine_br:
-            residual = - div(grad(u)) - fsource
+            residual = -div(grad(u)) - fsource
             (imark, _, _) = amr.br_inactive_mark(u, lb, residual)
         else:
             imark = amr.eleminactive(u, lb)
