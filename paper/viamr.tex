@@ -68,7 +68,7 @@
 \maketitle
 
 \begin{abstract}
-Free-boundary problems posed as variational inequalities, for example obstacle problems, appear in many scientific and engineering applications.  In the finite element (FE) solution of these problems, the geometrical error in locating the unknown free boundary, equivalently in locating the active and inactive sets, often dominates the overall numerical error.  In this paper we propose, and implement using the Firedrake FE library, adaptive mesh refinement (AMR) strategies which enhance mesh resolution around the free boundary.  These methods mark elements for refinement based on a computed solution.  We consider three methods: (i) an unstructured dilation operator based upon discrete adjacency to the computed free-boundary; (ii) a variable-coefficient diffusion method which thresholds a diffused indicator function for the computed active set; and (iii) a metric-based method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the same diffused active set indicator.  These methods, and certain hybrid strategies based upon \emph{a posteriori} error estimators in the computed inactive sets, are evaluated by norm error relative to mesh complexity and run-time.  They are also evaluated by geometrical error in active set localization using Jaccard and Hausdorff distances.  Applications include several classical Poisson obstacle problems, and a shallow ice flow problem for predicting the glaciated region in a mountain range.
+Free-boundary problems posed as variational inequalities, for example obstacle problems, appear in many scientific and engineering applications.  In the finite element solution of these problems, the geometrical error in locating the unknown free boundary, equivalently in locating the active and inactive sets, often dominates the overall numerical error.  In this paper we propose, and implement using the Firedrake finite element library, adaptive mesh refinement strategies which enhance mesh resolution around the free boundary.  These methods mark elements for refinement based on a computed solution.  We consider three methods: (i) an unstructured dilation operator which computes discrete adjacency to the computed free-boundary; (ii) a variable-coefficient diffusion method which thresholds a diffused indicator function for the computed active set; and (iii) a metric-based method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the same diffused active set indicator.  These methods, along with hybrid strategies adding classical \emph{a posteriori} error estimators in the computed inactive sets, are evaluated by norm error relative to mesh complexity and run-time.  They are also evaluated by geometrical error in active set localization using Jaccard and Hausdorff distances.  Applications include classical Poisson obstacle problems and a shallow ice flow problem for predicting the glaciated region in a mountain range.
 \end{abstract}
 
 %\begin{keywords}
@@ -78,7 +78,7 @@ Free-boundary problems posed as variational inequalities, for example obstacle p
 
 \section{Introduction} \label{sec:intro}
 
-The classical obstacle problem \cite{KinderlehrerStampacchia1980} finds the equilibrium position (vertical displacement) $u$ of an elastic membrane.  It is attached to a fixed boundary at displacement $g$, and subject to some applied force $f$, but with the membrane constrained to be above an obstacle $\psi$.  Let $\Omega \subset \RR^d$ be a bounded and open domain, and suppose $\psi \le g$ along $\partial \Omega$.  The strong formulation of this problem is a complementarity problem satisfied almost everywhere in $\Omega$:
+The classical obstacle problem \cite{KinderlehrerStampacchia1980} finds the equilibrium position (vertical displacement) $u$ of an elastic membrane, over $\Omega \subset \RR^d$, attached to the fixed boundary $\partial\Omega$ at displacement $g$, and subject to some applied force $f$.  However, the membrane is constrained to be above a given obstacle $\psi$.  The strong formulation of this problem is a complementarity problem satisfied almost everywhere in $\Omega$:
 \begin{subequations} \label{eq:classical:ncp}
 \begin{align}
   -\nabla^2 u - f \geq 0 \label{eq:classical:ncp:a} \\
@@ -90,7 +90,13 @@ From a solution to \eqref{eq:classical:ncp} we may identify the inactive and act
 \begin{equation}
   I_u = \{x \in \Omega \,:\, u(x) > \psi(x)\}, \quad A_u = \Omega \setminus I_u, \label{eq:classical:sets}
 \end{equation}
-and the free boundary $\Gamma_u = \Omega \cap \partial I_u$ where $I_u$ meets $A_u$ within $\Omega$.  Note that $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$, which is the interior condition of the free-boundary problem.  Both Dirichlet ($u=\psi$) and Neumann ($\grad u = \grad \psi$) conditions apply along $\Gamma_u$, in addition to fixed Dirichlet conditions ($u=g$) along $\partial\Omega$.  An example is shown in Figure \ref{fig:ball}.
+and the free boundary
+\begin{equation}
+\Gamma_u = \Omega \cap \partial I_u \label{eq:classical:freeboundary}
+\end{equation}
+where $I_u$ meets $A_u$ within $\Omega$.  Note that $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$, which is the interior condition of the free-boundary problem.  Both Dirichlet ($u=\psi$) and Neumann ($\grad u = \grad \psi$) conditions apply along $\Gamma_u$, in addition to fixed Dirichlet conditions ($u=g$) along $\partial\Omega$.
+
+For the example shown in Figure \ref{fig:ball}, $A_u$ is a disc and $\Gamma_u$ is its bounding circle.
 
 \begin{figure}[H]
 \centering
@@ -108,11 +114,11 @@ be the admissible set for solutions, a closed and convex subset of $\cX$.  For $
 \int_\Omega \nabla u \cdot \nabla(v - u) \ge \int_\Omega f(v - u) \quad \text{ for all } v \in \cK.
 \end{equation}
 
-Section \ref{sec:vifem} will recall some of the theory of such VIs, and their finite element (FE) approximation, but generalized to coercive nonlinear operators over Banach spaces.  A conforming FE approximation uses the same weak form as the continuum VI, but now over a discrete space constructed on a mesh with characteristic size $h>0$.  Similarly to the situation for PDEs \cite{ElmanSilvesterWathen2014}, because the exact solution $u$ and the FE solution $u_h$ solve VIs, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori}.  These norm errors are related to the approximation properties of the FE space, but also to new VI-specific concerns regarding differences in admissibility (i.e.~between continuum and FE admissible sets).  An extension of the Falk \cite{Falk1974} technique for \emph{a priori} norm error estimation for VIs is therefore provided in Section \ref{sec:vifem}.
+Section \ref{sec:vifem} will recall some theory of such VIs, and their finite element (FE) approximation, generalized to coercive nonlinear operators over Banach spaces.  A conforming FE approximation uses the same weak form as the continuum VI, but now over a discrete space constructed on a mesh with characteristic size $h>0$.  Similarly to the situation for PDEs \cite{ElmanSilvesterWathen2014}, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori} by extending the Falk \cite{Falk1974} technique to nonlinear operators (Theorem \ref{thm:genfalk}).  These norm errors are related to the approximation properties of the FE space, with additional VI-specific concerns regarding differences between continuum and FE admissible sets.
 
-On the other hand, adaptive mesh refinement (AMR) uses \emph{a posteriori} information from a coarser-mesh calculation to strategically add elements to a mesh, so as to reduce numerical error.  However, for VI problems a first observation is that the geometrical mesh error in locating the unknown free-boundary $\Gamma_u$, by itself, strongly impacts the behaviour of the numerical error $\|u-u_h\|$.  This fact is acknowledged in the FE literature for VIs \cite[for example]{Suttmeier2008}, and it is clearly seen in the following 1D example.
+On the other hand, adaptive mesh refinement (AMR) uses \emph{a posteriori} information from a coarser-mesh calculation to strategically add elements to a mesh, so as to reduce numerical error.  For VI problems a first observation is that the geometrical mesh error in locating the unknown free-boundary $\Gamma_u$, by itself, strongly impacts the behaviour of the numerical error $\|u-u_h\|$.  This fact, acknowledged in the FE literature for VIs \cite{Suttmeier2008}, is clearly seen in the following 1D example.
 
-\begin{example}  Suppose $\Omega = (-1,1)$, $\psi(x)=0.5 - x^2$, and $g=0$.  The exact solution $u$ of \eqref{eq:classical:vi} is easily calculated, with free boundaries at $x_*=\pm(2-\sqrt{2})/2$ (Figure \ref{fig:parabola}).  For an FE approximation using piecewise-linear elements and a uniform mesh, let $\Delta_h$ be the minimum distance between a nodal coordinate and $x_*$.  Because the values $x_*$ are irrational, the mesh nodes will never coincide exactly with $x_*$.  Under uniform refinements, $\Delta_h$ will be an erratic function of $h$.  Figure \ref{fig:parabola} (right) compares norm errors $\|u-u_h\|_{H^1},\|u-u_h\|_{L^2}$ to $\Delta_h = O(h)$.  We see that the erratic behavior of the norm errors closely follows the purely-geometrical free-boundary location error $\Delta_h$. \end{example}
+\begin{example} \label{example:oned} Suppose $\Omega = (-1,1)$, $\psi(x)=0.5 - x^2$, $f=0$, and $g=0$.  The exact solution $u$ of \eqref{eq:classical:vi} is easily calculated, with free boundaries at $x_*=\pm(1-2^{-1/2})$ (Figure \ref{fig:parabola}).  Consider the FE approximation using piecewise-linear elements and a uniform mesh.  Let $\Delta_h$ be the minimum distance between a nodal coordinate and $x_*$.  Noting that $x_*$ are irrational, under uniform refinements $\Delta_h = O(h)$ is an irregular function of $h$.  Figure \ref{fig:parabola} (right) compares $H^1$ and $L^2$ norm errors to $\Delta_h$.  The erratic behavior of the norm errors closely follows the purely-geometrical free-boundary location error $\Delta_h$. \end{example}
 
 \begin{figure}[ht]
 \mbox{
@@ -125,13 +131,18 @@ On the other hand, adaptive mesh refinement (AMR) uses \emph{a posteriori} infor
 % FIXME regenerate with labels ||u-u_h||_{H^1} = O(h^1.09), ||u-u_h||_{L^2} = O(h^1.57), \Delta_h
 \end{minipage}
 }
-\caption{A one-dimensional obstacle problem with a parabolic obstacle and known free boundary locations $x_*$ (left).  The geometrical free-boundary location error $\Delta_h$ predicts the norm error $\|u-u_h\|$ behavior (right).}
+\caption{A one-dimensional obstacle problem (left).  The geometrical free-boundary location error $\Delta_h$ predicts norm error $\|u-u_h\|$ behavior (right).}
 \label{fig:parabola}
 \end{figure}
 
+A small modification of \eqref{example:oned} shows an important aspect of obstacle problems: the sets $A_u,I_u,\Gamma_u$ are \emph{not} continuous functions of the data.
+
+\begin{example} \label{example:notcontinuous} FIXME In Example \ref{example:oned} set $g=-0.5$ so that $g=\psi$ on $\partial\Omega$.  Since $f=0$ we see that $u=\psi$ is the solution and $A_u=\Omega$.  For $\eps>0$, now let $f_\eps(x) = $
+\end{example}
+
 In addition to localizing the free boundary, effective AMR strategies for VI problems should consider the measure (area or volume) of the active and inactive sets.  For obstacle-type problems like \eqref{eq:classical:ncp}, elements which have been correctly identified as interior to the active set generally require no further computation or refinement.  If the solution is desired at high resolution in the active set, this can be computed \emph{a posteriori} by interpolation on to arbitrary auxiliary meshes, $u_h = \Pi_h \psi$, noting that $\psi$ has already been provided in the data of the problem.
 
-\begin{example}  In section \ref{sec:results} we will measure norm error convergence rates, and rates of convergence of geometrical measures of the active set, for three classical obstacle problem examples in 2D.  Figure \ref{fig:activesizes} shows high-resolution active sets for these examples.  For the large active set case at right, we will see that most of the performance benefit of our preferred AMR technique comes from avoiding refinement in the active set.  This benefit also dominates performance for our glaciation application in Section \ref{sec:app}.
+\begin{example} \label{example:activesets} In section \ref{sec:results} we will measure norm error convergence rates, and rates of convergence of geometrical measures of the active set, for three classical obstacle problem examples in 2D.  Figure \ref{fig:activesizes} shows high-resolution active sets for these examples.  For the large active set case at right, we will see that most of the performance benefit of our preferred AMR technique comes from avoiding refinement in the active set.  This benefit also dominates performance for our glaciation application in Section \ref{sec:app}.
 \end{example}
 
 \begin{figure}[ht]
