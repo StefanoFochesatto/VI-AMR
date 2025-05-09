@@ -76,8 +76,7 @@ for i in range(refinements + 1):
     residual = - div(grad(u)) - fsource
     (imark, _, _) = amr.br_inactive_mark(u, psi, residual)
     # imark = amr.eleminactive(u, psi)  # alternative is to refine all inactive
-    _, DG0 = amr.spaces(mesh)
-    mark = Function(DG0).interpolate((mark + imark) - (mark * imark))  # union
+    mark = amr.unionmarks(mark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 

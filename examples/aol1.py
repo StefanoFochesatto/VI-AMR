@@ -75,12 +75,9 @@ for i in range(refinements + 1):
     # apply VCD AMR, and mark inactive by B&R indicator
     if i == refinements:
         break
-    mark = amr.vcdmark(mesh, u, lb)
     residual = - div(grad(u)) - fsource
     imark, _, _ = amr.br_inactive_mark(u, lb, residual, theta=0.8)  # FIXME the distribution of eta has lots of elements close to eta.max(), and a few where eta is very small
-    #imark = amr.eleminactive(u, lb)
-    _, DG0 = amr.spaces(mesh)
-    mark = Function(DG0).interpolate((mark + imark) - (mark * imark))  # union
+    mark = amr.unionmarks(amr.vcdmark(mesh, u, lb), imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 

@@ -85,8 +85,7 @@ for i in range(refinements + 1):
     mark = amr.vcdmark(mesh, u, psi)
     residual = - div(grad(u))
     (imark, _, _) = amr.br_inactive_mark(u, psi, residual)
-    _, DG0 = amr.spaces(mesh)
-    mark = Function(DG0).interpolate((mark + imark) - (mark * imark))  # union
+    mark = amr.unionmarks(mark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 

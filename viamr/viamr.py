@@ -105,9 +105,10 @@ class VIAMR(OptionsManager):
         )
         return z
 
-    def union(self, mark1, mark2):
-        markUnion = Function(mark1.function_space()).interpolate((mark1 + mark2) - (mark1*mark2))
-        return markUnion
+    def unionmarks(self, mark1, mark2):
+        """Computes the mark which is 1.0 where either mark1==1.0
+        or mark2==1.0.  That is, computes the indicator set of the union."""
+        return Function(mark1.function_space()).interpolate((mark1 + mark2) - (mark1*mark2))
 
     def _bfs_neighbors(self, mesh, border, levels):
         """Element-wise multi-neighbor lookup using breadth-first search."""

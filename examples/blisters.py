@@ -15,7 +15,7 @@ print = PETSc.Sys.Print  # enables correct printing in parallel
 
 refine_br = True  # True = mark inactive elements according to B&R method
 refine_inactive = False  # True = mark *all* inactive elements for refinement
-refinements = 5
+refinements = 4
 m_initial = 30
 m_data = 500
 outfile = "result_blisters.pvd"
@@ -117,8 +117,7 @@ for i in range(refinements + 1):
             (imark, _, _) = amr.br_inactive_mark(u, lb, residual)
         else:
             imark = amr.eleminactive(u, lb)
-        _, DG0 = amr.spaces(mesh)
-        mark = Function(DG0).interpolate((mark + imark) - (mark * imark))  # union
+        mark = amr.unionmarks(mark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
