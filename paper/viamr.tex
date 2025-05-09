@@ -135,15 +135,15 @@ On the other hand, adaptive mesh refinement (AMR) uses \emph{a posteriori} infor
 \label{fig:parabola}
 \end{figure}
 
-A small modification of \eqref{example:oned} shows an important aspect of obstacle problems: the sets $A_u,I_u,\Gamma_u$ are \emph{not} continuous functions of the data.
+A small modification of Example \ref{example:oned} illustrates an important aspect of obstacle problems, namely that the sets $A_u,I_u,\Gamma_u$ are \emph{not} continuous functions of the data.
 
-\begin{example} \label{example:notcontinuous} FIXME In Example \ref{example:oned} set $g=-0.5$ so that $g=\psi$ on $\partial\Omega$.  Since $f=0$ we see that $u=\psi$ is the solution and $A_u=\Omega$.  For $\eps>0$, now let $f_\eps(x) = $
-\end{example}
+\begin{example} \label{example:notcontinuous} Suppose we change Example \ref{example:oned} by setting $g=-0.5$, so that $g=\psi$ on $\partial\Omega$.  For $\eps\in\RR$ we define a new source term $f_\eps(x)=2+\eps$.  An easy calculation shows that for $\eps\le 0$ the solution is $u_\eps=\psi$, thus $A_u=\Omega$ and $I_u=\emptyset$.  However, for $\eps>0$, so that $f_\eps$ represents sufficient upward force on the membrane to lift it off the obstacle, we find the solution $u_\eps(x)=\psi(x) + 0.5 \eps (1-x^2) > \psi(x)$.  Thus $A_u=\emptyset$ and $I_u=\Omega$. \end{example}
 
-In addition to localizing the free boundary, effective AMR strategies for VI problems should consider the measure (area or volume) of the active and inactive sets.  For obstacle-type problems like \eqref{eq:classical:ncp}, elements which have been correctly identified as interior to the active set generally require no further computation or refinement.  If the solution is desired at high resolution in the active set, this can be computed \emph{a posteriori} by interpolation on to arbitrary auxiliary meshes, $u_h = \Pi_h \psi$, noting that $\psi$ has already been provided in the data of the problem.
+By definition, the $\eps=0$ case of Example \ref{example:notcontinuous} is \emph{degenerate} \cite{KinderlehrerStampacchia1980}, that is, the unconstrained solution happens to match the obstacle.  This example shows that any convergence results for FE approximations of solution-dependent active and inactive sets, and free boundaries, will depend upon nondegeneracy assumptions of some type.
 
-\begin{example} \label{example:activesets} In section \ref{sec:results} we will measure norm error convergence rates, and rates of convergence of geometrical measures of the active set, for three classical obstacle problem examples in 2D.  Figure \ref{fig:activesizes} shows high-resolution active sets for these examples.  For the large active set case at right, we will see that most of the performance benefit of our preferred AMR technique comes from avoiding refinement in the active set.  This benefit also dominates performance for our glaciation application in Section \ref{sec:app}.
-\end{example}
+In addition to localizing the free boundary, effective AMR strategies for VI problems should consider the measure (area or volume) of the active and inactive sets.  For obstacle-type problems like \eqref{eq:classical:ncp}, those elements which have been correctly identified as interior to the active set generally require no further computation or refinement.  If the solution is desired at high resolution in the active set, this can be computed \emph{a posteriori} by arbitrary interpolation of the obstacle; $\psi$ has already been provided in the data of the problem!
+
+\begin{example} \label{example:activesets} In Section \ref{sec:results} we will measure norm error convergence rates, and rates of convergence of geometrical measures of the active set, for three classical obstacle problem examples in 2D.  Figure \ref{fig:activesizes} shows high-resolution active sets for these examples.  For the large active set case at right, we will see that most of the performance benefit of our preferred AMR technique comes from avoiding refinement in the active set.  This benefit also dominates performance for our glaciation application in Section \ref{sec:app}. \end{example}
 
 \begin{figure}[ht]
 \noindent \hspace{-1mm} \mbox{\includegraphics[width=0.32\textwidth]{static/spiral.png} \,
@@ -170,7 +170,7 @@ Three AMR methods for VIs are described in Section \ref{sec:viamr}.  Our impleme
 
 Our focus in this paper is on AMR performance, and not solver performance.  However, regarding solvers, the constraint of $u \geq \psi$ makes VI problems nonlinear, even if the operator is linear, and thus an iterative solver is required.  We use a VI-adapted Newton method with a reduced-space line search \cite{BensonMunson2006}, implemented in PETSc \cite{petsc-user-ref}.  Such a numerical method cannot converge quadratically until the active and inactive sets stabilize on the given mesh, equivalently that the discrete free boundary is identified.  Upon stabilization, convergence occurs in a few more iterations when the operator is well-behaved.  Since such Newton solvers only adjust the approximated free boundary by one-cell per iteration \citep{GraeserKornhuber2009}, overall convergence becomes roughly proportional to the number of grid spaces between the initial iterate free boundary and the solution free boundary \citep{Bueler2021}.  Such poor performance could be substantially improved by using the AMR meshes generated here as coarse grids for a multilevel solver like that in \cite{BuelerFarrell2024}, which represents a path to highly-scalable solutions of obstacle problems.
 
-FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCD and UDO, and provide a detailed description of their implementations.  The results section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries.  Table \ref{tab:abbrev} gives the few abbreviations used herein.
+FIXME The remaining material is organized as follows.  We give a brief background on solving VIs numerically.  Via a 1D example, we illustrate why the error arising from the geometric error in approximating the free boundary dominates the overall numerical error.   Then we introduce the two new adaptive refinement schemes for VIs, VCD and UDO, and provide a detailed description of their implementations.  The results Section demonstrates the effectiveness of the proposed methods in enhancing mesh resolution around free boundaries.  Table \ref{tab:abbrev} gives the few abbreviations used herein.
 
 \begin{table}[H]
 \centering
@@ -193,7 +193,7 @@ VI        & variational inequality
 
 \section{Variational inequalities and their finite element approximation} \label{sec:vifem}
 
-We start this section with the VI formulation of unilateral obstacle problems in Banach spaces.  Under a hypothesis of coercivity we have continuum well-posedness, even for nonlinear operators.  Then we consider the meaning of ``conforming FE methods'' for such problems, and prove an \emph{a priori} bound on FE norm error which extends the Falk \cite{Falk1974} technique for VIs, itself generalizing Cea's lemma \cite{ElmanSilvesterWathen2014} for PDE problems.  This bound can illuminate why targeted mesh refinement around the computed free boundary will generate improved solutions.  Then we provide a classical \emph{a posteriori} error estimator for PDEs, considering its application in the computed inactive set.  We also aim to correct some misperceptions in the FE literature for VI problems.
+We start this Section with the VI formulation of unilateral obstacle problems in Banach spaces.  Under a hypothesis of coercivity we have continuum well-posedness, even for nonlinear operators.  Then we consider the meaning of ``conforming FE methods'' for such problems, and prove an \emph{a priori} bound on FE norm error which extends the Falk \cite{Falk1974} technique for VIs, itself generalizing Cea's lemma \cite{ElmanSilvesterWathen2014} for PDE problems.  This bound can illuminate why targeted mesh refinement around the computed free boundary will generate improved solutions.  Then we provide a classical \emph{a posteriori} error estimator for PDEs, considering its application in the computed inactive set.  We also aim to correct some misperceptions in the FE literature for VI problems.
 
 For a bounded, open domain $\Omega \subset \RR^d$, $d=2,3$, with Lipschitz boundary \cite{Ciarlet2002}.  In fact, for simplicity we will assume that $\Omega$ is polygonal or polyhedral.  Let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable gradients \cite{Evans2010}.  We will assume continuous problem data, allowing well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$ and $g\in C(\partial \Omega)$ satisfy $g \ge \psi|_{\partial\Omega}$.  As with the classical obstacle problem \eqref{eq:classical:admissible}, define the admissible subset
 \begin{equation} \label{eq:admissible}
@@ -326,7 +326,7 @@ where $h_K$ is the diameter of $K$.  It can be shown \cite[Chapter 2]{AinsworthO
 \begin{equation} \label{eq:brbound}
 |u-u_h|_{H^1}^2 = \int_\Omega |\grad(u-u_h)|^2\,dx \le C \sum_{K\in\cT_h} \eta_K^2
 \end{equation}
-The constant $C>0$ is determined by the element-wise and edge-wise approximation properties of the elements, including shape regularity.  The $L^2$ error can be bounded by a similar estimator \cite[section 2.4]{AinsworthOden2000}, which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively.
+The constant $C>0$ is determined by the element-wise and edge-wise approximation properties of the elements, including shape regularity.  The $L^2$ error can be bounded by a similar estimator \cite[Section 2.4]{AinsworthOden2000}, which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively.
 \end{example}
 
 FIXME compare \cite{AinsworthOdenLee1993}, which is closest to BR for VIs?  compare \cite{Suttmeier2008} re DWR
@@ -732,7 +732,7 @@ FIXME \emph{Grid Sequencing + AMR targeting the free boundary} is the iterative 
 %\section*{Acknowledgements}
 
 %\section*{Notes on contributor(s)}
-%An unnumbered section, e.g.\ \verb"\section*{Notes on contributors}", may be included \emph{in the non-anonymous version} if required. A photograph may be added if requested.
+%An unnumbered Section, e.g.\ \verb"\section*{Notes on contributors}", may be included \emph{in the non-anonymous version} if required. A photograph may be added if requested.
 
 
 \section{References}
