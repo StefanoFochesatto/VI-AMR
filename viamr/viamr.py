@@ -1,28 +1,19 @@
+import sys
 import numpy as np
 from collections import deque
-
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
 from firedrake.utils import IntType
 import firedrake.cython.dmcommon as dmcommon
-
 from pyop2.mpi import MPI
-
-try:
-    import shapely
-except ImportError:
-    print("ImportError.  Unable to import shapely.  Exiting.")
-    import sys
-
-    sys.exit(0)
 
 
 class VIAMR(OptionsManager):
     """VIAMR object manages adaptive mesh refinement based on variational
     inequality concepts.  The central notion is that refinement near the
     free boundary will improve solution quality.  Those functions that
-    do not work in parallel, namely udomark() and jaccard(), halt with
+    do not work in parallel, namely udomark(), jaccard(), and hausdorff(), halt with
     ValueError on the size of the communicator for the mesh.  All other
     methods should work the same in serial and parallel."""
 
@@ -325,7 +316,7 @@ class VIAMR(OptionsManager):
         w = TestFunction(DG0)
         G = (
             inner(eta_sq / v, w) * dx
-            - inner(h**2 * res_ufl**2, w) * dx
+            - inner(h ** 2 * res_ufl ** 2, w) * dx
             - inner(h("+") / 2 * jump(grad(uh), n) ** 2, w("+")) * dS
             - inner(h("-") / 2 * jump(grad(uh), n) ** 2, w("-")) * dS
         )
@@ -447,9 +438,9 @@ class VIAMR(OptionsManager):
             opts["dm_plex_transform_type"] = "refine_regular"
         else:
             opts["dm_plex_transform_active"] = "refinesbr"
-            opts["dm_plex_transform_type"] = (
-                "refine_sbr"  # <- skeleton based refinement is what netgen does.
-            )
+            opts[
+                "dm_plex_transform_type"
+            ] = "refine_sbr"  # <- skeleton based refinement is what netgen does.
 
         # Create a DMPlexTransform object to apply the refinement
         dmTransform = PETSc.DMPlexTransform().create(comm=mesh.comm)
@@ -508,6 +499,13 @@ class VIAMR(OptionsManager):
         return AreaIntersection / AreaUnion
 
     def hausdorff(self, E1, E2):
+        if mesh.comm.size > 1:
+            raise ValueError("hausdorff() is not valid in parallel")
+        try:
+            import shapely
+        except ImportError:
+            print("ImportError.  Unable to import shapely.  Exiting.")
+            sys.exit(0)
         return shapely.hausdorff_distance(
             shapely.MultiLineString(E1), shapely.MultiLineString(E2), 0.99
         )
