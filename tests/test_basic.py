@@ -150,8 +150,7 @@ def test_petsc4py_refine_vcd():
 
 
 def test_refine_vcd_petsc4py_firedrake():
-    mesh = RectangleMesh(5, 5, 4.0, 4.0)  # Firedrake utility mesh, not netgen
-    mesh.coordinates.dat.data[:] -= 2.0
+    mesh = RectangleMesh(5, 5, 2.0, 2.0, originX=-2.0, originY=-2.0)  # Firedrake utility mesh, not netgen
     z = VIAMR(debug=True)
     CG1, _ = z.spaces(mesh)
     assert CG1.dim() == 36
@@ -161,7 +160,6 @@ def test_refine_vcd_petsc4py_firedrake():
     unorm0 = norm(u)
     mark = z.vcdmark(mesh, u, psi)
     rmesh = z.refinemarkedelements(mesh, mark)
-    rmesh.coordinates.dat.data[:] -= 2.0  # why? see note on "Features which rely on the coordinates field of a mesh’s PETSc DM", at https://www.firedrakeproject.org/mesh-coordinates.html
     rCG1, _ = z.spaces(rmesh)
     assert rCG1.dim() == 73
     rV = FunctionSpace(rmesh, "CG", 1)
