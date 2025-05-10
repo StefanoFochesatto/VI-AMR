@@ -179,6 +179,23 @@ def test_refine_vcd_petsc4py_firedrake():
     assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
 
 
+def test_brinactivemark():
+    mesh = RectangleMesh(8, 8, 2.0, 2.0, originX=-2.0, originY=-2.0)  # Firedrake utility mesh, not netgen
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
+    assert CG1.dim() == 81
+    (x, y) = SpatialCoordinate(mesh)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))  # u>psi where psi>0
+    residual = -div(grad(u))  # largest near circle psi==0
+    (imark, _, _) = amr.brinactivemark(u, psi, residual, theta=0.8)
+    #VTKFile(f"result_brinactivemark.pvd").write(Function(CG1, name="diff").interpolate(u-psi), imark)
+    rmesh = amr.refinemarkedelements(mesh, imark)
+    #VTKFile(f"result_brinactivemark_refined.pvd").write(rmesh)
+    rCG1, _ = amr.spaces(rmesh)
+    assert rCG1.dim() == 147
+
+
 def test_overlapping_jaccard():
     mesh = get_netgen_mesh(TriHeight=1.2)
     z = VIAMR(debug=True)
@@ -280,6 +297,7 @@ if __name__ == "__main__":
     test_unionmarks()
     test_refine_udo()
     test_refine_vcd()
+    test_brinactivemark()
     test_overlapping_jaccard()
     test_nonoverlapping_jaccard()
     test_symmetry_jaccard()
