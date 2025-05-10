@@ -56,6 +56,18 @@ def test_mark_none():
     assert norm(mark, 'L1') == 0.0
 
 
+def test_unionmarks():
+    mesh = RectangleMesh(5, 5, 2.0, 2.0, originX=-2.0, originY=-2.0)  # Firedrake utility mesh, not netgen
+    amr = VIAMR(debug=True)
+    _, DG0 = amr.spaces(mesh)
+    (x, y) = SpatialCoordinate(mesh)
+    rightmark = Function(DG0).interpolate(conditional(x > 0.0, 1.0, 0.0))
+    discmark = Function(DG0).interpolate(get_ball_obstacle(x, y) > 0.0)
+    mark = amr.unionmarks(rightmark, discmark)
+    #VTKFile(f"result_unionmarks.pvd").write(rightmark, discmark, mark)
+    assert abs(assemble(mark * dx) - 9.92) < 1.0e-10   # union of marked area
+
+
 def test_refine_udo():
     mesh = get_netgen_mesh(TriHeight=1.2)
     z = VIAMR(debug=True)
@@ -265,6 +277,7 @@ if __name__ == "__main__":
     test_netgen_mesh_creation()
     test_spaces()
     test_mark_none()
+    test_unionmarks()
     test_refine_udo()
     test_refine_vcd()
     test_overlapping_jaccard()
