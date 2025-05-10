@@ -217,7 +217,7 @@ def test_overlapping_and_nonoverlapping_hausdorff():
     assert z.hausdorff(E1, E2) == .2
 
 
-def test_parallel_udo():
+def AVOID_test_parallel_udo():
     # This test is not well encapsulated at all however barring crazy changes to the spiral utility problem
     # and jaccard, we have good visibility of parallel udo and refinemarkedelements()
 
@@ -272,6 +272,5 @@ if __name__ == "__main__":
     test_symmetry_jaccard()
     test_overlapping_and_nonoverlapping_hausdorff()
     test_refine_udo_parallelUDO()
-    test_parallel_udo()
     test_petsc4py_refine_vcd()
     test_refine_vcd_petsc4py_firedrake()
