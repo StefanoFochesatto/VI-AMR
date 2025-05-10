@@ -74,7 +74,7 @@ for i in range(refinements + 1):
     #   (choose more refinement in active set, relative to default bracket=[0.2, 0.8])
     mark = amr.vcdmark(mesh, u, psi, bracket=[0.1, 0.8])
     residual = -div(grad(u)) - fsource
-    (imark, _, _) = amr.br_inactive_mark(u, psi, residual)
+    (imark, _, _) = amr.brinactivemark(u, psi, residual)
     # imark = amr.eleminactive(u, psi)  # alternative is to refine all inactive
     mark = amr.unionmarks(mark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)

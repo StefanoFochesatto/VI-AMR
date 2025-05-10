@@ -106,7 +106,7 @@ class VIAMR(OptionsManager):
             (mark1 + mark2) - (mark1 * mark2)
         )
 
-    def _bfs_neighbors(self, mesh, border, levels):
+    def _bfsneighbors(self, mesh, border, levels):
         """Element-wise multi-neighbor lookup using breadth-first search."""
 
         # build dictionary which maps each vertex in the mesh
@@ -145,7 +145,7 @@ class VIAMR(OptionsManager):
         # generate element-wise indicator for border set
         elemborder = self.elemborder(self.nodalactive(u, lb))
         # _bfs_neighbors() constructs N^n(B) indicator
-        return self._bfs_neighbors(mesh, elemborder, n)
+        return self._bfsneighbors(mesh, elemborder, n)
 
     def udomarkParallel(self, mesh, u, lb, n=2):
         """Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements"""
@@ -289,7 +289,7 @@ class VIAMR(OptionsManager):
             )
             return mark
 
-    def br_inactive_mark(self, uh, lb, res_ufl, theta=0.5):
+    def brinactivemark(self, uh, lb, res_ufl, theta=0.5):
         """Return marking within the computed inactive set by using the
         a posteriori Babuška-Rheinboldt residual error indicator.  The BR
         indicator eta is computed as a function in DG0.  Then

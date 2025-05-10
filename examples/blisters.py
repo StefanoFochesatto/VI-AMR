@@ -114,7 +114,7 @@ for i in range(refinements + 1):
     if refine_inactive or refine_br:
         if refine_br:
             residual = -div(grad(u)) - fsource
-            (imark, _, _) = amr.br_inactive_mark(u, lb, residual)
+            (imark, _, _) = amr.brinactivemark(u, lb, residual)
         else:
             imark = amr.eleminactive(u, lb)
         mark = amr.unionmarks(mark, imark)

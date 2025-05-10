@@ -76,7 +76,7 @@ for i in range(refinements + 1):
     if i == refinements:
         break
     residual = -div(grad(u)) - fsource
-    imark, _, _ = amr.br_inactive_mark(
+    imark, _, _ = amr.brinactivemark(
         u, lb, residual, theta=0.8
     )  # FIXME the distribution of eta has lots of elements close to eta.max(), and a few where eta is very small
     mark = amr.unionmarks(amr.vcdmark(mesh, u, lb), imark)
