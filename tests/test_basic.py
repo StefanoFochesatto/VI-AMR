@@ -10,13 +10,20 @@ import pathlib
 def get_netgen_mesh(TriHeight=0.4, width=2):
     import netgen
     from netgen.geom2d import SplineGeometry
+
     geo = SplineGeometry()
-    geo.AddRectangle(p1=(-1 * width, -1 * width),
-                     p2=(1 * width, 1 * width),
-                     bc="rectangle")
+    geo.AddRectangle(
+        p1=(-1 * width, -1 * width), p2=(1 * width, 1 * width), bc="rectangle"
+    )
     ngmsh = None
     ngmsh = geo.GenerateMesh(maxh=TriHeight)
-    return Mesh(ngmsh, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+    return Mesh(
+        ngmsh,
+        distribution_parameters={
+            "partition": True,
+            "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
+        },
+    )
 
 
 def test_netgen_mesh_creation():
@@ -41,47 +48,48 @@ def get_ball_obstacle(x, y):
 
 def test_mark_none():
     mesh = get_netgen_mesh(TriHeight=1.2)
-    z = VIAMR(debug=True)
-    CG1, _ = z.spaces(mesh)
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
-    mark = z.udomark(mesh, psi, psi)  # all active
-    assert norm(mark, 'L1') == 0.0
-    mark = z.vcdmark(mesh, psi, psi)  # all active
-    assert norm(mark, 'L1') == 0.0
+    mark = amr.udomark(mesh, psi, psi)  # all active
+    assert norm(mark, "L1") == 0.0
+    mark = amr.vcdmark(mesh, psi, psi)  # all active
+    assert norm(mark, "L1") == 0.0
     lift = Function(CG1).interpolate(psi + 1.0)
-    mark = z.udomark(mesh, lift, psi)  # all inactive
-    assert norm(mark, 'L1') == 0.0
-    mark = z.vcdmark(mesh, lift, psi)  # all inactive
-    assert norm(mark, 'L1') == 0.0
+    mark = amr.udomark(mesh, lift, psi)  # all inactive
+    assert norm(mark, "L1") == 0.0
+    mark = amr.vcdmark(mesh, lift, psi)  # all inactive
+    assert norm(mark, "L1") == 0.0
 
 
 def test_unionmarks():
-    mesh = RectangleMesh(5, 5, 2.0, 2.0, originX=-2.0, originY=-2.0)  # Firedrake utility mesh, not netgen
+    mesh = RectangleMesh(
+        5, 5, 2.0, 2.0, originX=-2.0, originY=-2.0
+    )  # Firedrake utility mesh, not netgen
     amr = VIAMR(debug=True)
     _, DG0 = amr.spaces(mesh)
     (x, y) = SpatialCoordinate(mesh)
     rightmark = Function(DG0).interpolate(conditional(x > 0.0, 1.0, 0.0))
     discmark = Function(DG0).interpolate(get_ball_obstacle(x, y) > 0.0)
     mark = amr.unionmarks(rightmark, discmark)
-    #VTKFile(f"result_unionmarks.pvd").write(rightmark, discmark, mark)
-    assert abs(assemble(mark * dx) - 9.92) < 1.0e-10   # union of marked area
+    # VTKFile(f"result_unionmarks.pvd").write(rightmark, discmark, mark)
+    assert abs(assemble(mark * dx) - 9.92) < 1.0e-10  # union of marked area
 
 
 def test_refine_udo():
     mesh = get_netgen_mesh(TriHeight=1.2)
-    z = VIAMR(debug=True)
-    CG1, _ = z.spaces(mesh)
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 19
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    # from firedrake.output import VTKFile
     # VTKFile(f"result_refine_0.pvd").write(u)
-    mark = z.udomark(mesh, u, psi)
-    rmesh = mesh.refine_marked_elements(mark)
-    rCG1, _ = z.spaces(rmesh)
+    mark = amr.udomark(mesh, u, psi)
+    rmesh = mesh.refine_marked_elements(mark)  # netgen's refine method
+    rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 61
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u)  # cross-mesh interpolation
@@ -90,71 +98,61 @@ def test_refine_udo():
 
 
 def test_refine_udo_parallelUDO():
-    mesh1 = get_netgen_mesh(TriHeight=.1)
-    z = VIAMR(debug=True)
-    CG1, _ = z.spaces(mesh1)
+    mesh1 = get_netgen_mesh(TriHeight=0.1)
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh1)
     (x, y) = SpatialCoordinate(mesh1)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    # from firedrake.output import VTKFile
     # VTKFile(f"result_refine_0.pvd").write(u)
-    mark1 = z.udomark(mesh1, u, psi)
-    rmesh1 = mesh1.refine_marked_elements(mark1)
-
-    mesh2 = get_netgen_mesh(TriHeight=.1)
-    CG1, _ = z.spaces(mesh2)
+    mark1 = amr.udomark(mesh1, u, psi)
+    rmesh1 = mesh1.refine_marked_elements(mark1)  # netgen's refine method
+    mesh2 = get_netgen_mesh(TriHeight=0.1)
+    CG1, _ = amr.spaces(mesh2)
     (x, y) = SpatialCoordinate(mesh1)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    # from firedrake.output import VTKFile
-    # VTKFile(f"result_refine_0.pvd").write(u)
-    mark2 = z.udomarkParallel(mesh1, u, psi)
-    rmesh2 = mesh2.refine_marked_elements(mark2)
-
-    assert z.jaccard(mark1, mark2) == 1.0
-
-    r1CG1, _ = z.spaces(rmesh1)
-    r2CG1, _ = z.spaces(rmesh2)
-
+    # VTKFile("result_refine_0.pvd").write(u)
+    mark2 = amr.udomarkParallel(mesh1, u, psi)
+    rmesh2 = mesh2.refine_marked_elements(mark2)  # netgen's refine method
+    assert amr.jaccard(mark1, mark2) == 1.0
+    r1CG1, _ = amr.spaces(rmesh1)
+    r2CG1, _ = amr.spaces(rmesh2)
     assert r1CG1.dim() == r2CG1.dim()
 
 
 def test_refine_vcd():
     mesh = get_netgen_mesh(TriHeight=1.2)
-    z = VIAMR(debug=True)
-    CG1, _ = z.spaces(mesh)
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 19
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    #VTKFile(f"result_refine_0.pvd").write(u)
-
-    mark = z.vcdmark(mesh, u, psi)
-    rmesh = mesh.refine_marked_elements(mark)
-    rCG1, _ = z.spaces(rmesh)
+    mark = amr.vcdmark(mesh, u, psi)
+    rmesh = mesh.refine_marked_elements(mark)  # netgen's refine method
+    rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 49
     rV = FunctionSpace(rmesh, "CG", 1)
-
-    ru = Function(rV).interpolate(u) # cross-mesh interpolation
-    assert abs(norm(ru) - unorm0) < 1.0e-10 # ... should be conservative
-    #VTKFile(f"netgen_result_refine_1.pvd").write(ru)
+    ru = Function(rV).interpolate(u)  # cross-mesh interpolation
+    assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
 
 
 def test_petsc4py_refine_vcd():
     mesh = get_netgen_mesh(TriHeight=1.2)
-    z = VIAMR(debug=True)
-    CG1, _ = z.spaces(mesh)
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 19
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = z.vcdmark(mesh, u, psi)
-    rmesh = z.refinemarkedelements(mesh, mark)
-    rCG1, _ = z.spaces(rmesh)
+    mark = amr.vcdmark(mesh, u, psi)
+    rmesh = amr.refinemarkedelements(mesh, mark)
+    rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 49
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u)  # cross-mesh interpolation
@@ -162,17 +160,19 @@ def test_petsc4py_refine_vcd():
 
 
 def test_refine_vcd_petsc4py_firedrake():
-    mesh = RectangleMesh(5, 5, 2.0, 2.0, originX=-2.0, originY=-2.0)  # Firedrake utility mesh, not netgen
-    z = VIAMR(debug=True)
-    CG1, _ = z.spaces(mesh)
+    mesh = RectangleMesh(
+        5, 5, 2.0, 2.0, originX=-2.0, originY=-2.0
+    )  # Firedrake utility mesh, not netgen
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 36
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = z.vcdmark(mesh, u, psi)
-    rmesh = z.refinemarkedelements(mesh, mark)
-    rCG1, _ = z.spaces(rmesh)
+    mark = amr.vcdmark(mesh, u, psi)
+    rmesh = amr.refinemarkedelements(mesh, mark)
+    rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 73
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u)  # cross-mesh interpolation
@@ -180,70 +180,74 @@ def test_refine_vcd_petsc4py_firedrake():
 
 
 def test_brinactivemark():
-    mesh = RectangleMesh(8, 8, 2.0, 2.0, originX=-2.0, originY=-2.0)  # Firedrake utility mesh, not netgen
+    mesh = RectangleMesh(
+        8, 8, 2.0, 2.0, originX=-2.0, originY=-2.0
+    )  # Firedrake utility mesh, not netgen
     amr = VIAMR(debug=True)
     CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 81
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
-    u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))  # u>psi where psi>0
+    u = Function(CG1).interpolate(
+        conditional(psi > 0.0, psi + 1.0, psi)
+    )  # u>psi where psi>0
     residual = -div(grad(u))  # largest near circle psi==0
     (imark, _, _) = amr.brinactivemark(u, psi, residual, theta=0.8)
-    #VTKFile(f"result_brinactivemark.pvd").write(Function(CG1, name="diff").interpolate(u-psi), imark)
+    # VTKFile(f"result_brinactivemark.pvd").write(Function(CG1, name="diff").interpolate(u-psi), imark)
     rmesh = amr.refinemarkedelements(mesh, imark)
-    #VTKFile(f"result_brinactivemark_refined.pvd").write(rmesh)
+    # VTKFile(f"result_brinactivemark_refined.pvd").write(rmesh)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 147
 
 
 def test_overlapping_jaccard():
     mesh = get_netgen_mesh(TriHeight=1.2)
-    z = VIAMR(debug=True)
-    _, DG0 = z.spaces(mesh)
+    amr = VIAMR(debug=True)
+    _, DG0 = amr.spaces(mesh)
     x, _ = SpatialCoordinate(mesh)
     right = conditional(x > 0, 1, 0)
     active1 = Function(DG0).interpolate(right)  # right half active
     active2 = Function(DG0).interpolate(right)  # same; full overlap
-    assert z.jaccard(active1, active1) == 1.0
+    assert amr.jaccard(active1, active1) == 1.0
 
 
 def test_nonoverlapping_jaccard():
     mesh = get_netgen_mesh()
-    z = VIAMR(debug=True)
-    _, DG0 = z.spaces(mesh)
+    amr = VIAMR(debug=True)
+    _, DG0 = amr.spaces(mesh)
     x, _ = SpatialCoordinate(mesh)
     right = conditional(x > 0, 1, 0)
-    farleft = conditional(x < -.5, 1, 0)
+    farleft = conditional(x < -0.5, 1, 0)
     active1 = Function(DG0).interpolate(right)
     active2 = Function(DG0).interpolate(farleft)  # no overlap
-    assert z.jaccard(active1, active2) == 0.0
+    assert amr.jaccard(active1, active2) == 0.0
 
 
 def test_symmetry_jaccard():
     mesh = get_netgen_mesh()
-    z = VIAMR(debug=True)
-    _, DG0 = z.spaces(mesh)
+    amr = VIAMR(debug=True)
+    _, DG0 = amr.spaces(mesh)
     x, _ = SpatialCoordinate(mesh)
     right = conditional(x > 0, 1, 0)
     more = conditional(x < 1, 1, 0)
     active1 = Function(DG0).interpolate(right)
     active2 = Function(DG0).interpolate(more)
-    assert z.jaccard(active1, active2) == z.jaccard(active2, active1)
+    assert amr.jaccard(active1, active2) == amr.jaccard(active2, active1)
 
 
 def test_overlapping_and_nonoverlapping_hausdorff():
     # to have free boundaries line up with conditional statements
     mesh = RectangleMesh(10, 10, 1, 1)
-    z = VIAMR()
-    CG1, _ = z.spaces(mesh)
+    amr = VIAMR()
+    CG1, _ = amr.spaces(mesh)
     x, y = SpatialCoordinate(mesh)
     sol1 = Function(CG1).interpolate(Constant(1.0))
-    lb = Function(CG1).interpolate(conditional(x <= .2, 1, 0))
-    _, E1 = z.freeboundarygraph(sol1, lb)
-    assert z.hausdorff(E1, E1) == 0
-    lb2 = Function(CG1).interpolate(conditional(x <= .4, 1, 0))
-    _, E2 = z.freeboundarygraph(sol1, lb2)
-    assert z.hausdorff(E1, E2) == .2
+    lb = Function(CG1).interpolate(conditional(x <= 0.2, 1, 0))
+    _, E1 = amr.freeboundarygraph(sol1, lb)
+    assert amr.hausdorff(E1, E1) == 0
+    lb2 = Function(CG1).interpolate(conditional(x <= 0.4, 1, 0))
+    _, E2 = amr.freeboundarygraph(sol1, lb2)
+    assert amr.hausdorff(E1, E2) == 0.2
 
 
 def AVOID_test_parallel_udo():
@@ -252,7 +256,7 @@ def AVOID_test_parallel_udo():
 
     # Get the absolute path of the current test file
     current_file = pathlib.Path(__file__).resolve()
-    # Navigate to the test root 
+    # Navigate to the test root
     test_root = current_file.parent
     # Construct the absolute path to the script
     script_path = test_root / "generateSolution.py"
@@ -263,20 +267,29 @@ def AVOID_test_parallel_udo():
         # Run UDO method in both parallel and serial
         subprocess.run(
             ["python", script_path_str, "--refinements", "2", "--runtime", "serial"],
-            check=True
+            check=True,
         )
         subprocess.run(
-            ["mpiexec", "-n", "4", "python", script_path_str,
-             "--refinements", "2", "--runtime", "parallel"],
-            check=True
+            [
+                "mpiexec",
+                "-n",
+                "4",
+                "python",
+                script_path_str,
+                "--refinements",
+                "2",
+                "--runtime",
+                "parallel",
+            ],
+            check=True,
         )
 
         # Checkpoint in files
-        with CheckpointFile("serialUDO.h5", 'r') as afile:
+        with CheckpointFile("serialUDO.h5", "r") as afile:
             serialMesh = afile.load_mesh("serialMesh")
             serialMark = afile.load_function(serialMesh, "serialMark")
 
-        with CheckpointFile("parallelUDO.h5", 'r') as afile:
+        with CheckpointFile("parallelUDO.h5", "r") as afile:
             parallelMesh = afile.load_mesh("parallelMesh")
             parallelMark = afile.load_function(parallelMesh, "parallelMark")
 
