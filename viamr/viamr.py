@@ -499,8 +499,6 @@ class VIAMR(OptionsManager):
         return AreaIntersection / AreaUnion
 
     def hausdorff(self, E1, E2):
-        if mesh.comm.size > 1:
-            raise ValueError("hausdorff() is not valid in parallel")
         try:
             import shapely
         except ImportError:
