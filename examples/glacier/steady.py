@@ -20,6 +20,10 @@ Examples:
   python3 steady.py -prob dome -opvd dome.pvd
   mpiexec -n 4 python3 steady.py -irefine -refine 4 -prob range -opvd range4.pvd
 
+This high resolution example ends with 2.2e6 elements and 250 m resolution along
+glacier margin:
+  mpiexec -n 12 python3 steady.py -prob range -m 200 -refine 5 -opvd range.pvd
+
 Works in serial only:
   python3 steady.py -jaccard
 """, formatter_class=RawTextHelpFormatter)
@@ -31,10 +35,10 @@ parser.add_argument('-m', type=int, default=20, metavar='M',
                     help='number of cells in each direction [default=20]')
 parser.add_argument('-opvd', metavar='FILE', type=str, default='',
                     help='output file name for Paraview format (.pvd)')
-parser.add_argument('-freeze', action='store_true', default=False,
-                    help='iterate on frozen "tilt", instead of straight Newton')
 parser.add_argument('-freezecount', type=int, default=5, metavar='P',
                     help='number of frozen-tilt iterations [default=5]')
+parser.add_argument('-newton', action='store_true', default=False,
+                    help='use straight Newton, which is less robust than default (=iterate on frozen "tilt")')
 parser.add_argument('-prob', type=str, default='cap', metavar='X',
                     choices = ['cap','dome','range'],
                     help='choose problem from {cap, dome, range}')
@@ -227,7 +231,17 @@ for i in range(args.refine + 1):
         upper = Function(V).interpolate(Constant(PETSc.INFINITY))
         bcs = [DirichletBC(V, Constant(0.0), "on_boundary"),]
 
-    if args.freeze:  # add outer loop in this case
+    if args.newton:
+        if args.weakform == 'mixed':
+            F = weakform_mixed(qu, a, lb)
+            problem = NonlinearVariationalProblem(F, qu, bcs=bcs)
+        else:
+            F = weakform_primal(u, a, lb)
+            problem = NonlinearVariationalProblem(F, u, bcs=bcs)
+        solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="s")
+        solver.solve(bounds=(lower, upper))
+    else:
+        # outer loop for freeze iteration
         for k in range(args.freezecount):
             printpar(f'  freeze tilt iteration {k+1} ...')
             Ztilt = Phi(uold, lb)
@@ -242,15 +256,6 @@ for i in range(args.refine + 1):
             if args.weakform == 'mixed':
                 q, u = qu.subfunctions
             uold = Function(V).interpolate(u)
-    else:
-        if args.weakform == 'mixed':
-            F = weakform_mixed(qu, a, lb)
-            problem = NonlinearVariationalProblem(F, qu, bcs=bcs)
-        else:
-            F = weakform_primal(u, a, lb)
-            problem = NonlinearVariationalProblem(F, u, bcs=bcs)
-        solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="s")
-        solver.solve(bounds=(lower, upper))
 
     # update true geometry variables
     if args.weakform == 'mixed':
