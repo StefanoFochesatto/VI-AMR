@@ -141,7 +141,7 @@ A small modification of Example \ref{example:oned} illustrates another aspect of
 
 By definition, the $\eps=0$ case of Example \ref{example:notcontinuous} is \emph{degenerate} \cite{KinderlehrerStampacchia1980}, that is, the unconstrained solution happens to match the obstacle.  This example shows that any predictable convergence results for FE approximations of the solution-dependent sets \eqref{eq:classical:sets}, \eqref{eq:classical:freeboundary} will depend upon nondegeneracy assumptions of some kind.
 
-The effectiveness of AMR strategies for VI problems will depend upon the measure (area or volume) of the active and inactive sets.  Note that for obstacle-type problems, those elements which have been correctly identified as interior to the active set generally require no further computation or refinement.  (If a solution is desired at high resolution within the active set, this can be computed \emph{a posteriori} by arbitrary interpolation of the obstacle, because $\psi$ has already been provided in the data of the problem.)
+The effectiveness of AMR strategies for VI problems depends upon the measure (area or volume) of the active and inactive sets.  For certain obstacle-type problems, specifically those with the ``blistering property'' defined in Section \ref{sec:vifem}, the elements which have been identified as interior to the active set may require no further computation or refinement.  For such problems, if a solution is desired at high resolution within the active set, this can be computed in post-processing by arbitrary interpolation of the obstacle, noting $\psi$ has already been provided in the data of the problem.
 
 \begin{example} \label{example:activesets} In Section \ref{sec:results} we will measure convergence rates for three classical obstacle problem examples in 2D.  Figure \ref{fig:activesizes} shows high-resolution active sets for these examples.  For the large active set case at right, we will see that most of the performance benefit of our preferred AMR techniques, relative to uniform refinement, comes from avoiding refinement in the active set.  This benefit also dominates performance for our glaciation application in Section \ref{sec:app}. \end{example}
 
@@ -324,7 +324,11 @@ in \eqref{eq:falk} and \eqref{eq:falkconforming}?  Note that $(\ast)$ is unrelat
 
 In the simpler situation \emph{ii)}, where $\psi_h\ge \psi$ and $\cK_h\subset \cK$, term $(\ast)$ is nonnegative.  It might be large because no $v_h\in\cK_h$ is close to $\psi$ over $A_u$, for instance where $v_h\ge \psi_h \gg \psi$.  On the other hand, it might be large, even if $v_h-\psi$ can be made small over $A_u$, because the source functional $\ell$ causes the residual $F(u)-\ell\ge 0$ to be large in $A_u$.  (Thus $d\mu_u(S)$ is positive and large for some measurable $S\subset A_u$.)  In summary, supposing $\cK_h\subset \cK$, the Corollary \ref{cor:falkconforming} bound is significantly larger than that from Cea's lemma only when the FE functions $v_h$ cannot descend close to the continuum obstacle $\psi$, or when the (exact) residual is large in the (exact) active set $A_u$, or both.
 
-This completes our \emph{a priori} considerations for FE obstacle problem \eqref{eq:fe:vi}.  In Sections \ref{sec:viamr}--\ref{sec:app} we will also exploit an \emph{a posteriori} analysis using an error indicator for the PDE problem within the approximate inactive set.  While our application of this idea to VI problems is heuristically driven, the error indicator itself is presented here as an example for the classical Poisson problem with residual $r(v)=-\nabla^2 v - f$.
+This completes our \emph{a priori} considerations for FE obstacle problem \eqref{eq:fe:vi}.
+
+FIXME DEFINE BLISTERING PROPERTY AND NOTE IT IS UNIVERSAL FOR SMOOTH $\psi$ UNILATERAL PROBLEMS VIA SUBSTITUTION $w=u-\psi$; SINCE $A_u \subset \{f<0\}$, NO FURTHER SOLUTION IS NEEDED FOR ELEMENTS WHICH ARE CURRENTLY ACTIVE AND WHICH ARE CONTAINED IN $\{f<0\}$
+
+In Sections \ref{sec:viamr}--\ref{sec:app} we will also exploit an \emph{a posteriori} analysis using an error indicator for the PDE problem within the approximate inactive set.  While our application of this idea to VI problems is heuristically driven, the error indicator itself is presented here as an example for the classical Poisson problem with residual $r(v)=-\nabla^2 v - f$.
 
 \begin{example}  \label{example:br}
 Continuing with the bilinear form from Example \ref{example:classicalobstacle}, suppose $u \in H^1(\Omega)$ solves the weak form equation $a(u,v) = \ell(v) = \int_\Omega f v$ for all $v \in H^1_0(\Omega)$, and $u=g$ on $\partial \Omega$.  Suppose $u_h$ from $P_1$ solves the corresponding finite-dimensional weak form.  For each element $K \in \cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $\gamma$, and a vector field $Z$, with traces $Z_L,Z_K$ on the element boundaries, let $\left\llbracket Z \cdot n \right\rrbracket = Z_L \cdot n_L + Z_K \cdot n_K$ be the jump of $Z$ on $\gamma$.  Define the Babu\v{s}ka--Rheinboldt (BR) \cite{BabuskaRheinboldt1979} error estimator
@@ -717,6 +721,8 @@ Using thresholding $u - \psi < 0.001$ to determine the active set, running this 
 FIXME
 \caption{Mesh (left) generated from the spiral problem, with $N=2.3\times 10^3$ elements, and the approximated active set (right).}
 \end{figure}
+
+FIXME USE minted TO SHOW COMPLETE CODE FOR EXAMPLE 1 FROM \cite{AinsworthOdenLee1993}, WITH FIGURE SHOWING COMPUTED ACTIVE SET AND VCD MARKED ELEMENTS ON ORIGINAL MESH, THEN REFINED MESH AND NEW COMPUTED ACTIVE SET, RELATIVE TO EXACT
 
 
 \section{Results} \label{sec:results}
