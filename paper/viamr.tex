@@ -13,15 +13,16 @@
 \usepackage{amsmath}
 \usepackage{stmaryrd}  % \llbracket, \rrbracket
 
-\usepackage{algorithm}
-\usepackage{algpseudocode}
 \usepackage[T1]{fontenc}
+\usepackage{caption,subcaption}
+
 \usepackage{pgfplots}
 \usetikzlibrary{arrows}
 \pgfplotsset{compat=1.16}
-\usepackage{caption}
-\usepackage{subcaption}
-%\usepackage{minted}
+
+\usepackage{algorithm,algpseudocode}
+
+\usepackage{minted}
 
 \usepackage[hidelinks]{hyperref}
 
@@ -176,7 +177,7 @@ To conclude this introduction, there are two overall goals for this paper:
 \renewcommand{\labelenumi}{\arabic{enumi}.}
 \begin{enumerate}
 \item We demonstrate significant, practical improvements in error norm convergence for obstacle problems, arising from the application of AMR, relative to high-resolution uniform-refinement approaches such as \cite{BuelerFarrell2024}.  This is measured by error norm (or free-boundary localization error) per mesh degree of freedom.
-\item We provide a parallel, well-documented, and easy-to-use implementation, hosted at \url{https://github.com/StefanoFochesatto/VI-AMR}, within a widely-distributed FE library framework, namely Firedrake \cite{Langeetal2016}.
+\item We provide a parallel, well-documented, and easy-to-use implementation, hosted at \href{https://github.com/StefanoFochesatto/VI-AMR}{\texttt{github.com/StefanoFochesatto/VI-AMR}}, within a widely-distributed FE library framework, namely Firedrake \cite{Langeetal2016}.
 \end{enumerate}
 
 The remaining material is organized as follows.  Table \ref{tab:abbrev} gives the few abbreviations used herein.  Section \ref{sec:vifem} provides \emph{a priori} norm bounds for FE methods applied to VI problems, and \emph{a posteriori} error estimators which can be applied to the PDE solved in the inactive set.  Section \ref{sec:viamr} describes the three AMR algorithms in more detail.  Sections \ref{sec:results}--\ref{sec:conclusion} compare and discuss the performance of these algorithms on model problems and on a realistic application to glaciers.
@@ -723,6 +724,23 @@ FIXME
 \end{figure}
 
 FIXME USE minted TO SHOW COMPLETE CODE FOR EXAMPLE 1 FROM \cite{AinsworthOdenLee1993}, WITH FIGURE SHOWING COMPUTED ACTIVE SET AND VCD MARKED ELEMENTS ON ORIGINAL MESH, THEN REFINED MESH AND NEW COMPUTED ACTIVE SET, RELATIVE TO EXACT
+
+We end this section with a minimal Python example code, Figure \ref{fig:exampleAOL}.  This solves Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution, on a coarse mesh and then applies VCD marking and refinement.  The initial mesh, marked elements near the free boundary, and refined mesh are shown in Figure \ref{fig:resultAOL}.
+
+\begin{figure}[ht]
+\inputminted[linenos, frame=lines]{python}{static/exampleAOL.py}
+\caption{A minimal application using the \href{https://github.com/StefanoFochesatto/VI-AMR}{\texttt{github.com/StefanoFochesatto/VI-AMR}} Python library.}
+\label{fig:exampleAOL}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\mbox{\includegraphics[width=0.27\textwidth]{static/aol-mesh0.png} \qquad
+\includegraphics[width=0.27\textwidth]{static/aol-marked.png} \qquad
+\includegraphics[width=0.27\textwidth]{static/aol-mesh1.png}}
+\caption{The Python code (Figure \ref{fig:exampleAOL}) solves Example 1 from \cite{AinsworthOdenLee1993}.  Starting from an initial mesh (left), it marks elements by the default-parameter VCD scheme (middle) and generates a refined mesh (right).  The exact free boundary is overlaid in black.}
+\label{fig:resultAOL}
+\end{figure}
 
 
 \section{Results} \label{sec:results}
