@@ -14,7 +14,7 @@ problem = NonlinearVariationalProblem(F, u, bcs)
 
 p = {"snes_type": "vinewtonrsls"}
 solver = NonlinearVariationalSolver(problem, solver_parameters=p)
-lb = Function(V).interpolate(Constant(0.0))
+lb = Function(V).interpolate(0.0)
 ub = Function(V).interpolate(Constant(PETSc.INFINITY))
 solver.solve(bounds=(lb, ub))
 
