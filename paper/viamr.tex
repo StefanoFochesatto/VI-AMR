@@ -331,6 +331,8 @@ This is unrelated to the FE solution $u_h$.  If $v_h < \psi$ is locally possible
 
 Recall that for a solution to VI \eqref{eq:vi}, the PDE which applies in the inactive set $I_u$ is called the \emph{interior condition} \cite{KinderlehrerStampacchia1980}.  In Section \ref{sec:results} we will demonstrate strategies which exploit an interior-condition \emph{a posteriori} error indicator if it is available.  Such an error indicator is well-known for the classical Poisson problem.
 
+FIXME: EVEN SIMPLER GRADIENT-BASED ESTIMATOR, BECAUSE THAT CAN BE USED IN Section \ref{sec:app}
+
 \begin{example}  \label{example:br}  Suppose $u \in H^1(\Omega)$ solves the weak form PDE $a(u,v) = \int_\Omega f v\,dx$ for all $v \in H^1_0(\Omega)$, with $u=g$ on $\partial \Omega$, for the bilinear form $a(u,v)=\int_\Omega \grad u\cdot \grad v\,dx$.  Suppose $u_h$ from $P_1$ solves the corresponding finite-dimensional weak form.  For each element $K \in \cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $\gamma$, and any vector field $Z$ with traces $Z_L,Z_K$ on $\gamma$, let $\left\llbracket Z \cdot n \right\rrbracket = Z_L \cdot n_L + Z_K \cdot n_K$ be the jump of $Z$ on $\gamma$.  Given the residual $r(v)=-\nabla^2 v - f$ defined within the elements, the Babu\v{s}ka--Rheinboldt (BR) \cite{BabuskaRheinboldt1979} error estimator is
 \begin{equation} \label{eq:brestimator}
 \eta_K^2 = h_K^2 \int_K |r(u_h)|^2\,dx + \frac{h_K}{2} \sum_{\gamma \in \partial K \setminus \partial \Omega} \int_{\gamma} \left\llbracket \grad u_h \cdot n \right\rrbracket^2\,dS,
@@ -559,7 +561,22 @@ FIXME
 
 \section{Application to determining glaciated areas} \label{sec:app}
 
-FIXME
+In this section we apply the VCD method to a model for steady ice sheet geometry over a given bedrock topography and with a given climate (which determines the difference of snowfall rate minus summer melt).  The operator is fully nonlinear, and the problem is not of optimization type; an objective function does not exist when the bedrock is not flat.  Similar VI problems arise for any fluid layer subject to local surface processes which can add and remove mass \cite{Bueler2021b}.
+
+Let $\Omega \subset \RR^2$ be a fixed region of land, and suppose $b \in C^1(\Omega)$ gives the bedrock elevation, in meters, on $\Omega$.  Let $a \in L^2(\Omega)$ denote a given surface mass-balance function \cite{GreveBlatter2009}, the annually-averaged rate of ice accumulation (snow) minus melt and runoff in meters per second.  Then the ice thickness $H$ of a steady-state glacier or ice sheet, also in meters, satisfies a VI problem over the set of admissible thicknesses, i.e.~with $H\ge 0$.
+
+Specifically we consider a glacier flow approximation called the \emph{shallow ice approximation} \cite{GreveBlatter2009}, in the simplest isothermal and non-sliding case.   As shown in \cite{JouvetBueler2012}, with the standard exponent for the flow law of ice, this model is a VI for the transformed thickness $u=H^{8/3}$, similar to a $p$-Laplacian model, subject to the constraint $u\ge 0$.  Let $\cX = W^{1,4}(\Omega)$ and $\cK = \{u \in \cX\,:\,u\ge 0 \text{ and } u|_{\partial\Omega}=0\}$.  We seek $u\in\cK$ so that  FIXME CHECK DETAILS FROM \cite{JouvetBueler2012}
+\begin{equation}
+\int_\Omega \Gamma |\grad u - \Phi(u)|^2 (\grad u - \Phi(u)) \cdot \grad (v-u) \,dx \ge \int_\Omega a (v-u)\,dx \quad \text{ for all } v \in \cK. \label{eq:siavi}
+\end{equation}
+Here $\Gamma>0$ is a physical constant, essentially the ice softness.  The nonlinear operator here is
+\begin{equation}
+F(u)[v] = \Gamma |\grad u - \Phi(u)|^2 (\grad u - \Phi(u)) \cdot \grad v \,dx. \label{eq:siaoperator}
+\end{equation}
+
+Existence holds for \eqref{eq:siavi} \cite{JouvetBueler2012}, but uniqueness is open.  This theory, and also observations of ice sheets, shows that $|\grad H|$ is often unbounded as one approaches the free boundary from the icy side.
+
+FIXME OUTLINE PICARD ITERATING SOLVER FROM \cite{JouvetBueler2012}; SET UP PROBLEM WITH ELEVATION DEPENDENT SMB (SEE OLD MCCARTHY PROJECT?); APPLY VCD WITH GRADIENT-BASED ERROR ESTIMATOR IN THE INACTIVE SET; INTERLEAVE UNIFORM REFINEMENT STAGES IN INACTIVE SET
 
 
 \section{Discussion and conclusion} \label{sec:conclusion}
