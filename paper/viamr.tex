@@ -439,101 +439,19 @@ Our choice of timestep $\Delta t_i = \frac{1}{2}(\text{avg}(\text{diam}(\triangl
 	\end{algorithmic}
 	\end{algorithm}
 
-Figure 5.1 illustrates the VCES algorithm applied to a one-dimensional obstacle problem.
+Figure \ref{fig:vcdillustration} illustrates the VCD algorithm applied to a one-dimensional obstacle problem.
 
 \begin{figure}[ht]
   \captionsetup[subfigure]{justification=centering}
   \centering
   \null\hfill
   \begin{subfigure}[b]{.35\textwidth}
-    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
-      \clip(-2.25,-0.5) rectangle (2.25,1.25);
-      \draw (0.4,0.9) -- (0.8,0.6);
-      \draw (0.8,0.6) -- (1.2,0.4);
-      \draw (1.2,0.4) -- (1.6,0.2);
-      \draw (-0.4,0.9) -- (-0.8,0.6);
-      \draw (-0.8,0.6) -- (-1.2,0.4);
-      \draw (-1.2,0.4) -- (-1.6,0.2);
-      \draw (-1.6,0.2) -- (-2,0);
-      \draw (1.6,0.2) -- (2,0);
-      \draw (-0.4,0.9) -- (0,1);
-      \draw (0,1) -- (0.4,0.9);
-
-      % New red curve aligning with black nodes
-      \draw[red] (1.6,-.2) -- (2,-.6);
-      \draw[red] (1.2,0.2) -- (1.6,-.2);
-      \draw[red] (0.8,0.6) -- (1.2,0.2);
-      \draw[red] (0.4,0.9) -- (0.8,0.6);
-      \draw[red] (0,1) -- (0.4,0.9);
-      \draw[red] (-0.4,0.9) -- (0,1);
-      \draw[red] (-0.4,0.9) -- (-0.8,0.6);
-      \draw[red] (-0.8,0.6) -- (-1.2,.2);
-      \draw[red] (-1.2, .2) -- (-1.6,-.2);
-      \draw[red] (-1.6,-.2) -- (-2,-.6);
-
-      \begin{scriptsize}
-        \fill [color=black] (-0.4,0.9) circle (1.5pt);
-        \fill [color=black] (0.4,0.9) circle (1.5pt);
-        \fill [color=black] (0.8,0.6) circle (1.5pt);
-        \fill [color=black] (1.2,0.4) circle (1.5pt);
-        \fill [color=black] (1.6,0.2) circle (1.5pt);
-        \fill [color=black] (-0.8,0.6) circle (1.5pt);
-        \fill [color=black] (-1.2,0.4) circle (1.5pt);
-        \fill [color=black] (-1.6,0.2) circle (1.5pt);
-        \fill [color=black] (-2,0) circle (1.5pt);
-        \fill [color=black] (2,0) circle (1.5pt);
-        \fill [color=black] (0,1) circle (1.5pt);
-      \end{scriptsize}
-
-      % Add Axes
-      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
-      \draw[-] (0,-0.5) -- (0,1.45); % y-axis
-    \end{tikzpicture}
+    \input{tikz/vcd-a.tex}
     \caption{Iterate $u^k$(black) and obstacle $\psi$(red).}
   \end{subfigure}
   \hfill
   \begin{subfigure}[b]{.35\textwidth}
-    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
-      \clip(-2.25,-0.5) rectangle (2.25,1.25);
-      \draw (1.6,0) -- (2,0);
-      \draw (1.2,0) -- (1.6,0);
-      \draw (0.8,1) -- (1.2,0);
-      \draw (0.4,1) -- (0.8,1);
-      \draw (0,1) -- (0.4,1);
-      \draw (-0.4,1) -- (0,1);
-      \draw (-0.4,1) -- (-0.8,1);
-      \draw (-0.8,1) -- (-1.2,0);
-      \draw (-1.2,0) -- (-1.6,0);
-      \draw (-1.6,0) -- (-2,0);
-
-      % Add black vertices
-      \begin{scriptsize}
-        \fill [color=black] (1.6,0) circle (1.5pt);
-        \fill [color=black] (2,0) circle (1.5pt);
-        \fill [color=black] (1.2,0) circle (1.5pt);
-        \fill [color=black] (0.8,1) circle (1.5pt);
-        \fill [color=black] (1.2,0) circle (1.5pt);
-        \fill [color=black] (0.4,1) circle (1.5pt);
-        \fill [color=black] (0.8,1) circle (1.5pt);
-        \fill [color=black] (0,1) circle (1.5pt);
-        \fill [color=black] (0.4,1) circle (1.5pt);
-        \fill [color=black] (-0.4,1) circle (1.5pt);
-        \fill [color=black] (0,1) circle (1.5pt);
-        \fill [color=black] (-0.4,1) circle (1.5pt);
-        \fill [color=black] (-0.8,1) circle (1.5pt);
-        \fill [color=black] (-1.2,0) circle (1.5pt);
-        \fill [color=black] (-1.6,0) circle (1.5pt);
-        \fill [color=black] (-2,0) circle (1.5pt);
-      \end{scriptsize}
-      
-      % Add Axes
-      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
-      \draw[-] (0,-0.5) -- (0,1.45); % y-axis
-  
-      % Label y=1
-      \node at (-0.1,1.15) [left] {1};
-      \draw[dashed] (-0.1,1) -- (0,1);
-    \end{tikzpicture}
+    \input{tikz/vcd-b.tex}
     \caption{Nodal active set indicator $s_0$.}
   \end{subfigure}
   \null\hfill
@@ -542,103 +460,13 @@ Figure 5.1 illustrates the VCES algorithm applied to a one-dimensional obstacle 
   \null\hfill
   \begin{subfigure}[b]{.35\textwidth}
     \centering
-    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
-      \clip(-2.25,-0.5) rectangle (2.25,1.25);
-      
-      % Draw the smoothed curve
-      \draw (1.6, 0.1) -- (2,0);      
-      \draw (1.2, 0.33) -- (1.6, 0.1);
-      \draw (0.8, 0.66) -- (1.2, 0.33);
-      \draw (0.4, 0.95) -- (0.8, 0.66);
-      \draw (0,1) -- (0.4, 0.95);
-      \draw (-0.4, 0.95) -- (0,1);
-      \draw (-0.4, 0.95) -- (-0.8, 0.66);
-      \draw (-0.8, 0.66) -- (-1.2, 0.33);
-      \draw (-1.2, 0.33) -- (-1.6, 0.1);
-      \draw (-1.6, 0.1) -- (-2,0);
-  
-      % Add black vertices
-      \begin{scriptsize}
-        \fill [color=black] (1.6, 0.1) circle (1.5pt);
-        \fill [color=black] (2,0) circle (1.5pt);
-        \fill [color=black] (1.2, 0.33) circle (1.5pt);
-        \fill [color=black] (0.8, 0.66) circle (1.5pt);
-        \fill [color=black] (0.4, 0.95) circle (1.5pt);
-        \fill [color=black] (0,1) circle (1.5pt);
-        \fill [color=black] (-0.4, 0.95) circle (1.5pt);
-        \fill [color=black] (-0.8, 0.66) circle (1.5pt);
-        \fill [color=black] (-1.2, 0.33) circle (1.5pt);
-        \fill [color=black] (-1.6, 0.1) circle (1.5pt);
-        \fill [color=black] (-2,0) circle (1.5pt);
-      \end{scriptsize}
-  
-      % Add Axes
-      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
-      \draw[-] (0,-0.5) -- (0,1.45); % y-axis
-  
-      % Label y=1
-      \node at (-0.1,1.15) [left] {1};
-      \draw[dashed] (-0.1,1) -- (0,1);
-    \end{tikzpicture}
+    \input{tikz/vcd-c.tex}
     \caption{Smoothed $s_1$.}
   \end{subfigure}
   \hfill
   \begin{subfigure}[b]{.35\textwidth}
     \centering
-    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
-      \clip(-2.25,-0.5) rectangle (2.25,1.25);
-
-      % Draw horizontal segments at the heights of the calculated midpoints
-      \draw (-2, 0.05) -- (-1.6, 0.05);
-      \draw (-1.6, 0.215) -- (-1.2, 0.215);
-      \draw (-1.2, 0.495) -- (-0.8, 0.495);
-      \draw (-0.8, 0.75) -- (-0.4, 0.75);
-      \draw (-0.4, 0.9) -- (0, 0.9);
-      \draw (0, 0.9) -- (0.4, 0.9);
-      \draw (0.4, 0.75) -- (0.8, 0.75);
-      \draw (0.8, 0.495) -- (1.2, 0.495);
-      \draw (1.2, 0.215) -- (1.6, 0.215);
-      \draw (1.6, 0.05) -- (2, 0.05);
-
-      % Add black vertices
-      \begin{scriptsize}
-        \fill [color=black] (-2, 0.05) circle (1pt);
-        \fill [color=black] (-1.6, 0.05) circle (1pt);
-        \fill [color=black] (-1.6, 0.215) circle (1pt);
-        \fill [color=black] (-1.2, 0.215) circle (1pt);
-        \fill [color=black] (-1.2, 0.495) circle (1pt);
-        \fill [color=black] (-0.8, 0.495) circle (1pt);
-        \fill [color=black] (-0.8, 0.75) circle (1pt);
-        \fill [color=black] (-0.4, 0.75) circle (1pt);
-        \fill [color=black] (-0.4, 0.9) circle (1pt);
-        \fill [color=black] (0, 0.9) circle (1pt);
-        \fill [color=black] (0, 0.9) circle (1pt);
-        \fill [color=black] (0.4, 0.9) circle (1pt);
-        \fill [color=black] (0.4, 0.75) circle (1pt);
-        \fill [color=black] (0.8, 0.75) circle (1pt);
-        \fill [color=black] (0.8, 0.495) circle (1pt);
-        \fill [color=black] (1.2, 0.495) circle (1pt);
-        \fill [color=black] (1.2, 0.215) circle (1pt);
-        \fill [color=black] (1.6, 0.215) circle (1pt);
-        \fill [color=black] (1.6, 0.05) circle (1pt);
-        \fill [color=black] (2, 0.05) circle (1pt);
-      \end{scriptsize}
-
-      % Add Axes
-      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
-      \draw[-] (0,-0.5) -- (0,1.25); % y-axis
-
-      % Label y=1
-      \node at (-0.1, 1) [left] {1};
-      \draw[dashed] (-0.1, 1) -- (0, 1);
-
-      % Add red horizontal lines at heights 0.8 and 0.4
-      \draw[red] (-2.5, 0.8) -- (2.5, 0.85); % red line at y = 0.8
-      \draw[red] (-2.5, 0.4) -- (2.5, 0.38);  % red line at y = 0.4
-      % Label the heights of the red lines
-      \node[red] at (2, 1) {0.8};
-      \node[red] at (2, 0.2) {0.4};
-    \end{tikzpicture}
+    \input{tikz/vcd-d.tex}
     \caption{$interpolate(s_1,W)$. Threshold values in red.}
   \end{subfigure}
   \null\hfill
@@ -646,53 +474,12 @@ Figure 5.1 illustrates the VCES algorithm applied to a one-dimensional obstacle 
 
   \begin{subfigure}[b]{0.9\textwidth}
     \centering
-    \begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
-      \clip(-2.5,-0.5) rectangle (2.5,1.25);
-      
-      \draw (1.6,0) -- (2,0);      
-      \draw (1.2,0) -- (1.6,0);
-      \draw (0.8,1) -- (1.2,1);
-      \draw (0.4,1) -- (0.8,1);
-      \draw (0,0) -- (0.4,0);
-      \draw (-0.4,0) -- (0,0);
-      \draw (-0.4,1) -- (-0.8,1);
-      \draw (-0.8,1) -- (-1.2,1);
-      \draw (-1.2,0) -- (-1.6,0);
-      \draw (-1.6,0) -- (-2,0);
-  
-      % Add Axes
-      \draw[-] (-2.5,0) -- (2.5,0); % x-axis
-      \draw[-] (0,-0.5) -- (0,1.45); % y-axis
-  
-      % Label y=1
-      \node at (-0.1, 1) [left] {1};
-      \draw (-0.1, 1) -- (0, 1);
-  
-      % Add Nodes
-      \begin{scriptsize}
-      \fill [color=black] (1.6,0) circle (1.5pt);
-      \fill [color=black] (2,0) circle (1.5pt);      
-      \fill [color=black] (1.2,0) circle (1.5pt);
-      \fill [color=black] (0.8,1) circle (1.5pt);
-      \fill [color=black] (1.2,1) circle (1.5pt);
-      \fill [color=black] (0.4,1) circle (1.5pt);
-      \fill [color=black] (0.8,1) circle (1.5pt);
-      \fill [color=black] (0,0) circle (1.5pt);
-      \fill [color=black] (0.4,0) circle (1.5pt);
-      \fill [color=black] (-0.4,0) circle (1.5pt);
-      \fill [color=black] (0,0) circle (1.5pt);
-      \fill [color=black] (-0.4,1) circle (1.5pt);
-      \fill [color=black] (-0.8,1) circle (1.5pt);
-      \fill [color=black] (-1.2,1) circle (1.5pt);
-      \fill [color=black] (-1.2,0) circle (1.5pt);
-      \fill [color=black] (-1.6,0) circle (1.5pt);
-      \fill [color=black] (-2,0) circle (1.5pt);
-      \end{scriptsize}
-    \end{tikzpicture}
+    \input{tikz/vcd-e.tex}
     \caption{Refinement indicator function $I$.}
   \end{subfigure}
   \vspace*{.25cm}
-  \caption{Illustration of Variable Coefficient Diffusion algorithm.}
+  \caption{Illustration of VCD.}
+  \label{fig:vcdillustration}
 \end{figure}
 
 Support for unstructured meshes in Firedrake comes from the DMPlex class in PETSc, as developed by \cite{LangeKnepleyGorman2015}. DMPlex is a data management object which can store the topology (connectivity of mesh entities) and geometry (coordinates) of a discretization. In the DMPlex object every mesh entity is assigned a unique index. The connectivity of a mesh is stored as a layered directed acyclic graph (DAG) in which a "covering" relation specifies the edges of the graph. For example, for a tetrahedral element in a 3d mesh, a face is covered by 3 edges and a tetrahedral cell is covered by 4 faces. Each layer represents a class of mesh entity i.e vertices, edges, etc. Below is an example of how a single tetrahedral cell is represented by DMPlex.
@@ -736,18 +523,12 @@ As show in Algorithim 3, for a border element set $B$, defined below in (5.5) we
   \end{algorithmic}
   \end{algorithm}
 
-A simple example using UDO is shown.
-
-%\inputminted{python}{short.py}
-
 Using thresholding $u - \psi < 0.001$ to determine the active set, running this example generates the following Figure.
 
-\begin{figure}[H]
+\begin{figure}[ht]
 FIXME
 \caption{Mesh (left) generated from the spiral problem, with $N=2.3\times 10^3$ elements, and the approximated active set (right).}
 \end{figure}
-
-FIXME USE minted TO SHOW COMPLETE CODE FOR EXAMPLE 1 FROM \cite{AinsworthOdenLee1993}, WITH FIGURE SHOWING COMPUTED ACTIVE SET AND VCD MARKED ELEMENTS ON ORIGINAL MESH, THEN REFINED MESH AND NEW COMPUTED ACTIVE SET, RELATIVE TO EXACT
 
 We end this section with a minimal Python example code, Figure \ref{fig:exampleAOL}.  This solves Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution, on a coarse mesh and then applies VCD marking and refinement.  The initial mesh, marked elements near the free boundary, and refined mesh are shown in Figure \ref{fig:resultAOL}.
 

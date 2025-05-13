@@ -1,0 +1,54 @@
+\begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
+    \clip(-2.25,-0.5) rectangle (2.25,1.25);
+
+    % Draw horizontal segments at the heights of the calculated midpoints
+    \draw (-2, 0.05) -- (-1.6, 0.05);
+    \draw (-1.6, 0.215) -- (-1.2, 0.215);
+    \draw (-1.2, 0.495) -- (-0.8, 0.495);
+    \draw (-0.8, 0.75) -- (-0.4, 0.75);
+    \draw (-0.4, 0.9) -- (0, 0.9);
+    \draw (0, 0.9) -- (0.4, 0.9);
+    \draw (0.4, 0.75) -- (0.8, 0.75);
+    \draw (0.8, 0.495) -- (1.2, 0.495);
+    \draw (1.2, 0.215) -- (1.6, 0.215);
+    \draw (1.6, 0.05) -- (2, 0.05);
+
+    % Add black vertices
+    \begin{scriptsize}
+      \fill [color=black] (-2, 0.05) circle (1pt);
+      \fill [color=black] (-1.6, 0.05) circle (1pt);
+      \fill [color=black] (-1.6, 0.215) circle (1pt);
+      \fill [color=black] (-1.2, 0.215) circle (1pt);
+      \fill [color=black] (-1.2, 0.495) circle (1pt);
+      \fill [color=black] (-0.8, 0.495) circle (1pt);
+      \fill [color=black] (-0.8, 0.75) circle (1pt);
+      \fill [color=black] (-0.4, 0.75) circle (1pt);
+      \fill [color=black] (-0.4, 0.9) circle (1pt);
+      \fill [color=black] (0, 0.9) circle (1pt);
+      \fill [color=black] (0, 0.9) circle (1pt);
+      \fill [color=black] (0.4, 0.9) circle (1pt);
+      \fill [color=black] (0.4, 0.75) circle (1pt);
+      \fill [color=black] (0.8, 0.75) circle (1pt);
+      \fill [color=black] (0.8, 0.495) circle (1pt);
+      \fill [color=black] (1.2, 0.495) circle (1pt);
+      \fill [color=black] (1.2, 0.215) circle (1pt);
+      \fill [color=black] (1.6, 0.215) circle (1pt);
+      \fill [color=black] (1.6, 0.05) circle (1pt);
+      \fill [color=black] (2, 0.05) circle (1pt);
+    \end{scriptsize}
+
+    % Add Axes
+    \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+    \draw[-] (0,-0.5) -- (0,1.25); % y-axis
+
+    % Label y=1
+    \node at (-0.1, 1) [left] {1};
+    \draw[dashed] (-0.1, 1) -- (0, 1);
+
+    % Add red horizontal lines at heights 0.8 and 0.4
+    \draw[red] (-2.5, 0.8) -- (2.5, 0.85); % red line at y = 0.8
+    \draw[red] (-2.5, 0.4) -- (2.5, 0.38);  % red line at y = 0.4
+    % Label the heights of the red lines
+    \node[red] at (2, 1) {0.8};
+    \node[red] at (2, 0.2) {0.4};
+  \end{tikzpicture}

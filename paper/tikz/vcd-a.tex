@@ -1,0 +1,44 @@
+\begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
+    \clip(-2.25,-0.5) rectangle (2.25,1.25);
+    \draw (0.4,0.9) -- (0.8,0.6);
+    \draw (0.8,0.6) -- (1.2,0.4);
+    \draw (1.2,0.4) -- (1.6,0.2);
+    \draw (-0.4,0.9) -- (-0.8,0.6);
+    \draw (-0.8,0.6) -- (-1.2,0.4);
+    \draw (-1.2,0.4) -- (-1.6,0.2);
+    \draw (-1.6,0.2) -- (-2,0);
+    \draw (1.6,0.2) -- (2,0);
+    \draw (-0.4,0.9) -- (0,1);
+    \draw (0,1) -- (0.4,0.9);
+
+    % New red curve aligning with black nodes
+    \draw[red] (1.6,-.2) -- (2,-.6);
+    \draw[red] (1.2,0.2) -- (1.6,-.2);
+    \draw[red] (0.8,0.6) -- (1.2,0.2);
+    \draw[red] (0.4,0.9) -- (0.8,0.6);
+    \draw[red] (0,1) -- (0.4,0.9);
+    \draw[red] (-0.4,0.9) -- (0,1);
+    \draw[red] (-0.4,0.9) -- (-0.8,0.6);
+    \draw[red] (-0.8,0.6) -- (-1.2,.2);
+    \draw[red] (-1.2, .2) -- (-1.6,-.2);
+    \draw[red] (-1.6,-.2) -- (-2,-.6);
+
+    \begin{scriptsize}
+      \fill [color=black] (-0.4,0.9) circle (1.5pt);
+      \fill [color=black] (0.4,0.9) circle (1.5pt);
+      \fill [color=black] (0.8,0.6) circle (1.5pt);
+      \fill [color=black] (1.2,0.4) circle (1.5pt);
+      \fill [color=black] (1.6,0.2) circle (1.5pt);
+      \fill [color=black] (-0.8,0.6) circle (1.5pt);
+      \fill [color=black] (-1.2,0.4) circle (1.5pt);
+      \fill [color=black] (-1.6,0.2) circle (1.5pt);
+      \fill [color=black] (-2,0) circle (1.5pt);
+      \fill [color=black] (2,0) circle (1.5pt);
+      \fill [color=black] (0,1) circle (1.5pt);
+    \end{scriptsize}
+
+    % Add Axes
+    \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+    \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+  \end{tikzpicture}
+  

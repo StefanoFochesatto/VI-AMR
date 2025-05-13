@@ -1,0 +1,43 @@
+\begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.5]
+    \clip(-2.5,-0.5) rectangle (2.5,1.25);
+    
+    \draw (1.6,0) -- (2,0);      
+    \draw (1.2,0) -- (1.6,0);
+    \draw (0.8,1) -- (1.2,1);
+    \draw (0.4,1) -- (0.8,1);
+    \draw (0,0) -- (0.4,0);
+    \draw (-0.4,0) -- (0,0);
+    \draw (-0.4,1) -- (-0.8,1);
+    \draw (-0.8,1) -- (-1.2,1);
+    \draw (-1.2,0) -- (-1.6,0);
+    \draw (-1.6,0) -- (-2,0);
+
+    % Add Axes
+    \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+    \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+
+    % Label y=1
+    \node at (-0.1, 1) [left] {1};
+    \draw (-0.1, 1) -- (0, 1);
+
+    % Add Nodes
+    \begin{scriptsize}
+    \fill [color=black] (1.6,0) circle (1.5pt);
+    \fill [color=black] (2,0) circle (1.5pt);      
+    \fill [color=black] (1.2,0) circle (1.5pt);
+    \fill [color=black] (0.8,1) circle (1.5pt);
+    \fill [color=black] (1.2,1) circle (1.5pt);
+    \fill [color=black] (0.4,1) circle (1.5pt);
+    \fill [color=black] (0.8,1) circle (1.5pt);
+    \fill [color=black] (0,0) circle (1.5pt);
+    \fill [color=black] (0.4,0) circle (1.5pt);
+    \fill [color=black] (-0.4,0) circle (1.5pt);
+    \fill [color=black] (0,0) circle (1.5pt);
+    \fill [color=black] (-0.4,1) circle (1.5pt);
+    \fill [color=black] (-0.8,1) circle (1.5pt);
+    \fill [color=black] (-1.2,1) circle (1.5pt);
+    \fill [color=black] (-1.2,0) circle (1.5pt);
+    \fill [color=black] (-1.6,0) circle (1.5pt);
+    \fill [color=black] (-2,0) circle (1.5pt);
+    \end{scriptsize}
+  \end{tikzpicture}
