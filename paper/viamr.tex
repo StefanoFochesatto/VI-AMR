@@ -331,7 +331,7 @@ This is unrelated to the FE solution $u_h$.  If $v_h < \psi$ is locally possible
 
 Recall that for a solution to VI \eqref{eq:vi}, the PDE which applies in the inactive set $I_u$ is called the \emph{interior condition} \cite{KinderlehrerStampacchia1980}.  In Section \ref{sec:results} we will demonstrate strategies which exploit an interior-condition \emph{a posteriori} error indicator if it is available.  Such an error indicator is well-known for the classical Poisson problem.
 
-FIXME: EVEN SIMPLER GRADIENT-BASED ESTIMATOR, BECAUSE THAT CAN BE USED IN Section \ref{sec:app}
+FIXME: EVEN SIMPLER GRADIENT-BASED ESTIMATOR \cite[Chapter 4]{AinsworthOden2000}, BECAUSE THAT CAN BE USED IN Section \ref{sec:app}
 
 \begin{example}  \label{example:br}  Suppose $u \in H^1(\Omega)$ solves the weak form PDE $a(u,v) = \int_\Omega f v\,dx$ for all $v \in H^1_0(\Omega)$, with $u=g$ on $\partial \Omega$, for the bilinear form $a(u,v)=\int_\Omega \grad u\cdot \grad v\,dx$.  Suppose $u_h$ from $P_1$ solves the corresponding finite-dimensional weak form.  For each element $K \in \cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $\gamma$, and any vector field $Z$ with traces $Z_L,Z_K$ on $\gamma$, let $\left\llbracket Z \cdot n \right\rrbracket = Z_L \cdot n_L + Z_K \cdot n_K$ be the jump of $Z$ on $\gamma$.  Given the residual $r(v)=-\nabla^2 v - f$ defined within the elements, the Babu\v{s}ka--Rheinboldt (BR) \cite{BabuskaRheinboldt1979} error estimator is
 \begin{equation} \label{eq:brestimator}
