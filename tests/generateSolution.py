@@ -37,7 +37,7 @@ for i in range(args.refinements):
     PETSc.Sys.Print("problem solved")
 
     PETSc.Sys.Print("UDO marking")
-    mark = z.udomarkParallel(mesh, u, lb, n=1)
+    mark = z.udomark(mesh, u, lb, n=1)
     PETSc.Sys.Print("UDO marked")
     
     if i < args.refinements - 1:

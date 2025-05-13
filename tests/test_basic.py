@@ -115,7 +115,7 @@ def test_refine_udo_parallelUDO():
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     # VTKFile("result_refine_0.pvd").write(u)
-    mark2 = amr.udomarkParallel(mesh1, u, psi)
+    mark2 = amr.udomark(mesh1, u, psi)
     rmesh2 = mesh2.refine_marked_elements(mark2)  # netgen's refine method
     assert amr.jaccard(mark1, mark2) == 1.0
     r1CG1, _ = amr.spaces(rmesh1)
