@@ -238,7 +238,7 @@ def test_symmetry_jaccard():
 def test_overlapping_and_nonoverlapping_hausdorff():
     # to have free boundaries line up with conditional statements
     mesh = RectangleMesh(10, 10, 1, 1)
-    amr = VIAMR()
+    amr = VIAMR(debug=True)
     CG1, _ = amr.spaces(mesh)
     x, y = SpatialCoordinate(mesh)
     sol1 = Function(CG1).interpolate(Constant(1.0))
@@ -294,7 +294,7 @@ def AVOID_test_parallel_udo():
             parallelMark = afile.load_function(parallelMesh, "parallelMark")
 
         # Compare overlap, perfect overlap will have Jaccard index 1.0
-        assert VIAMR().jaccard(serialMark, parallelMark) == 1.0
+        assert VIAMR(debug=True).jaccard(serialMark, parallelMark) == 1.0
     finally:
         # Clean up the generated files
         for filename in ["serialUDO.h5", "parallelUDO.h5"]:
