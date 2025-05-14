@@ -13,11 +13,11 @@ from netgen.occ import *
 
 # This issue about refinement along the surface will be fixed in the next firedrake release. Install the latest ngsPETSc changes for now.
 
-refinements = 3  # serial run will be many minutes for this value
+refinements = 3
 
 # initial mesh
 box = Box((-1, -1, -1), (1, 1, 1))
-ngmesh = OCCGeometry(box, dim=3).GenerateMesh(maxh=0.2)
+ngmesh = OCCGeometry(box, dim=3).GenerateMesh(maxh=0.4)
 mesh = Mesh(
     ngmesh,
     distribution_parameters={
