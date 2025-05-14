@@ -9,6 +9,7 @@ class DataNetCDF():   # FIXME should it subclass something?
         import netCDF4
         data = netCDF4.Dataset(filename)
         data.set_auto_mask(False)  # otherwise irritating masked arrays
+        self.vname = vname
         self.v = data.variables[vname][0,:,:].T  # transpose immediately
         self.x = data.variables[xname]
         self.y = data.variables[yname]
@@ -33,6 +34,7 @@ class DataNetCDF():   # FIXME should it subclass something?
         import matplotlib.pyplot as plt
         plt.pcolormesh(self.x, self.y, self.v.T, shading='nearest')
         plt.axis('equal')
+        plt.title(f'{self.vname} (CLOSE FIGURE TO CONTINUE)')
         plt.show()
 
 
