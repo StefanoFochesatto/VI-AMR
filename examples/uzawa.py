@@ -86,7 +86,7 @@ for i in range(refinements + 1):
         break
 
     # apply VCD AMR, marking inactive by B&R indicator
-    mark = amr.vcdmark(mesh, u, psi)
+    mark = amr.vcdmark(u, psi)
     residual = -div(grad(u))
     (imark, _, _) = amr.brinactivemark(u, psi, residual)
     mark = amr.unionmarks(mark, imark)

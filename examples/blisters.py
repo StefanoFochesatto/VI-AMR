@@ -110,7 +110,7 @@ for i in range(refinements + 1):
     # apply VCD AMR, optionally marking all inactive or by B&R indicator
     if i == refinements:
         break
-    mark = amr.vcdmark(mesh, u, lb, bracket=[0.15, 0.95])
+    mark = amr.vcdmark(u, lb, bracket=[0.15, 0.95])
     if refine_inactive or refine_br:
         if refine_br:
             residual = -div(grad(u)) - fsource

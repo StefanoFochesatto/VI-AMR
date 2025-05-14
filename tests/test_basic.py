@@ -52,14 +52,14 @@ def test_mark_none():
     CG1, _ = amr.spaces(mesh)
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
-    mark = amr.udomark(mesh, psi, psi)  # all active
+    mark = amr.udomark(psi, psi)  # all active
     assert norm(mark, "L1") == 0.0
-    mark = amr.vcdmark(mesh, psi, psi)  # all active
+    mark = amr.vcdmark(psi, psi)  # all active
     assert norm(mark, "L1") == 0.0
     lift = Function(CG1).interpolate(psi + 1.0)
-    mark = amr.udomark(mesh, lift, psi)  # all inactive
+    mark = amr.udomark(lift, psi)  # all inactive
     assert norm(mark, "L1") == 0.0
-    mark = amr.vcdmark(mesh, lift, psi)  # all inactive
+    mark = amr.vcdmark(lift, psi)  # all inactive
     assert norm(mark, "L1") == 0.0
 
 
@@ -87,7 +87,7 @@ def test_refine_udo():
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     # VTKFile(f"result_refine_0.pvd").write(u)
-    mark = amr.udomark(mesh, u, psi)
+    mark = amr.udomark(u, psi)
     rmesh = mesh.refine_marked_elements(mark)  # netgen's refine method
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 61
@@ -106,7 +106,7 @@ def test_refine_udo_parallelUDO():
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     # VTKFile(f"result_refine_0.pvd").write(u)
-    mark1 = amr.udomark(mesh1, u, psi)
+    mark1 = amr.udomark(u, psi)
     rmesh1 = mesh1.refine_marked_elements(mark1)  # netgen's refine method
     mesh2 = get_netgen_mesh(TriHeight=0.1)
     CG1, _ = amr.spaces(mesh2)
@@ -115,7 +115,7 @@ def test_refine_udo_parallelUDO():
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     # VTKFile("result_refine_0.pvd").write(u)
-    mark2 = amr.udomarkParallel(mesh1, u, psi)
+    mark2 = amr.udomarkParallel(u, psi)
     rmesh2 = mesh2.refine_marked_elements(mark2)  # netgen's refine method
     assert amr.jaccard(mark1, mark2) == 1.0
     r1CG1, _ = amr.spaces(rmesh1)
@@ -132,7 +132,7 @@ def test_refine_vcd():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = amr.vcdmark(mesh, u, psi)
+    mark = amr.vcdmark(u, psi)
     rmesh = mesh.refine_marked_elements(mark)  # netgen's refine method
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 49
@@ -150,7 +150,7 @@ def test_petsc4py_refine_vcd():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = amr.vcdmark(mesh, u, psi)
+    mark = amr.vcdmark(u, psi)
     rmesh = amr.refinemarkedelements(mesh, mark)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 49
@@ -170,7 +170,7 @@ def test_refine_vcd_petsc4py_firedrake():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = amr.vcdmark(mesh, u, psi)
+    mark = amr.vcdmark(u, psi)
     rmesh = amr.refinemarkedelements(mesh, mark)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 73
