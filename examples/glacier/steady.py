@@ -22,7 +22,13 @@ Examples:
 
 High-resolution example; achieved 30 m resolution along ice sheet margin:
   mpiexec -n 20 python3 steady.py -prob range -m 50 -refine 10 -opvd result_range.pvd
-(Large memory needed ...)  Note L=1800 km so h_min / L ~ 1e-5.  However, such runs reveal less than perfect refinement right along the free boundary at very high resolution.
+(Large memory needed ...)  Note L=1800 km so h_min / L ~ 1e-5.  However,
+such runs reveal less than perfect refinement right along the free boundary
+at very high resolution.
+
+Actually the -newton solve works decently too, but seems to need a very
+coarse initial grid:
+  mpiexec -n 20 python3 steady.py -prob range -newton -m 5 -refine 10 -rmethod alternate -opvd result_rangenewton.pvd
 """, formatter_class=RawTextHelpFormatter)
 parser.add_argument('-data', metavar='FILE', type=str, default='',
                     help='read "topg" variable from NetCDF file (.nc)')
