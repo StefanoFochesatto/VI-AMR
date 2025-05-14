@@ -106,46 +106,6 @@ class VIAMR(OptionsManager):
             (mark1 + mark2) - (mark1 * mark2)
         )
 
-    def _bfsneighbors(self, mesh, border, levels):
-        """Element-wise multi-neighbor lookup using breadth-first search."""
-
-        # build dictionary which maps each vertex in the mesh
-        # to the cells that are incident to it
-        vertex_to_cells = {}
-        closure = mesh.topology.cell_closure  # cell to vertex connectivity
-        # loop over all cells to populate the dictionary
-        for i in range(mesh.num_cells()):
-            # first three entries correspond to the vertices
-            for vertex in closure[i][:3]:
-                if vertex not in vertex_to_cells:
-                    vertex_to_cells[vertex] = []
-                vertex_to_cells[vertex].append(i)
-
-        # loop over all cells to mark neighbors, and store the result in DG0
-        result = Function(border.function_space(), name="nNeighbors")
-        for i in range(mesh.num_cells()):
-            if border.dat.data[i] == 1.0:
-                # use BFS to find all cells within the specified number of levels
-                queue = deque([(i, 0)])
-                visited = set()
-                while queue:
-                    cell, level = queue.popleft()
-                    if cell not in visited and level <= levels:
-                        visited.add(cell)
-                        result.dat.data[cell] = 1
-                        for vertex in closure[cell][:3]:
-                            for neighbor in vertex_to_cells[vertex]:
-                                queue.append((neighbor, level + 1))
-        return result
-
-    def udomarkOLD(self, mesh, u, lb, n=2):
-        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm."""
-        if mesh.comm.size > 1:
-            raise ValueError("udomark() is not valid in parallel")
-        # generate element-wise indicator for border set
-        elemborder = self.elemborder(self.nodalactive(u, lb))
-        # _bfs_neighbors() constructs N^n(B) indicator
-        return self._bfsneighbors(mesh, elemborder, n)
 
     def udomark(self, mesh, u, lb, n=2):
         """Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements"""
@@ -329,7 +289,7 @@ class VIAMR(OptionsManager):
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         with ieta.dat.vec_ro as ieta_:
             emax = ieta_.max()[1]
-            # eav = ieta_.sum() / ieta_.getSize()
+            # eav = ieta_.sum() / ieta_.getSize()b
             total_error_est = sqrt(ieta_.dot(ieta_))
         # print(f"eav = {eav}  emax = {emax}")
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))

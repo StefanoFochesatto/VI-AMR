@@ -6,6 +6,57 @@ import subprocess
 import os
 import pathlib
 
+class VIAMRRegression(VIAMR):
+    def __init__(self, value, extra):
+        super().__init__(value)
+            
+    def _bfsneighbors(self, mesh, border, levels):
+        """Element-wise multi-neighbor lookup using breadth-first search."""
+
+        # build dictionary which maps each vertex in the mesh
+        # to the cells that are incident to it
+        vertex_to_cells = {}
+        closure = mesh.topology.cell_closure  # cell to vertex connectivity
+        # loop over all cells to populate the dictionary
+        for i in range(mesh.num_cells()):
+            # first three entries correspond to the vertices
+            for vertex in closure[i][:3]:
+                if vertex not in vertex_to_cells:
+                    vertex_to_cells[vertex] = []
+                vertex_to_cells[vertex].append(i)
+
+        # loop over all cells to mark neighbors, and store the result in DG0
+        result = Function(border.function_space(), name="nNeighbors")
+        for i in range(mesh.num_cells()):
+            if border.dat.data[i] == 1.0:
+                # use BFS to find all cells within the specified number of levels
+                queue = deque([(i, 0)])
+                visited = set()
+                while queue:
+                    cell, level = queue.popleft()
+                    if cell not in visited and level <= levels:
+                        visited.add(cell)
+                        result.dat.data[cell] = 1
+                        for vertex in closure[cell][:3]:
+                            for neighbor in vertex_to_cells[vertex]:
+                                queue.append((neighbor, level + 1))
+        return result
+    
+    def udomarkOLD(self, mesh, u, lb, n=2):
+        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm."""
+        if mesh.comm.size > 1:
+            raise ValueError("udomark() is not valid in parallel")
+        # generate element-wise indicator for border set
+        elemborder = self.elemborder(self.nodalactive(u, lb))
+        # _bfs_neighbors() constructs N^n(B) indicator
+        return self._bfsneighbors(mesh, elemborder, n)
+
+
+
+# for parallel testing
+from mpi4py import MPI
+from pytest_mpi.parallel_assert import parallel_assert
+
 
 def get_netgen_mesh(TriHeight=0.4, width=2):
     import netgen
@@ -248,6 +299,43 @@ def test_overlapping_and_nonoverlapping_hausdorff():
     lb2 = Function(CG1).interpolate(conditional(x <= 0.4, 1, 0))
     _, E2 = amr.freeboundarygraph(sol1, lb2)
     assert amr.hausdorff(E1, E2) == 0.2
+    
+    
+    
+@pytest.mark.parallel(2)
+def test_parallel_assert_all_tasks():
+    comm = MPI.COMM_WORLD
+    expression = comm.rank < comm.size // 2  # will be True on some tasks but False on others
+
+    try:
+        parallel_assert(expression, 'Failed')
+        raised_exception = False
+    except AssertionError:
+        raised_exception = True
+
+    assert raised_exception, f'No exception raised on rank {comm.rank}!'
+
+
+# We will move the old implmenetation of udo in here as a subclass, define a function which checkpoints a spiral problem marking
+# in parallel and in serial. These functions will always assert true and will need to be run in 
+# we will write a test which reads in both checkpoint files and compares with jaccard. 
+
+def test_parallel_udo():
+    from viamr import SpiralObstacleProblem
+    from firedrake.petsc import PETSc
+    
+    problem_instance = SpiralObstacleProblem(TriHeight=.1)
+    mesh = problem_instance.setInitialMesh()
+    u = None
+    z = VIAMR()
+    u, lb = problem_instance.solveProblem(mesh, u)    
+    mark = z.udomark(mesh, u, lb, n=1)
+    
+    
+
+
+
+
 
 
 def AVOID_test_parallel_udo():
@@ -318,3 +406,4 @@ if __name__ == "__main__":
     test_refine_udo_parallelUDO()
     test_petsc4py_refine_vcd()
     test_refine_vcd_petsc4py_firedrake()
+    test_parallel_assert_participating_tasks_only()
