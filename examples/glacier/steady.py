@@ -29,6 +29,9 @@ at very high resolution.
 Actually the -newton solve works decently too, but seems to need a very
 coarse initial grid:
   mpiexec -n 20 python3 steady.py -prob range -newton -m 5 -refine 10 -rmethod alternate -opvd result_rangenewton.pvd
+
+I don't yet trust this kind of -data run, but it converges o.k.:
+  python3 steady.py -data eastgr.nc -opvd result_data.pvd -refine 5 -rmethod alternate -freezecount 24
 """, formatter_class=RawTextHelpFormatter)
 parser.add_argument('-data', metavar='FILE', type=str, default='',
                     help='read "topg" variable from NetCDF file (.nc)')
@@ -68,12 +71,13 @@ assert args.refine >= 0, 'cannot refine a negative number of times'
 # read data for bed topography into numpy array
 if args.data:
     print('ignoring -prob choice ...')
+    args.prob = None
     print(f'reading topg from NetCDF file {args.data} with native data grid:')
     from datanetcdf import DataNetCDF
     topg_nc = DataNetCDF(args.data, 'topg')
     topg_nc.preview()
     topg_nc.describe_grid(print=print, indent=4)
-    print(f'putting topg onto Firedrake structured data mesh matching native grid ...')
+    print(f'putting topg onto matching Firedrake structured data mesh ...')
     topg, nearb = topg_nc.function(delnear=100.0e3)
 else:
     print(f'generating synthetic {args.m} x {args.m} initial mesh for problem {args.prob} ...')
@@ -156,6 +160,7 @@ for i in range(args.refine + 1):
     V = FunctionSpace(mesh, "CG", 1)
 
     # bedrock and accumulation
+    x = SpatialCoordinate(mesh)
     if args.data:
         b = Function(V).project(topg) # cross-mesh projection from data mesh
         # SMB from linear model based on lapse rate; from linearizing dome case
@@ -164,7 +169,6 @@ for i in range(args.refine + 1):
         a_lapse = c0 + c1 * topg
         a = Function(V).interpolate(conditional(nearb > 0.0, -1.0e-6, a_lapse)) # also cross-mesh re nearb
     else:
-        x = SpatialCoordinate(mesh)
         if args.prob == 'dome':
             b = Function(V).interpolate(Constant(0.0))
             sexact = Function(V).interpolate(dome_exact(x))
