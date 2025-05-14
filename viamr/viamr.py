@@ -289,6 +289,36 @@ class VIAMR(OptionsManager):
             )
             return mark
 
+    def gradrecinactivemark(self, uh, lb, theta=0.5):
+        """Return marking within the computed inactive set by using an
+        a posteriori gradient-recovery error indicator.  See Chapter 4 of
+          M. Ainsworth & J. T. Oden (2000).  A Posteriori Error Estimation in
+          Finite Element Analysis, John Wiley & Sons, Inc., New York."""
+        mesh = uh.function_space().mesh()
+        v = CellVolume(mesh)
+        # recover a CG1 gradient FIXME is this the preferred way?
+        CG1vec = VectorFunctionSpace(mesh, "CG", 1)
+        gradrecu = Function(CG1vec).project(grad(uh))
+        # cell-wise error estimator
+        _, DG0 = self.spaces(mesh)
+        eta_sq = Function(DG0)
+        w = TestFunction(DG0)
+        G = (
+            inner(eta_sq / v, w) * dx
+            - inner(inner(gradrecu - grad(uh), gradrecu - grad(uh)), w) * dx
+        )
+        # each cell needs an independent 1x1 solve, so Jacobi is an exact preconditioner
+        sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
+        solve(G == 0, eta_sq, solver_parameters=sp)
+        eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
+        # generate union of inactive mark and BR mark
+        imark = self.eleminactive(uh, lb)
+        ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
+        with ieta.dat.vec_ro as ieta_:
+            emax = ieta_.max()[1]
+        mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
+        return (mark, eta)
+
     def brinactivemark(self, uh, lb, res_ufl, theta=0.5):
         """Return marking within the computed inactive set by using the
         a posteriori Babuška-Rheinboldt residual error indicator.  The BR
@@ -316,7 +346,7 @@ class VIAMR(OptionsManager):
         w = TestFunction(DG0)
         G = (
             inner(eta_sq / v, w) * dx
-            - inner(h ** 2 * res_ufl ** 2, w) * dx
+            - inner(h**2 * res_ufl**2, w) * dx
             - inner(h("+") / 2 * jump(grad(uh), n) ** 2, w("+")) * dS
             - inner(h("-") / 2 * jump(grad(uh), n) ** 2, w("-")) * dS
         )
@@ -438,9 +468,9 @@ class VIAMR(OptionsManager):
             opts["dm_plex_transform_type"] = "refine_regular"
         else:
             opts["dm_plex_transform_active"] = "refinesbr"
-            opts[
-                "dm_plex_transform_type"
-            ] = "refine_sbr"  # <- skeleton based refinement is what netgen does.
+            opts["dm_plex_transform_type"] = (
+                "refine_sbr"  # <- skeleton based refinement is what netgen does.
+            )
 
         # Create a DMPlexTransform object to apply the refinement
         dmTransform = PETSc.DMPlexTransform().create(comm=mesh.comm)
