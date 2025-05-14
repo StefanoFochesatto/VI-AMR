@@ -21,6 +21,9 @@ and vinewtonrsls + mumps for a given tilt.
 Examples:
   python3 steady.py -opvd dome.pvd
   mpiexec -n 4 python3 steady.py -refine 4 -prob range -opvd range.pvd
+
+High-resolution example; achieved 63 m resolution along ice sheet margin:
+  mpiexec -n 20 python3 steady.py -prob range -m 50 -refine 9 -freezecount 25 -s_snes_vi_monitor -opvd result_range.pvd
 """, formatter_class=RawTextHelpFormatter)
 parser.add_argument('-data', metavar='FILE', type=str, default='',
                     help='read "topg" variable from NetCDF file (.nc)')
@@ -123,7 +126,11 @@ for i in range(args.refine + 1):
             # generate active set indicator so we can evaluate Jaccard index
             eactive = amr.elemactive(u, lb)
         print('refining free boundary (VCD)', end='')
-        mark = amr.vcdmark(mesh, u, lb, bracket=[0.2, 0.9])
+        # expand bracket vs default [0.2, 0.8], to provide high-res
+        #   for ice near margin (0.8 -> 0.9) and to then accomodate
+        #   advance into ice-free areas because the margin is resolved
+        #   (0.2 -> 0.1)
+        mark = amr.vcdmark(mesh, u, lb, bracket=[0.1, 0.9])
         if args.rmethod in ['always', 'alternate']:
             if args.rmethod == 'alternate' and i % 2 == 0:
                 print(' and uniformly in inactive ...')
