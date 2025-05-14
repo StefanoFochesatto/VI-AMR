@@ -35,8 +35,12 @@ class VIAMR(OptionsManager):
         CG1, DG0 = self.spaces(mesh, p=1)
         nvertices = CG1.dim()
         nelements = DG0.dim()
-        hmin = float(mesh.comm.allreduce(min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
-        hmax = float(mesh.comm.allreduce(max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
+        mymin, mymax = PETSc.INFINITY, PETSc.NINFINITY
+        if len(mesh.cell_sizes.dat.data_ro) > 0:
+            mymin = min(mesh.cell_sizes.dat.data_ro)
+            mymax = max(mesh.cell_sizes.dat.data_ro)
+        hmin = float(mesh.comm.allreduce(mymin, op=MPI.MIN))
+        hmax = float(mesh.comm.allreduce(mymax, op=MPI.MAX))
         return nvertices, nelements, hmin, hmax
 
     def meshreport(self, mesh, indent=2):
@@ -53,7 +57,8 @@ class VIAMR(OptionsManager):
         Applies to unilateral obstacle problems with u >= lb.  The active
         set is {x : u(x) == lb(x)}, within activetol.  Active nodes get value 1.0."""
         if self.debug:
-            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
+            if len(u.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
+                assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         z = Function(u.function_space(), name="Nodal Active")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 1.0, 0.0))
         return z
@@ -63,7 +68,8 @@ class VIAMR(OptionsManager):
         active if the DG0 degree of freedom for that element is active, within
         activetol.  Active elements get value 1.0."""
         if self.debug:
-            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
+            if len(u.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
+                assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
         z = Function(DG0, name="Element Active")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 1.0, 0.0))
@@ -74,7 +80,8 @@ class VIAMR(OptionsManager):
         inactive if the DG0 degree of freedom for that element is inactive, within
         activetol.  Inactive elements get value 1.0."""
         if self.debug:
-            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
+            if len(u.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
+                assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
         _, DG0 = self.spaces(u.function_space().mesh())
         z = Function(DG0, name="Element Inactive")
         z.interpolate(conditional(abs(u - lb) < self.activetol, 0.0, 1.0))
@@ -88,8 +95,9 @@ class VIAMR(OptionsManager):
           0 < nodalactive(x_K) < 1
         at x_K which is the DG0 dof for element K."""
         if self.debug:
-            assert min(nodalactive.dat.data_ro) >= 0.0
-            assert max(nodalactive.dat.data_ro) <= 1.0
+            if len(nodalactive.dat.data_ro) > 0:
+                assert min(nodalactive.dat.data_ro) >= 0.0
+                assert max(nodalactive.dat.data_ro) <= 1.0
         _, DG0 = self.spaces(nodalactive.function_space().mesh())
         z = Function(DG0, name="Element Border")
         z.interpolate(
@@ -519,8 +527,9 @@ class VIAMR(OptionsManager):
             raise ValueError("jaccard() is not valid in parallel")
         if self.debug:
             for a in [active1, active2]:
-                assert min(a.dat.data_ro) >= 0.0
-                assert max(a.dat.data_ro) <= 1.0
+                if len(a.dat.data_ro) > 0:
+                    assert min(a.dat.data_ro) >= 0.0
+                    assert max(a.dat.data_ro) <= 1.0
         mesh1 = active1.function_space().mesh()
         proj2 = Function(active1.function_space()).project(active2)
         AreaIntersection = assemble(proj2 * active1 * dx(mesh1))
