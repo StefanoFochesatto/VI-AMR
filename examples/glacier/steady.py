@@ -13,30 +13,29 @@ disconnected glacier.
 
 We apply the VCD method for free-boundary refinement.  The default refinement
 mode is to do VCD and gradient-recovery refinement, in the inactive set, on
-every refinement.
-
-The default VI solver is Picard iteration on the tilt (Jouvet & Bueler, 2012),
-and vinewtonrsls + mumps for a given tilt.
+every refinement.  The default VI solver is Picard iteration on the tilt
+(Jouvet & Bueler, 2012), and vinewtonrsls + mumps for each tilt.
 
 Examples:
   python3 steady.py -opvd dome.pvd
   mpiexec -n 4 python3 steady.py -refine 4 -prob range -opvd range.pvd
 
-High-resolution example; achieved 63 m resolution along ice sheet margin:
-  mpiexec -n 20 python3 steady.py -prob range -m 50 -refine 9 -freezecount 25 -s_snes_vi_monitor -opvd result_range.pvd
+High-resolution example; achieved 30 m resolution along ice sheet margin:
+  mpiexec -n 20 python3 steady.py -prob range -m 50 -refine 10 -opvd result_range.pvd
+(Large memory needed ...)  Note L=1800 km so h_min / L ~ 1e-5.  However, such runs reveal less than perfect refinement right along the free boundary at very high resolution.
 """, formatter_class=RawTextHelpFormatter)
 parser.add_argument('-data', metavar='FILE', type=str, default='',
                     help='read "topg" variable from NetCDF file (.nc)')
+parser.add_argument('-freezecount', type=int, default=8, metavar='P',
+                    help='number of Picard frozen-tilt iterations [default=8]')
 parser.add_argument('-jaccard', action='store_true', default=False,
                     help='use jaccard() to evaluate glaciated area convergence')
 parser.add_argument('-m', type=int, default=20, metavar='M',
                     help='number of cells in each direction on initial mesh [default=20]')
-parser.add_argument('-opvd', metavar='FILE', type=str, default='',
-                    help='output file name for Paraview format (.pvd)')
-parser.add_argument('-freezecount', type=int, default=5, metavar='P',
-                    help='number of Picard frozen-tilt iterations [default=5]')
 parser.add_argument('-newton', action='store_true', default=False,
                     help='use straight Newton instead of Picard+Newton; not robust')
+parser.add_argument('-opvd', metavar='FILE', type=str, default='',
+                    help='output file name for Paraview format (.pvd)')
 parser.add_argument('-prob', type=str, default='dome', metavar='X',
                     choices = ['dome','cap','range'],
                     help='choose problem from {dome, cap, range}')
