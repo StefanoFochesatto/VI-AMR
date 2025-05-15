@@ -54,12 +54,13 @@
 \newcommand{\cK}{\mathcal{K}}
 \newcommand{\cT}{\mathcal{T}}
 \newcommand{\cX}{\mathcal{X}}
+\newcommand{\cY}{\mathcal{Y}}
 
 \begin{document}
 
 %\articletype{ARTICLE TEMPLATE}% Specify the article type or omit as appropriate
 
-\title{Pragmatic adaptive mesh refinement for obstacle problems}
+\title{Adaptive mesh refinement for obstacle problems}
 
 \author{
 \name{G.~Stefano Fochesatto\thanks{CONTACT G.~Stefano Fochesatto Email: gsfochesatto@alaska.edu} and Ed Bueler}
@@ -180,8 +181,8 @@ VI solver performance can be substantially improved by combining the AMR meshing
 To conclude this introduction, there are two overall features of the AMR methods of this paper:
 \renewcommand{\labelenumi}{\arabic{enumi}.}
 \begin{enumerate}
-\item Relative to uniform refinement, the methods exhibit significant improvements in error norm convergence.  This is measured by norm error $\|u-u_h\|$, or by free-boundary localization error, per mesh degree of freedom.
-\item Their implementations (\href{https://github.com/StefanoFochesatto/VI-AMR}{\texttt{github.com/StefanoFochesatto/VI-AMR}}) are parallel, well-documented, and easy-to-use.  They exploit the widely-distributed Firedrake \cite{Langeetal2016} FE library.
+\item Relative to uniform refinement, the methods exhibit significant improvements in error norm convergence.  This is measured, per mesh degree of freedom, by norm error $\|u-u_h\|$ or free-boundary localization (geometrical) error.
+\item Their implementations (\href{https://github.com/StefanoFochesatto/VI-AMR}{\texttt{github.com/StefanoFochesatto/VI-AMR}}), extending the widely-distributed Firedrake \cite{Langeetal2016} FE library, are parallel, well-documented, and easy-to-use.
 \end{enumerate}
 
 The paper is organized as follows:  Table \ref{tab:abbrev} gives the few abbreviations used herein.  Section \ref{sec:vifem} provides \emph{a priori} norm bounds for FE methods applied to VI problems.  Section \ref{sec:aposteriori} addresses \emph{a posteriori} error estimators which can be applied in the inactive set, and it identifies problems where active-set refinement can be avoided.  Section \ref{sec:viamr} describes the three methods in more detail.  Sections \ref{sec:results}--\ref{sec:conclusion} compare and discuss the performance of these AMR algorithms on model problems, and on a realistic glacier application.
@@ -327,51 +328,70 @@ However, how should we interpret the $\cK_h$ infimum term in \eqref{eq:falk} and
 This is unrelated to the FE solution $u_h$.  If $v_h < \psi$ is locally possible then $(\ast)$ might be negative, but then situation \emph{i)} holds and the ``$\inf_{v\in\cK}$'' term in \eqref{eq:falk} might counter-act (i.e.~if $v\ge \psi > u_h$ anywhere).  In the simpler situation \emph{ii)}, where $\psi_h\ge \psi$ and $\cK_h\subset \cK$, the term is at least nonnegative.  It might be large because no $v_h\in\cK_h$ is close to $\psi$ over $A_u$, for instance where $v_h\ge \psi_h \gg \psi$.  On the other hand, $(\ast)$ might be large even where $v_h-\psi$ can be made small over $A_u$, that is, if the source functional $\ell$ causes the residual $F(u)-\ell\ge 0$ to be large in $A_u$.  (Meaning: $d\mu_u(S)$ is positive and large for some measurable $S\subset A_u$.)  In summary, in the situation where $\cK_h\subset \cK$, the bound \eqref{eq:falkconforming} is significantly larger than that from Cea's lemma only when the FE functions $v_h$ are blocked by $\psi_h$ from descending close to the continuum obstacle $\psi$, or when the (exact) residual $d\mu_u$ is large in the (exact) active set $A_u$, or both.
 
 
-\section{Pragmatic \emph{a posteriori} considerations for obstacle problems} \label{sec:aposteriori}
+\section{\emph{A posteriori} error estimation in inactive and active sets} \label{sec:aposteriori}
 
-Recall that for a solution to VI \eqref{eq:vi}, the PDE which applies in the inactive set $I_u$ is called the \emph{interior condition} \cite{KinderlehrerStampacchia1980}.  In Section \ref{sec:results} we will demonstrate strategies which exploit an interior-condition \emph{a posteriori} error indicator if it is available.  Such an error indicator is well-known for the classical Poisson problem.
+For $u\in\cX$ solving VI \eqref{eq:vi}, a PDE holds in the inactive set $I_u$, the so-called \emph{interior condition} \cite{KinderlehrerStampacchia1980}.  In Section \ref{sec:results} we will demonstrate strategies which primarily do (\emph{a posteriori}) refinement in the geometric vicinity of the free boundary, but we also exploit \emph{a posteriori} error indicators for the interior condition PDE.  We consider two indicators, the first of which is well-defined independent of that PDE.  It is based on \emph{gradient recovery} \cite[Chapter 4]{AinsworthOden2000}, and it is used in Section \ref{sec:app}.
 
-FIXME: EVEN SIMPLER GRADIENT-BASED ESTIMATOR \cite[Chapter 4]{AinsworthOden2000}, BECAUSE THAT CAN BE USED IN Section \ref{sec:app}
+\begin{example}  \label{example:gradrecovery}  Suppose $\cX_h$ is a continuous, piecewise-polynomial FE space, of degree $p$, and suppose $u_h\in\cX_h$.  Generally $\grad u_h$ is discontinuous, but it is well-defined on each element.  Let $\cY_h$ be the (scalar) discontinous space with polynomial degree $p-1$, so $\grad u_h \in \cY_h^d$.  Suppose there is a linear operator $G : \cY_h^d \to \cX_h^d$, which we call \emph{gradient recovery}, which is designed so that $G(u_h)\approx \grad u$ in $\cX^d$ in some sense, assuming of course that $u_h\approx u$ in $\cX$.  Then the error indicator $\eta_K\ge 0$ for this gradient recovery method, over an element $K \in\cT_h$, is
+\begin{equation} \label{eq:gradrecoveryindicator}
+\eta_K^2 = \int_K \left|G(u_h) - \grad u_h\right|^2.
+\end{equation}
+\end{example}
 
-\begin{example}  \label{example:br}  Suppose $u \in H^1(\Omega)$ solves the weak form PDE $a(u,v) = \int_\Omega f v\,dx$ for all $v \in H^1_0(\Omega)$, with $u=g$ on $\partial \Omega$, for the bilinear form $a(u,v)=\int_\Omega \grad u\cdot \grad v\,dx$.  Suppose $u_h$ from $P_1$ solves the corresponding finite-dimensional weak form.  For each element $K \in \cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $\gamma$, and any vector field $Z$ with traces $Z_L,Z_K$ on $\gamma$, let $\left\llbracket Z \cdot n \right\rrbracket = Z_L \cdot n_L + Z_K \cdot n_K$ be the jump of $Z$ on $\gamma$.  Given the residual $r(v)=-\nabla^2 v - f$ defined within the elements, the Babu\v{s}ka--Rheinboldt (BR) \cite{BabuskaRheinboldt1979} error estimator is
+Generally one applies the indicator to a solution $u_h \in \cK_h$ of \eqref{eq:fe:vi}, but observe that formula \eqref{eq:gradrecoveryindicator} is well-defined for any $u_h \in \cX_h$.  Let $\eta^2 = \sum_{K\in\cT_h} \eta_K^2$.  For certain gradient recovery methods $G$ it can be shown that, at least for the Poisson equation, $\eta \sim |u-u_h|_{H^1}$ (energy norm) asymptotically as $h\to 0$ \cite[Theorem 4.4]{AinsworthOden2000}.
+
+In Sections \ref{sec:results} and \ref{sec:app} our gradient recovery operation will simply be orthogonal projection in $L^2$.  That is, $w = G(u_h) \in \cX_h^d$ is the minimizer of
+\begin{equation} \label{eq:gradrecoveryprojection}
+J(w) = \int_\Omega |w - \grad u_h|^2\,dx.
+\end{equation}
+In the results shown later, the space $\cX_h$ will be the continuous $P_1$ FE space, thus $\grad u_h$ is in (vector-valued) discontinuous $P_0$ space.  It is not clear to the current authors whether Theorem 4.4 in \cite{AinsworthOden2000} applies to our recovery operator.  (The operators analyzed by \cite{AinsworthOden2000} act by averaging element centroid values to get $\cX_h$ nodal values.)
+
+The second indicator is only stated for the classical obstacle problem.  It is a well-known \emph{explicit error estimator} for the Poisson equation \cite[Chapter 2]{AinsworthOden2000}.
+
+\begin{example}  \label{example:br}  Suppose $u \in H^1(\Omega)$ solves the weak form PDE $a(u,v) = \int_\Omega f v\,dx$ for all $v \in H^1_0(\Omega)$, with $u=g$ on $\partial \Omega$, for the bilinear form $a(u,v)=\int_\Omega \grad u\cdot \grad v\,dx$.  Suppose that $u_h$ from the continuous, $P_1$ FE space $\cX_h$ solves the corresponding finite-dimensional weak form.  For each element $K \in \cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $\gamma$, and any vector field $Z$ with traces $Z_L,Z_K$ on $\gamma$, let $\left\llbracket Z \cdot n \right\rrbracket = Z_L \cdot n_L + Z_K \cdot n_K$ be the jump of $Z$ on $\gamma$.  Given the Poisson (strong) residual $r(v)=-\nabla^2 v - f$ defined within the elements, the Babu\v{s}ka--Rheinboldt (BR) \cite{BabuskaRheinboldt1979} error estimator is
 \begin{equation} \label{eq:brestimator}
 \eta_K^2 = h_K^2 \int_K |r(u_h)|^2\,dx + \frac{h_K}{2} \sum_{\gamma \in \partial K \setminus \partial \Omega} \int_{\gamma} \left\llbracket \grad u_h \cdot n \right\rrbracket^2\,dS,
 \end{equation}
-where $h_K$ is the diameter of $K$.  It can be shown \cite[Chapter 2]{AinsworthOden2000} that the energy error is bounded by these estimators:
+where $h_K$ is the diameter of $K$.  It can be shown \cite[Chapter 2]{AinsworthOden2000} that the energy error is bounded by the sum of these indicators:
 \begin{equation} \label{eq:brbound}
-|u-u_h|_{H^1}^2 = \int_\Omega |\grad(u-u_h)|^2\,dx \le C \sum_{K\in\cT_h} \eta_K^2
+|u-u_h|_{H^1}^2 = \int_\Omega |\grad(u-u_h)|^2\,dx \le C \eta^2,
 \end{equation}
-The constant $C>0$ is determined by the element-wise and edge-wise approximation properties of the elements, including shape regularity.  The $L^2$ error can be bounded by a similar estimator \cite[Section 2.4]{AinsworthOden2000}, which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively.
+where $\eta^2 = \sum_{K\in\cT_h} \eta_K^2$.  The constant $C>0$ is determined by the element-wise and edge-wise approximation properties of the elements, including shape regularity.  The $L^2$ error can be bounded by a similar indicator (estimator) \cite[Section 2.4]{AinsworthOden2000}, which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively.
 \end{example}
 
-The local element-wise error estimators, $\eta_K$ in Example \ref{example:br}, can be thresholded or sorted to providing tagging of elements for refinement.  Section 4.2 of \cite{BangerthRannacher2003}, for example, suggests strategies for element tagging based on local estimators.  In Section \ref{sec:results} we show examples where all (computed) inactive elements satisfying $\eta_K \ge \theta \max \eta_K$, for $0<\theta<1$, are tagged and refined.
+Whether $\eta_K$ is computed as in Example \ref{example:gradrecovery} or \ref{example:br}, we will treat these values as local element-wise error estimators.  That is, the set of values $\eta_K$ will be thresholded to providing tagging of elements for refinement; see \cite[Section 4.2]{BangerthRannacher2003} for discussion of such techniques.  Specifically, all (computed) inactive elements satisfying $\eta_K \ge \theta \max \eta_K$, for $0<\theta<1$, will be tagged and refined.  For more details see the next Section.
 
-The BR error estimator in Example \ref{example:br}, for the Poisson equation, is explicit and easily-computed.  However, for nonlinear operators $F$, a convenient error estimator may not even be known; for example, no estimator is know for the problem in Section \ref{sec:app}.  The approach in \cite{AinsworthOdenLee1993} extends the BR estimator to certain obstacle problems, but with heuristic aspects.  An alternative to a local BR-type estimator is provided by the \emph{dual weighted residual} (DWR) technique \cite{BangerthRannacher2003}.  Such estimators use nonlocal weights, essentially Green's functions of the corresponding PDE.  Suttmeier \cite{Suttmeier2008} has extended the DWR technique to VI problems, but again with heuristics needed even for the classical obstacle problem.
+The BR error estimator in Example \ref{example:br}, for the Poisson equation, is explicit and easily-computed.  Ainsworth, Oden, and Lee \cite{AinsworthOdenLee1993} extend this estimator to certain obstacle problems, but with heuristic aspects.
 
-At least for obstacle problems with disconnected inactive sets---see for example Figure \ref{fig:activesizes} right, useful weightings from a DWR technique are limited in range by the free boundary defining the component of the inactive set.  Furthermore, the weights computed in a DWR technique must necessarily be fragile components of an AMR approach to a problem like the one with a spiral active set in Figure \ref{fig:activesizes} left.  In this paper we avoid the complexity of computing the VI-type and weighted error estimators of \cite{AinsworthOdenLee1993} and \cite{Suttmeier2008}, and instead take the more pragmatic approach of combining fast refinement near a computed free boundary with application of an inexpensive BR-type estimator within the computed inactive sets.
+For PDE problems, an alternative to a local BR-type estimator is provided by the \emph{dual weighted residual} (DWR) technique \cite{BangerthRannacher2003}.  Such estimators are defined using a particular quantity of interest and nonlocal weights (approximately) computed from an adjoint problem.  The weights are essentially Green's functions of the adjoint PDE.  Suttmeier \cite{Suttmeier2008} has extended this DWR technique to VI problems, but this also requires heuristic steps even for the classical obstacle problem.  However, at least for obstacle problems with disconnected inactive sets---see Figure \ref{fig:activesizes} (right)---the weightings from a DWR technique are zero when a free boundary separates the components of the inactive set.  Even if the inactive set is connected, the weights in DWR would be very small in a problem like the one with a spiral active set (Figure \ref{fig:activesizes}, left); though the inactive set is connected it is geometrically very complicated.
 
-Returning to the continuum problems \eqref{eq:vi}, we point out a qualitative property of certain unilateral obstacle problems, which can sometimes be exploited \emph{a posteriori} for fast AMR.  Note that for classical problems \eqref{eq:classical:vi} with continuous sources $f\in C(\bar\Omega)$, in general $f(x)>0$ can occur in the active set.  That is, the force may be locally upward, yet insufficient to lift $u$ above a concave $\psi$.  In certain reasonably-common situations this does not occur.
+In this paper we avoid the complexity of the techniques in references \cite{AinsworthOdenLee1993} and \cite{Suttmeier2008}, and instead take a more pragmatic approach.  We apply fast (and again heuristic) refinement near a computed free boundary.  We combine this with application of a gradient-recovery or BR estimator, as above, within the computed inactive sets.
+
+Returning to the general, continuum problem \eqref{eq:vi}, next we point out a qualitative property of certain unilateral obstacle problems, which can be exploited \emph{a posteriori} in the active set.  Note that for the classical obstacle problem \eqref{eq:classical:vi}, assuming a continuous source $f\in C(\bar\Omega)$ for simplicity, in general an upward force $f(x)>0$ can occur in the active set.  That is, the force, while locally upward, may be insufficient to lift $u$ above a concave $\psi$.  However, in certain obstacle problems this cannot occur.
 
 \begin{lemma} \label{lem:blister}
-Suppose that $\psi=0$ and $\ell[v] = \int_\Omega fv\,dx$ for $f\in C(\bar\Omega)$.  Suppose also that $F$ is given by measurable densities, for example $F(w)[v]=\int_\Omega \phi(w(x),\grad w(x)) v(x) + \Phi(w(x),\grad w(x)) \cdot \grad v(x)\,dx$, satisfying $\phi(0,0)=0$ and $\Phi(0,0)=0$.  (These hypotheses hold for \eqref{eq:classical:vi} if $\psi=0$.) Then for $u$ solving \eqref{eq:vi}, $f\le 0$ a.e.~in $A_u$.
+Suppose that $\psi=0$ and $\ell[v] = \int_\Omega fv\,dx$ for $f\in C(\bar\Omega)$.  Suppose also that $F$ is given by measurable densities, for example $F(w)[v]=\int_\Omega \phi(w(x),\grad w(x)) v(x) + \Phi(w(x),\grad w(x)) \cdot \grad v(x)\,dx$, satisfying $\phi(0,0)=0$ and $\Phi(0,0)=0$.  Then for $u$ solving \eqref{eq:vi}, $f\le 0$ a.e.~in $A_u$.
 \end{lemma}
 
 \begin{proof}
-Let $S\subset A_u$ be a Borel set, and denote its indicator function by $\chi_S \in L^\infty(\Omega)$.  The operator value $F(u)[\chi_S]$ is well-defined by a density argument.  Note that $F(u)[\chi_S]=F(\psi)[\chi_S]=F(0)[\chi_S]$ is zero.  Thus by Lemma \ref{lem:measure},
+Let $S\subset A_u$ be a Borel set, and denote its indicator function by $\chi_S \in L^\infty(\Omega)$.  The operator value $F(u)[\chi_S]$ is well-defined, \emph{and zero}, because $S$ is in the active set, by a density argument.  Thus by Lemma \ref{lem:measure},
 \begin{equation*}
-0 \le d\mu_u(S) = F(u)[\chi_S]-\ell[\chi_S] = 0 - \ell[\chi_S] = -\int_S f\,dx. \qedhere
+0 \le d\mu_u(S) = F(u)[\chi_S]-\ell[\chi_S] = 0 - \ell[\chi_S] = -\int_S f\,dx.
 \end{equation*}
+This shows $f\le 0$ a.e.~with respect to Lebesgue measure.
 \end{proof}
 
-By definition, we say that a unilateral obstacle problem, based on $\ell[v] = \int_\Omega fv\,dx$ with $f\in C(\bar \Omega)$, has the \emph{blistering property} if $A_u \subset \{x \in \Omega\, :\, f(x)\le 0\}$ \cite{JouvetBueler2012}, that is, if the conclusion of Lemma \ref{lem:blister} holds.  To explain this language, the contrapositive says that if $f(x)>0$ anywhere then the inactive set $I_u$ must be non-empty, and $x\in I_u$; even a small upward force ``blisters'' the membrane off the obstacle.
+The hypotheses of the Lemma clearly hold for problem \eqref{eq:classical:vi} if $\psi=0$.
 
-Any classical problem \eqref{eq:classical:vi} with a smooth obstacle $\psi\in C^2(\bar\Omega)$ can be transformed into one having the blistering property.  To see this, transform the admissible set by $\tilde v=v-\psi$, thus $\tilde\cK = \{\tilde v\in\cX\,:\,\tilde v\ge 0 \text{ and } \tilde v|_{\partial\Omega}=g-\psi|_{\partial\Omega}\}$, based on a zero obstacle.  Then integration-by-parts shows \eqref{eq:classical:vi} is equivalent to finding $\tilde u = u -\psi \in \tilde \cK$ so that
+By definition, we say that a unilateral obstacle problem, based on $\ell[v] = \int_\Omega fv\,dx$ with $f\in C(\bar \Omega)$, has the \emph{blistering property} if $A_u \subset \{x \in \Omega\, :\, f(x)\le 0\}$ \cite{JouvetBueler2012}, up to a set of measure zero, that is, if the conclusion of Lemma \ref{lem:blister} holds.  To explain the language, if $f(x)>0$ anywhere, for continuous $f$, then under this property the inactive set $I_u$ must be non-empty, and $x\in I_u$; even a small upward force ``blisters'' the membrane off the obstacle.  Note that porous-dam saturation free boundary problems, such as the examples in \cite{AinsworthOdenLee1993}, have this property because $\psi=0$.
+
+In fact, any classical problem \eqref{eq:classical:vi} with a smooth obstacle $\psi\in C^2(\bar\Omega)$ can be transformed into one with the blistering property.  To see this, make the obstacle zero by transforming $\tilde v=v-\psi$, thus $\tilde\cK = \{\tilde v\in\cX\,:\,\tilde v\ge 0 \text{ and } \tilde v|_{\partial\Omega}=g-\psi|_{\partial\Omega}\}$.  Integration-by-parts shows \eqref{eq:classical:vi} is equivalent to finding $\tilde u = u -\psi \in \tilde \cK$ so that
 \begin{equation} \label{eq:classical:vi:blister}
 \int_\Omega \nabla \tilde u \cdot \nabla(\tilde v - \tilde u) \ge \int_\Omega \left(f+\grad^2\psi\right)(\tilde v - \tilde u) \quad \text{ for all } \tilde v \in \tilde \cK.
 \end{equation}
-For \eqref{eq:classical:vi:blister}, if $x\in A_{\tilde u}$, i.e.~$\tilde u(x)=0$, then $\tilde f(x)= f(x)+\grad^2\psi(x)\le 0$.
+For VI problem \eqref{eq:classical:vi:blister}, if $x\in A_{\tilde u} = \{\tilde u(x)=0\}$ then $\tilde f(x)= f(x)+\grad^2\psi(x)\le 0$.
 
-For blistering-property problems, substantial efficiency can be achieved by avoiding refinement in the computed active sets $A_u^h$, but elements where no refinement is necessary must be carefully identified.  Assume $K\in \cT_h$, $K \subset A_u^h$, and $\psi=0$.  The degenerate case $f=0$ must be excluded within $K$, and so we must confirm that $K$ is contained in the set $\Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$; note that $\Omega_-$ may be regarded as part of the data of the problem.  Then $K$ can be omitted from marking.  However, if later refinements move the free boundary to impinge on $K$ then  the benefit is lost, so generally we mark active-set elements which are near $\Gamma_u^h$ for refinement.
+For blistering-property problems, substantial AMR efficiency can be achieved by avoiding refinement in the computed active set $A_u^h$.  However, one must carefully identify those elements where no refinement would be beneficial.  Assume the blistering property, and consider an element $K\in \cT_h$ in the active set $A_u^h$.  (In our implementation, this means that \emph{every node in the closure of $K$} is active, according to a tolerance criterion.)  The degenerate case $f=0$ must first be excluded within $K$.  That is, one must know that $K$ is contained in the set $\Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$, which is a property of the data of the problem.  If later refinements might move the free boundary to impinge on $K$ then refinement of $K$ would be appropriate, thus our techniques (next Section) will be designed to mark for refinement those active-set elements which are ``near'' $\Gamma_u^h$ in some sense.  However, if $f \le 0$ on $K$, and if $K$ is too far from the free boundary to be inactivated by later solutions along the refinement path, then $K$ can remain unrefined without affecting solution accuracy.
 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
@@ -542,10 +562,10 @@ We end this section with a minimal Python example code, Figure \ref{fig:exampleA
 
 \begin{figure}[ht]
 \centering
-\mbox{\includegraphics[width=0.27\textwidth]{static/aol-mesh0.png} \qquad
-\includegraphics[width=0.27\textwidth]{static/aol-marked.png} \qquad
-\includegraphics[width=0.27\textwidth]{static/aol-mesh1.png}}
-\caption{The Python code (Figure \ref{fig:exampleAOL}) solves Example 1 from \cite{AinsworthOdenLee1993}.  Starting from an initial mesh (left), it marks elements by the default-parameter VCD scheme (middle) and generates a refined mesh (right).  The exact free boundary is overlaid in black.}
+\mbox{\includegraphics[width=0.23\textwidth]{static/aol-mesh0.png} \qquad\quad
+\includegraphics[width=0.23\textwidth]{static/aol-marked.png} \qquad\quad
+\includegraphics[width=0.23\textwidth]{static/aol-mesh1.png}}
+\caption{The Python code (Figure \ref{fig:exampleAOL}) solves Example 1 from \cite{AinsworthOdenLee1993}.  Starting from an initial mesh (left), it marks elements by the default-parameter VCD scheme (middle) and generates a refined mesh (right).  The exact free boundary, unknown to the VCD algorithm, is overlaid in black.}
 \label{fig:resultAOL}
 \end{figure}
 
