@@ -14,7 +14,7 @@ class VIAMRRegression(VIAMR):
         
     def _bfsneighbors(self, mesh, border, levels):
         """Element-wise multi-neighbor lookup using breadth-first search."""
-
+        from collections import deque
         # build dictionary which maps each vertex in the mesh
         # to the cells that are incident to it
         vertex_to_cells = {}
@@ -316,7 +316,7 @@ def test_overlapping_and_nonoverlapping_hausdorff():
     assert amr.hausdorff(E1, E2) == 0.2
     
     
-@pytest.mark.parallel(nprocs=4)
+@pytest.mark.parallel(nprocs=3)
 def test_parallel_udo():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -337,7 +337,7 @@ def test_parallel_udo():
     )
     
     # Mark in parallel
-    mark = amr.udomark(mesh, u, lb, n = 2)
+    mark = amr.udomark(u, lb, n = 2)
     
     # Compute number of local active elements
     localActive = np.sum(mark.dat.data_ro[:])
@@ -367,8 +367,8 @@ def test_udo_regression():
         conditional(And(And(x > 0.65, x < 0.85), And(y > 0.65, y < 0.85)), 1.0, 0.0))))
     )
 
-    markold = amr.udomarkOLD(mesh, u, lb, n = 2)
-    marknew = amr.udomark(mesh, u, lb, n = 2)
+    markold = amr.udomarkOLD(u, lb, n = 2)
+    marknew = amr.udomark(u, lb, n = 2)
     assert amr.jaccard(markold, marknew) == 1.0
     
 
