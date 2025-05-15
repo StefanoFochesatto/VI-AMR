@@ -92,8 +92,8 @@ for i in range(refinements + 1):
     if i == refinements:
         break
 
-    marklower = amr.udomarkParallel(u, lb, n=1)
-    markupper = amr.udomarkParallel(u, ub, n=1)
+    marklower = amr.udomark(u, lb, n=1)
+    markupper = amr.udomark(u, ub, n=1)
     _, DG0 = amr.spaces(mesh)
     mark = Function(DG0).interpolate((marklower + markupper) - (marklower * markupper))
     mesh = mesh.refine_marked_elements(mark)

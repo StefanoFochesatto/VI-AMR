@@ -115,16 +115,6 @@ class VIAMR(OptionsManager):
 
 
     def udomark(self, uh, lb, n=2):
-        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm."""
-        mesh = uh.function_space().mesh()
-        if mesh.comm.size > 1:
-            raise ValueError("udomark() is not valid in parallel")
-        # generate element-wise indicator for border set
-        elemborder = self.elemborder(self.nodalactive(uh, lb))
-        # _bfs_neighbors() constructs N^n(B) indicator
-        return self._bfsneighbors(mesh, elemborder, n)
-
-    def udomarkParallel(self, uh, lb, n=2):
         """Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements"""
 
         # Generate element-wise and nodal-wise indicators for active set
