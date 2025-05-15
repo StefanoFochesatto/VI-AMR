@@ -5,14 +5,16 @@ from viamr import VIAMR
 import subprocess
 import os
 import pathlib
+from pytest_mpi import parallel_assert
+
 
 class VIAMRRegression(VIAMR):
-    def __init__(self, value, extra):
-        super().__init__(value)
+    def __init__(self):
+        super().__init__()
             
     def _bfsneighbors(self, mesh, border, levels):
         """Element-wise multi-neighbor lookup using breadth-first search."""
-
+        from collections import deque
         # build dictionary which maps each vertex in the mesh
         # to the cells that are incident to it
         vertex_to_cells = {}
@@ -300,96 +302,64 @@ def test_overlapping_and_nonoverlapping_hausdorff():
     _, E2 = amr.freeboundarygraph(sol1, lb2)
     assert amr.hausdorff(E1, E2) == 0.2
     
-    
-    
-@pytest.mark.parallel(2)
-def test_parallel_assert_all_tasks():
-    comm = MPI.COMM_WORLD
-    expression = comm.rank < comm.size // 2  # will be True on some tasks but False on others
-
-    try:
-        parallel_assert(expression, 'Failed')
-        raised_exception = False
-    except AssertionError:
-        raised_exception = True
-
-    assert raised_exception, f'No exception raised on rank {comm.rank}!'
 
 
-# We will move the old implmenetation of udo in here as a subclass, define a function which checkpoints a spiral problem marking
-# in parallel and in serial. These functions will always assert true and will need to be run in 
-# we will write a test which reads in both checkpoint files and compares with jaccard. 
-
+@pytest.mark.parallel(nprocs=4)
 def test_parallel_udo():
-    from viamr import SpiralObstacleProblem
-    from firedrake.petsc import PETSc
-    
-    problem_instance = SpiralObstacleProblem(TriHeight=.1)
-    mesh = problem_instance.setInitialMesh()
-    u = None
-    z = VIAMR()
-    u, lb = problem_instance.solveProblem(mesh, u)    
-    mark = z.udomark(mesh, u, lb, n=1)
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
     
     
+    amr = VIAMR()
+    mesh =  RectangleMesh(20, 20, 1, 1, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+    CG1, _ = amr.spaces(mesh)
+    u = Function(CG1).interpolate(1.0)
+    x, y = SpatialCoordinate(mesh)
+    
+    # Somewhat interesting obstacle configuration. 
+    lb = Function(CG1).interpolate(
+       conditional(And(And(x > 0.15, x < 0.35), And(y > 0.15, y < 0.35)), 1.0,
+        conditional(And(And(x > 0.65, x < 0.85), And(y > 0.15, y < 0.35)), 1.0,
+        conditional(And(And(x > 0.15, x < 0.35), And(y > 0.65, y < 0.85)), 1.0,
+        conditional(And(And(x > 0.65, x < 0.85), And(y > 0.65, y < 0.85)), 1.0, 0.0))))
+    )
+    
+    # Mark in parallel
+    mark = amr.udomark(mesh, u, lb, n = 2)
+    
+    # Compute number of local active elements
+    localActive = np.sum(mark.dat.data_ro[:])
+    globalActive = np.zeros(1, dtype=np.float64)
+    comm.Allreduce(localActive, globalActive, op=MPI.SUM)
+    
+    if rank == 0:
+        # Check agreement with serial implementation
+        assert globalActive[0] == 506
+    
+    
 
+def test_udo_regression():
+    # This test utilizes the the old implementation of UDO which builds the neighborhood of the free boundary using breadth first search, 
+    # as a regression test for the dmplex based implementation. 
+    
+    amr = VIAMRRegression()
+    mesh =  RectangleMesh(20, 20, 1, 1, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+    CG1, _ = amr.spaces(mesh)
+    u = Function(CG1).interpolate(1.0)
+    x, y = SpatialCoordinate(mesh)
+    
+    # Somewhat interesting obstacle configuration. 
+    lb = Function(CG1).interpolate(
+       conditional(And(And(x > 0.15, x < 0.35), And(y > 0.15, y < 0.35)), 1.0,
+        conditional(And(And(x > 0.65, x < 0.85), And(y > 0.15, y < 0.35)), 1.0,
+        conditional(And(And(x > 0.15, x < 0.35), And(y > 0.65, y < 0.85)), 1.0,
+        conditional(And(And(x > 0.65, x < 0.85), And(y > 0.65, y < 0.85)), 1.0, 0.0))))
+    )
 
-
-
-
-
-def AVOID_test_parallel_udo():
-    # This test is not well encapsulated at all however barring crazy changes to the spiral utility problem
-    # and jaccard, we have good visibility of parallel udo and refinemarkedelements()
-
-    # Get the absolute path of the current test file
-    current_file = pathlib.Path(__file__).resolve()
-    # Navigate to the test root
-    test_root = current_file.parent
-    # Construct the absolute path to the script
-    script_path = test_root / "generateSolution.py"
-    # Convert to string for subprocess
-    script_path_str = str(script_path)
-
-    try:
-        # Run UDO method in both parallel and serial
-        subprocess.run(
-            ["python", script_path_str, "--refinements", "2", "--runtime", "serial"],
-            check=True,
-        )
-        subprocess.run(
-            [
-                "mpiexec",
-                "-n",
-                "4",
-                "python",
-                script_path_str,
-                "--refinements",
-                "2",
-                "--runtime",
-                "parallel",
-            ],
-            check=True,
-        )
-
-        # Checkpoint in files
-        with CheckpointFile("serialUDO.h5", "r") as afile:
-            serialMesh = afile.load_mesh("serialMesh")
-            serialMark = afile.load_function(serialMesh, "serialMark")
-
-        with CheckpointFile("parallelUDO.h5", "r") as afile:
-            parallelMesh = afile.load_mesh("parallelMesh")
-            parallelMark = afile.load_function(parallelMesh, "parallelMark")
-
-        # Compare overlap, perfect overlap will have Jaccard index 1.0
-        assert VIAMR(debug=True).jaccard(serialMark, parallelMark) == 1.0
-    finally:
-        # Clean up the generated files
-        for filename in ["serialUDO.h5", "parallelUDO.h5"]:
-            file_path = pathlib.Path(filename).resolve()
-            if file_path.exists():
-                file_path.unlink(missing_ok=True)
-
+    markold = amr.udomarkOLD(mesh, u, lb, n = 2)
+    marknew = amr.udomark(mesh, u, lb, n = 2)
+    assert amr.jaccard(markold, marknew) == 1.0
+    
 
 if __name__ == "__main__":
     test_netgen_mesh_creation()
@@ -406,4 +376,5 @@ if __name__ == "__main__":
     test_refine_udo_parallelUDO()
     test_petsc4py_refine_vcd()
     test_refine_vcd_petsc4py_firedrake()
-    test_parallel_assert_participating_tasks_only()
+    test_udo_regression()
+    test_parallel_udo()

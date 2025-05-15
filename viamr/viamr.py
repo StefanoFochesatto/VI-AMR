@@ -1,6 +1,5 @@
 import sys
 import numpy as np
-from collections import deque
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
