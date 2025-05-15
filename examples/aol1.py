@@ -79,7 +79,7 @@ for i in range(refinements + 1):
     imark, _, _ = amr.brinactivemark(
         u, lb, residual, theta=0.8
     )  # FIXME the distribution of eta has lots of elements close to eta.max(), and a few where eta is very small
-    mark = amr.unionmarks(amr.vcdmark(mesh, u, lb), imark)
+    mark = amr.unionmarks(amr.vcdmark(u, lb), imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 

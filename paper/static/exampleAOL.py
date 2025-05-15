@@ -19,7 +19,7 @@ ub = Function(V).interpolate(Constant(PETSc.INFINITY))
 solver.solve(bounds=(lb, ub))
 
 amr = VIAMR()
-mark = amr.vcdmark(mesh0, u, lb)
+mark = amr.vcdmark(u, lb)
 VTKFile("mesh0.pvd").write(u, mark)
 
 mesh1 = amr.refinemarkedelements(mesh0, mark)

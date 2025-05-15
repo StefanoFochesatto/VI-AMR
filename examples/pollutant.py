@@ -13,11 +13,11 @@ from netgen.occ import *
 
 # This issue about refinement along the surface will be fixed in the next firedrake release. Install the latest ngsPETSc changes for now.
 
-refinements = 3  # serial run will be many minutes for this value
+refinements = 3
 
 # initial mesh
 box = Box((-1, -1, -1), (1, 1, 1))
-ngmesh = OCCGeometry(box, dim=3).GenerateMesh(maxh=0.2)
+ngmesh = OCCGeometry(box, dim=3).GenerateMesh(maxh=0.4)
 mesh = Mesh(
     ngmesh,
     distribution_parameters={
@@ -92,8 +92,8 @@ for i in range(refinements + 1):
     if i == refinements:
         break
 
-    marklower = amr.udomark(mesh, u, lb, n=1)
-    markupper = amr.udomark(mesh, u, ub, n=1)
+    marklower = amr.udomarkParallel(u, lb, n=1)
+    markupper = amr.udomarkParallel(u, ub, n=1)
     _, DG0 = amr.spaces(mesh)
     mark = Function(DG0).interpolate((marklower + markupper) - (marklower * markupper))
     mesh = mesh.refine_marked_elements(mark)

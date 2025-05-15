@@ -26,9 +26,9 @@ for i in range(levels + 1):
     u, lb = problem.solveProblem(mesh=mesh, u=u, moreparams=spmore)
     if i == levels:
         break
-    mark = amr.udomark(mesh, u, lb, n=2)
-    # FIXME allow alternative?:  mark = amr.udomark(mesh, u, lb)
-    # alternative:  mark = amr.vcdmark(mesh, u, lb)
+    mark = amr.udomark(u, lb, n=2)
+    # FIXME allow alternative?:  mark = amr.udomarkParallel(u, lb)
+    # alternative:  mark = amr.vcdmark(u, lb)
     mesh = mesh.refine_marked_elements(mark)
     meshHist.append(mesh)
 

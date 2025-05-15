@@ -34,8 +34,12 @@ class VIAMR(OptionsManager):
         CG1, DG0 = self.spaces(mesh, p=1)
         nvertices = CG1.dim()
         nelements = DG0.dim()
-        hmin = float(mesh.comm.allreduce(min(mesh.cell_sizes.dat.data_ro), op=MPI.MIN))
-        hmax = float(mesh.comm.allreduce(max(mesh.cell_sizes.dat.data_ro), op=MPI.MAX))
+        mymin, mymax = PETSc.INFINITY, PETSc.NINFINITY
+        if len(mesh.cell_sizes.dat.data_ro) > 0:
+            mymin = min(mesh.cell_sizes.dat.data_ro)
+            mymax = max(mesh.cell_sizes.dat.data_ro)
+        hmin = float(mesh.comm.allreduce(mymin, op=MPI.MIN))
+        hmax = float(mesh.comm.allreduce(mymax, op=MPI.MAX))
         return nvertices, nelements, hmin, hmax
 
     def meshreport(self, mesh, indent=2):
@@ -47,36 +51,39 @@ class VIAMR(OptionsManager):
         )
         return None
 
-    def nodalactive(self, u, lb):
-        """Compute nodal active set indicator in same function space as u.
+    def nodalactive(self, uh, lb):
+        """Compute nodal active set indicator in same function space as uh.
         Applies to unilateral obstacle problems with u >= lb.  The active
         set is {x : u(x) == lb(x)}, within activetol.  Active nodes get value 1.0."""
         if self.debug:
-            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
-        z = Function(u.function_space(), name="Nodal Active")
-        z.interpolate(conditional(abs(u - lb) < self.activetol, 1.0, 0.0))
+            if len(uh.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
+                assert min(uh.dat.data_ro - lb.dat.data_ro) >= 0.0
+        z = Function(uh.function_space(), name="Nodal Active")
+        z.interpolate(conditional(abs(uh - lb) < self.activetol, 1.0, 0.0))
         return z
 
-    def elemactive(self, u, lb):
+    def elemactive(self, uh, lb):
         """Compute element active set indicator in DG0.  Elements are marked
         active if the DG0 degree of freedom for that element is active, within
         activetol.  Active elements get value 1.0."""
         if self.debug:
-            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
-        _, DG0 = self.spaces(u.function_space().mesh())
+            if len(uh.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
+                assert min(uh.dat.data_ro - lb.dat.data_ro) >= 0.0
+        _, DG0 = self.spaces(uh.function_space().mesh())
         z = Function(DG0, name="Element Active")
-        z.interpolate(conditional(abs(u - lb) < self.activetol, 1.0, 0.0))
+        z.interpolate(conditional(abs(uh - lb) < self.activetol, 1.0, 0.0))
         return z
 
-    def eleminactive(self, u, lb):
+    def eleminactive(self, uh, lb):
         """Compute element inactive set indicator in DG0.  Elements are marked
         inactive if the DG0 degree of freedom for that element is inactive, within
         activetol.  Inactive elements get value 1.0."""
         if self.debug:
-            assert min(u.dat.data_ro - lb.dat.data_ro) >= 0.0
-        _, DG0 = self.spaces(u.function_space().mesh())
+            if len(uh.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
+                assert min(uh.dat.data_ro - lb.dat.data_ro) >= 0.0
+        _, DG0 = self.spaces(uh.function_space().mesh())
         z = Function(DG0, name="Element Inactive")
-        z.interpolate(conditional(abs(u - lb) < self.activetol, 0.0, 1.0))
+        z.interpolate(conditional(abs(uh - lb) < self.activetol, 0.0, 1.0))
         return z
 
     def elemborder(self, nodalactive):
@@ -87,8 +94,9 @@ class VIAMR(OptionsManager):
           0 < nodalactive(x_K) < 1
         at x_K which is the DG0 dof for element K."""
         if self.debug:
-            assert min(nodalactive.dat.data_ro) >= 0.0
-            assert max(nodalactive.dat.data_ro) <= 1.0
+            if len(nodalactive.dat.data_ro) > 0:
+                assert min(nodalactive.dat.data_ro) >= 0.0
+                assert max(nodalactive.dat.data_ro) <= 1.0
         _, DG0 = self.spaces(nodalactive.function_space().mesh())
         z = Function(DG0, name="Element Border")
         z.interpolate(
@@ -106,12 +114,23 @@ class VIAMR(OptionsManager):
         )
 
 
-    def udomark(self, mesh, u, lb, n=2):
+    def udomark(self, uh, lb, n=2):
+        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm."""
+        mesh = uh.function_space().mesh()
+        if mesh.comm.size > 1:
+            raise ValueError("udomark() is not valid in parallel")
+        # generate element-wise indicator for border set
+        elemborder = self.elemborder(self.nodalactive(uh, lb))
+        # _bfs_neighbors() constructs N^n(B) indicator
+        return self._bfsneighbors(mesh, elemborder, n)
+
+    def udomarkParallel(self, uh, lb, n=2):
         """Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements"""
 
         # Generate element-wise and nodal-wise indicators for active set
+        mesh = uh.function_space().mesh()
         _, DG0 = self.spaces(mesh)
-        nodalactive = self.nodalactive(u, lb)
+        nodalactive = self.nodalactive(uh, lb)
 
         # Generate border element indicator
         elemborder = self.elemborder(nodalactive)
@@ -208,7 +227,7 @@ class VIAMR(OptionsManager):
 
         return elemborder
 
-    def vcdmark(self, mesh, u, lb, bracket=[0.2, 0.8], returnSmooth=False):
+    def vcdmark(self, uh, lb, bracket=[0.2, 0.8], returnSmooth=False):
         """Mark mesh using Variable Coefficient Diffusion (VCD) algorithm.
         The algorithm computes a strict nodal active set indicator and then
         diffuses it, using a variable mesh-sized based coefficient, by
@@ -217,8 +236,9 @@ class VIAMR(OptionsManager):
         duration over the mesh.)"""
 
         # Compute nodal active set indicator within some tolerance
+        mesh = uh.function_space().mesh()
         CG1, DG0 = self.spaces(mesh)
-        nodalactive = self.nodalactive(u, lb)
+        nodalactive = self.nodalactive(uh, lb)
 
         # Vary timestep by average cell area of each patch.
         # Not exactly an average because msh.cell_sizes is an L2 projection of
@@ -248,6 +268,36 @@ class VIAMR(OptionsManager):
             )
             return mark
 
+    def gradrecinactivemark(self, uh, lb, theta=0.5):
+        """Return marking within the computed inactive set by using an
+        a posteriori gradient-recovery error indicator.  See Chapter 4 of
+          M. Ainsworth & J. T. Oden (2000).  A Posteriori Error Estimation in
+          Finite Element Analysis, John Wiley & Sons, Inc., New York."""
+        mesh = uh.function_space().mesh()
+        v = CellVolume(mesh)
+        # recover a CG1 gradient FIXME is this the preferred way?
+        CG1vec = VectorFunctionSpace(mesh, "CG", 1)
+        gradrecu = Function(CG1vec).project(grad(uh))
+        # cell-wise error estimator
+        _, DG0 = self.spaces(mesh)
+        eta_sq = Function(DG0)
+        w = TestFunction(DG0)
+        G = (
+            inner(eta_sq / v, w) * dx
+            - inner(inner(gradrecu - grad(uh), gradrecu - grad(uh)), w) * dx
+        )
+        # each cell needs an independent 1x1 solve, so Jacobi is an exact preconditioner
+        sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
+        solve(G == 0, eta_sq, solver_parameters=sp)
+        eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
+        # generate union of inactive mark and BR mark
+        imark = self.eleminactive(uh, lb)
+        ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
+        with ieta.dat.vec_ro as ieta_:
+            emax = ieta_.max()[1]
+        mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
+        return (mark, eta)
+
     def brinactivemark(self, uh, lb, res_ufl, theta=0.5):
         """Return marking within the computed inactive set by using the
         a posteriori Babuška-Rheinboldt residual error indicator.  The BR
@@ -275,7 +325,7 @@ class VIAMR(OptionsManager):
         w = TestFunction(DG0)
         G = (
             inner(eta_sq / v, w) * dx
-            - inner(h ** 2 * res_ufl ** 2, w) * dx
+            - inner(h**2 * res_ufl**2, w) * dx
             - inner(h("+") / 2 * jump(grad(uh), n) ** 2, w("+")) * dS
             - inner(h("-") / 2 * jump(grad(uh), n) ** 2, w("-")) * dS
         )
@@ -307,7 +357,7 @@ class VIAMR(OptionsManager):
         self.metricparameters = {"dm_plex_metric": mp}
         return None
 
-    def metricfromhessian(self, mesh, u):
+    def metricfromhessian(self, uh):
         """Construct a hessian based metric from a solution"""
 
         assert (
@@ -316,6 +366,7 @@ class VIAMR(OptionsManager):
 
         from animate import RiemannianMetric
 
+        mesh = uh.function_space().mesh()
         P1_ten = TensorFunctionSpace(mesh, "CG", 1)
         metric = RiemannianMetric(P1_ten)
         metric.set_parameters(self.metricparameters)
@@ -323,7 +374,7 @@ class VIAMR(OptionsManager):
         metric.normalise()
         return metric
 
-    def metricrefine(self, mesh, u, lb, weights=[0.50, 0.50], hessian=True):
+    def metricrefine(self, mesh, uh, lb, weights=[0.50, 0.50], hessian=True):
         """Implementation of anisotropic metric based refinement which is
         free-boundary aware. Constructs both the hessian based metric and an
         isotropic metric computed from the magnitude of the gradient of the
@@ -340,7 +391,7 @@ class VIAMR(OptionsManager):
         dim = mesh.topological_dimension()
 
         # Get magnitude of gradients
-        s = self.vcdmark(mesh, u, lb, returnSmooth=True)
+        s = self.vcdmark(uh, lb, returnSmooth=True)
         ags = Function(V).interpolate(sqrt(dot(grad(s), grad(s))))
 
         # Constructing metric. Basically "L2" option in metric.compute_isotropic_metric,
@@ -353,7 +404,7 @@ class VIAMR(OptionsManager):
         # Build hessian based metric for interpolation error and average
         if hessian:
             VImetric = freeboundaryMetric.copy(deepcopy=True)
-            solutionMetric = self.metricfromhessian(mesh, u)
+            solutionMetric = self.metricfromhessian(u)
             solutionMetric.normalise()
             VImetric.average(freeboundaryMetric, weights=weights)
         else:
@@ -397,9 +448,9 @@ class VIAMR(OptionsManager):
             opts["dm_plex_transform_type"] = "refine_regular"
         else:
             opts["dm_plex_transform_active"] = "refinesbr"
-            opts[
-                "dm_plex_transform_type"
-            ] = "refine_sbr"  # <- skeleton based refinement is what netgen does.
+            opts["dm_plex_transform_type"] = (
+                "refine_sbr"  # <- skeleton based refinement is what netgen does.
+            )
 
         # Create a DMPlexTransform object to apply the refinement
         dmTransform = PETSc.DMPlexTransform().create(comm=mesh.comm)
@@ -429,32 +480,40 @@ class VIAMR(OptionsManager):
 
         return refinedmesh
 
-    def jaccard(self, active1, active2):
-        """Compute the Jaccard metric from two element-wise active
-        set indicators.  These indicators must be DG0 functions, but they
-        can be on different meshes.  By definition, the Jaccard metric of
-        two sets is
+    def jaccard(self, active1, active2, submesh=False):
+        """Compute the Jaccard metric from two element-wise active set
+        indicators.  By definition, the Jaccard metric of two sets is
             J(S,T) = |S cap T| / |S cup T|,
-        that is, the ratio of the area (measure) of the intersection
-        divided by the area of the union."""
+        where |.| is area (measure) of the set.  Thus J(S,T) the ratio of
+        the area (measure) of the intersection divided by that of the union.
+        The inputs are the indicator functions of the sets as DG0 functions.
+        In serial they can be on different meshes.  (In that case project()
+        method is used to put them on active1's mesh.)  If submesh==True
+        then active2 is assumed to live on a submesh of active1, so
+        interpolate onto the active1 mesh will work correctly.
+        *Thus with submesh==True it works in parallel.*"""
         # FIXME how to check that active1, active2 are in DG0 spaces?
-        # FIXME fails in parallel; the line generating proj2 will throw
-        #     AssertionError: Whoever made mesh_B should explicitly mark
-        #     mesh_A as having a compatible parallel layout.
-        if (
-            active1.function_space().mesh()._comm.size > 1
-            or active2.function_space().mesh()._comm.size > 1
-        ):
-            raise ValueError("jaccard() is not valid in parallel")
+        # FIXME how to check that, when submesh==True, active2 is actually
+        #       on a submesh of active1?
+        if submesh == False:
+            if (
+                active1.function_space().mesh()._comm.size > 1
+                or active2.function_space().mesh()._comm.size > 1
+            ):
+                raise ValueError("jaccard(.., submesh=False) is not valid in parallel")
         if self.debug:
             for a in [active1, active2]:
-                assert min(a.dat.data_ro) >= 0.0
-                assert max(a.dat.data_ro) <= 1.0
+                if len(a.dat.data_ro) > 0:
+                    assert min(a.dat.data_ro) >= 0.0
+                    assert max(a.dat.data_ro) <= 1.0
         mesh1 = active1.function_space().mesh()
-        proj2 = Function(active1.function_space()).project(active2)
-        AreaIntersection = assemble(proj2 * active1 * dx(mesh1))
-        AreaUnion = assemble((proj2 + active1 - (proj2 * active1)) * dx(mesh1))
-        assert AreaUnion > 0.0
+        if submesh:
+            new2 = Function(active1.function_space()).interpolate(active2)
+        else:
+            new2 = Function(active1.function_space()).project(active2)
+        AreaIntersection = assemble(new2 * active1 * dx(mesh1))
+        AreaUnion = assemble((new2 + active1 - (new2 * active1)) * dx(mesh1))
+        assert AreaUnion > 0.0, "jaccard() computed measure of the union as zero"
         return AreaIntersection / AreaUnion
 
     def hausdorff(self, E1, E2):
@@ -468,14 +527,14 @@ class VIAMR(OptionsManager):
         )
 
     # FIXME: checks for when free boundary is emptyset
-    def freeboundarygraph(self, u, lb, type="coords"):
+    def freeboundarygraph(self, uh, lb, type="coords"):
         """pulls the graph for the free boundary, return as dm, fd, or coords"""
-        mesh = u.function_space().mesh()
+        mesh = uh.function_space().mesh()
         CellVertexMap = mesh.topology.cell_closure
 
         # Get active indicators
-        elemactive = self.elemactive(u, lb)  # cell
-        elemborder = self.elemborder(self.nodalactive(u, lb))  # bordering cell
+        elemactive = self.elemactive(uh, lb)  # cell
+        elemborder = self.elemborder(self.nodalactive(uh, lb))  # bordering cell
 
         # Pull Indices
         ActiveSetElementsIndices = [

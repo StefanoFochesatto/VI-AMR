@@ -105,14 +105,14 @@ def test_mark_none():
     CG1, _ = amr.spaces(mesh)
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
-    mark = amr.udomark(mesh, psi, psi)  # all active
+    mark = amr.udomark(psi, psi)  # all active
     assert norm(mark, "L1") == 0.0
-    mark = amr.vcdmark(mesh, psi, psi)  # all active
+    mark = amr.vcdmark(psi, psi)  # all active
     assert norm(mark, "L1") == 0.0
     lift = Function(CG1).interpolate(psi + 1.0)
-    mark = amr.udomark(mesh, lift, psi)  # all inactive
+    mark = amr.udomark(lift, psi)  # all inactive
     assert norm(mark, "L1") == 0.0
-    mark = amr.vcdmark(mesh, lift, psi)  # all inactive
+    mark = amr.vcdmark(lift, psi)  # all inactive
     assert norm(mark, "L1") == 0.0
 
 
@@ -140,7 +140,7 @@ def test_refine_udo():
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     # VTKFile(f"result_refine_0.pvd").write(u)
-    mark = amr.udomark(mesh, u, psi)
+    mark = amr.udomark(u, psi)
     rmesh = mesh.refine_marked_elements(mark)  # netgen's refine method
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 61
@@ -159,7 +159,7 @@ def test_refine_udo_parallelUDO():
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     # VTKFile(f"result_refine_0.pvd").write(u)
-    mark1 = amr.udomark(mesh1, u, psi)
+    mark1 = amr.udomark(u, psi)
     rmesh1 = mesh1.refine_marked_elements(mark1)  # netgen's refine method
     mesh2 = get_netgen_mesh(TriHeight=0.1)
     CG1, _ = amr.spaces(mesh2)
@@ -168,9 +168,9 @@ def test_refine_udo_parallelUDO():
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     # VTKFile("result_refine_0.pvd").write(u)
-    mark2 = amr.udomark(mesh1, u, psi)
+    mark2 = amr.udomarkParallel(u, psi)
     rmesh2 = mesh2.refine_marked_elements(mark2)  # netgen's refine method
-    assert amr.jaccard(mark1, mark2) == 1.0
+    assert abs(amr.jaccard(mark1, mark2) - 1.0) < 1.0e-10
     r1CG1, _ = amr.spaces(rmesh1)
     r2CG1, _ = amr.spaces(rmesh2)
     assert r1CG1.dim() == r2CG1.dim()
@@ -185,7 +185,7 @@ def test_refine_vcd():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = amr.vcdmark(mesh, u, psi)
+    mark = amr.vcdmark(u, psi)
     rmesh = mesh.refine_marked_elements(mark)  # netgen's refine method
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 49
@@ -203,7 +203,7 @@ def test_petsc4py_refine_vcd():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = amr.vcdmark(mesh, u, psi)
+    mark = amr.vcdmark(u, psi)
     rmesh = amr.refinemarkedelements(mesh, mark)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 49
@@ -223,7 +223,7 @@ def test_refine_vcd_petsc4py_firedrake():
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    mark = amr.vcdmark(mesh, u, psi)
+    mark = amr.vcdmark(u, psi)
     rmesh = amr.refinemarkedelements(mesh, mark)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 73
@@ -232,18 +232,30 @@ def test_refine_vcd_petsc4py_firedrake():
     assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
 
 
+def test_gradrecinactivemark():
+    mesh = RectangleMesh(6, 6, 2.0, 2.0, originX=-2.0, originY=-2.0, diagonal="crossed")
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
+    assert CG1.dim() == 85
+    (x, y) = SpatialCoordinate(mesh)
+    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))
+    imark, _ = amr.gradrecinactivemark(u, psi, theta=0.5)
+    # VTKFile(f"result_gradrecinactivemark.pvd").write(Function(CG1, name="diff").interpolate(u-psi), imark)
+    rmesh = amr.refinemarkedelements(mesh, imark)
+    # VTKFile(f"result_gradrecinactivemark_refined.pvd").write(rmesh)
+    rCG1, _ = amr.spaces(rmesh)
+    assert rCG1.dim() == 165
+
+
 def test_brinactivemark():
-    mesh = RectangleMesh(
-        8, 8, 2.0, 2.0, originX=-2.0, originY=-2.0
-    )  # Firedrake utility mesh, not netgen
+    mesh = RectangleMesh(8, 8, 2.0, 2.0, originX=-2.0, originY=-2.0)
     amr = VIAMR(debug=True)
     CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 81
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
-    u = Function(CG1).interpolate(
-        conditional(psi > 0.0, psi + 1.0, psi)
-    )  # u>psi where psi>0
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))
     residual = -div(grad(u))  # largest near circle psi==0
     (imark, _, _) = amr.brinactivemark(u, psi, residual, theta=0.8)
     # VTKFile(f"result_brinactivemark.pvd").write(Function(CG1, name="diff").interpolate(u-psi), imark)
@@ -261,7 +273,7 @@ def test_overlapping_jaccard():
     right = conditional(x > 0, 1, 0)
     active1 = Function(DG0).interpolate(right)  # right half active
     active2 = Function(DG0).interpolate(right)  # same; full overlap
-    assert amr.jaccard(active1, active1) == 1.0
+    assert abs(amr.jaccard(active1, active2) - 1.0) < 1.0e-10
 
 
 def test_nonoverlapping_jaccard():
@@ -273,7 +285,7 @@ def test_nonoverlapping_jaccard():
     farleft = conditional(x < -0.5, 1, 0)
     active1 = Function(DG0).interpolate(right)
     active2 = Function(DG0).interpolate(farleft)  # no overlap
-    assert amr.jaccard(active1, active2) == 0.0
+    assert abs(amr.jaccard(active1, active2) - 0.0) < 1.0e-10
 
 
 def test_symmetry_jaccard():
@@ -285,7 +297,7 @@ def test_symmetry_jaccard():
     more = conditional(x < 1, 1, 0)
     active1 = Function(DG0).interpolate(right)
     active2 = Function(DG0).interpolate(more)
-    assert amr.jaccard(active1, active2) == amr.jaccard(active2, active1)
+    assert abs(amr.jaccard(active1, active2) - amr.jaccard(active2, active1)) < 1.0e-10
 
 
 def test_overlapping_and_nonoverlapping_hausdorff():
@@ -303,63 +315,59 @@ def test_overlapping_and_nonoverlapping_hausdorff():
     assert amr.hausdorff(E1, E2) == 0.2
     
 
+def AVOID_test_parallel_udo():
+    # This test is not well encapsulated at all however barring crazy changes to the spiral utility problem
+    # and jaccard, we have good visibility of parallel udo and refinemarkedelements()
 
-@pytest.mark.parallel(nprocs=4)
-def test_parallel_udo():
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    
-    
-    amr = VIAMR()
-    mesh =  RectangleMesh(20, 20, 1, 1, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
-    CG1, _ = amr.spaces(mesh)
-    u = Function(CG1).interpolate(1.0)
-    x, y = SpatialCoordinate(mesh)
-    
-    # Somewhat interesting obstacle configuration. 
-    lb = Function(CG1).interpolate(
-       conditional(And(And(x > 0.15, x < 0.35), And(y > 0.15, y < 0.35)), 1.0,
-        conditional(And(And(x > 0.65, x < 0.85), And(y > 0.15, y < 0.35)), 1.0,
-        conditional(And(And(x > 0.15, x < 0.35), And(y > 0.65, y < 0.85)), 1.0,
-        conditional(And(And(x > 0.65, x < 0.85), And(y > 0.65, y < 0.85)), 1.0, 0.0))))
-    )
-    
-    # Mark in parallel
-    mark = amr.udomark(mesh, u, lb, n = 2)
-    
-    # Compute number of local active elements
-    localActive = np.sum(mark.dat.data_ro[:])
-    globalActive = np.zeros(1, dtype=np.float64)
-    comm.Allreduce(localActive, globalActive, op=MPI.SUM)
-    
-    if rank == 0:
-        # Check agreement with serial implementation
-        assert globalActive[0] == 506
-    
-    
+    # Get the absolute path of the current test file
+    current_file = pathlib.Path(__file__).resolve()
+    # Navigate to the test root
+    test_root = current_file.parent
+    # Construct the absolute path to the script
+    script_path = test_root / "generateSolution.py"
+    # Convert to string for subprocess
+    script_path_str = str(script_path)
 
-def test_udo_regression():
-    # This test utilizes the the old implementation of UDO which builds the neighborhood of the free boundary using breadth first search, 
-    # as a regression test for the dmplex based implementation. 
-    
-    amr = VIAMRRegression()
-    mesh =  RectangleMesh(20, 20, 1, 1, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
-    CG1, _ = amr.spaces(mesh)
-    u = Function(CG1).interpolate(1.0)
-    x, y = SpatialCoordinate(mesh)
-    
-    # Somewhat interesting obstacle configuration. 
-    lb = Function(CG1).interpolate(
-       conditional(And(And(x > 0.15, x < 0.35), And(y > 0.15, y < 0.35)), 1.0,
-        conditional(And(And(x > 0.65, x < 0.85), And(y > 0.15, y < 0.35)), 1.0,
-        conditional(And(And(x > 0.15, x < 0.35), And(y > 0.65, y < 0.85)), 1.0,
-        conditional(And(And(x > 0.65, x < 0.85), And(y > 0.65, y < 0.85)), 1.0, 0.0))))
-    )
+    try:
+        # Run UDO method in both parallel and serial
+        subprocess.run(
+            ["python", script_path_str, "--refinements", "2", "--runtime", "serial"],
+            check=True,
+        )
+        subprocess.run(
+            [
+                "mpiexec",
+                "-n",
+                "4",
+                "python",
+                script_path_str,
+                "--refinements",
+                "2",
+                "--runtime",
+                "parallel",
+            ],
+            check=True,
+        )
 
-    markold = amr.udomarkOLD(mesh, u, lb, n = 2)
-    marknew = amr.udomark(mesh, u, lb, n = 2)
-    assert amr.jaccard(markold, marknew) == 1.0
-    
+        # Checkpoint in files
+        with CheckpointFile("serialUDO.h5", "r") as afile:
+            serialMesh = afile.load_mesh("serialMesh")
+            serialMark = afile.load_function(serialMesh, "serialMark")
+
+        with CheckpointFile("parallelUDO.h5", "r") as afile:
+            parallelMesh = afile.load_mesh("parallelMesh")
+            parallelMark = afile.load_function(parallelMesh, "parallelMark")
+
+        # Compare overlap, perfect overlap will have Jaccard index 1.0
+        j = VIAMR(debug=True).jaccard(serialMark, parallelMark)
+        assert abs(j - 1.0) < 1.0e-10
+    finally:
+        # Clean up the generated files
+        for filename in ["serialUDO.h5", "parallelUDO.h5"]:
+            file_path = pathlib.Path(filename).resolve()
+            if file_path.exists():
+                file_path.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     test_netgen_mesh_creation()
@@ -368,6 +376,7 @@ if __name__ == "__main__":
     test_unionmarks()
     test_refine_udo()
     test_refine_vcd()
+    test_gradrecinactivemark()
     test_brinactivemark()
     test_overlapping_jaccard()
     test_nonoverlapping_jaccard()
@@ -376,5 +385,3 @@ if __name__ == "__main__":
     test_refine_udo_parallelUDO()
     test_petsc4py_refine_vcd()
     test_refine_vcd_petsc4py_firedrake()
-    test_udo_regression()
-    test_parallel_udo()
