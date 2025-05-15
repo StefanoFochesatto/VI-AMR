@@ -117,7 +117,7 @@ def test_refine_udo_parallelUDO():
     # VTKFile("result_refine_0.pvd").write(u)
     mark2 = amr.udomarkParallel(u, psi)
     rmesh2 = mesh2.refine_marked_elements(mark2)  # netgen's refine method
-    assert amr.jaccard(mark1, mark2) == 1.0
+    assert abs(amr.jaccard(mark1, mark2) - 1.0) < 1.0e-10
     r1CG1, _ = amr.spaces(rmesh1)
     r2CG1, _ = amr.spaces(rmesh2)
     assert r1CG1.dim() == r2CG1.dim()
@@ -220,7 +220,7 @@ def test_overlapping_jaccard():
     right = conditional(x > 0, 1, 0)
     active1 = Function(DG0).interpolate(right)  # right half active
     active2 = Function(DG0).interpolate(right)  # same; full overlap
-    assert amr.jaccard(active1, active1) == 1.0
+    assert abs(amr.jaccard(active1, active2) - 1.0) < 1.0e-10
 
 
 def test_nonoverlapping_jaccard():
@@ -232,7 +232,7 @@ def test_nonoverlapping_jaccard():
     farleft = conditional(x < -0.5, 1, 0)
     active1 = Function(DG0).interpolate(right)
     active2 = Function(DG0).interpolate(farleft)  # no overlap
-    assert amr.jaccard(active1, active2) == 0.0
+    assert abs(amr.jaccard(active1, active2) - 0.0) < 1.0e-10
 
 
 def test_symmetry_jaccard():
@@ -244,7 +244,7 @@ def test_symmetry_jaccard():
     more = conditional(x < 1, 1, 0)
     active1 = Function(DG0).interpolate(right)
     active2 = Function(DG0).interpolate(more)
-    assert amr.jaccard(active1, active2) == amr.jaccard(active2, active1)
+    assert abs(amr.jaccard(active1, active2) - amr.jaccard(active2, active1)) < 1.0e-10
 
 
 def test_overlapping_and_nonoverlapping_hausdorff():
@@ -306,7 +306,8 @@ def AVOID_test_parallel_udo():
             parallelMark = afile.load_function(parallelMesh, "parallelMark")
 
         # Compare overlap, perfect overlap will have Jaccard index 1.0
-        assert VIAMR(debug=True).jaccard(serialMark, parallelMark) == 1.0
+        j = VIAMR(debug=True).jaccard(serialMark, parallelMark)
+        assert abs(j - 1.0) < 1.0e-10
     finally:
         # Clean up the generated files
         for filename in ["serialUDO.h5", "parallelUDO.h5"]:
