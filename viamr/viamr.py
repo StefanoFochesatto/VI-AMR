@@ -512,33 +512,40 @@ class VIAMR(OptionsManager):
 
         return refinedmesh
 
-    def jaccard(self, active1, active2):
-        """Compute the Jaccard metric from two element-wise active
-        set indicators.  These indicators must be DG0 functions, but they
-        can be on different meshes.  By definition, the Jaccard metric of
-        two sets is
+    def jaccard(self, active1, active2, submesh=False):
+        """Compute the Jaccard metric from two element-wise active set
+        indicators.  By definition, the Jaccard metric of two sets is
             J(S,T) = |S cap T| / |S cup T|,
-        that is, the ratio of the area (measure) of the intersection
-        divided by the area of the union."""
+        where |.| is area (measure) of the set.  Thus J(S,T) the ratio of
+        the area (measure) of the intersection divided by that of the union.
+        The inputs are the indicator functions of the sets as DG0 functions.
+        In serial they can be on different meshes.  (In that case project()
+        method is used to put them on active1's mesh.)  If submesh==True
+        then active2 is assumed to live on a submesh of active1, so
+        interpolate onto the active1 mesh will work correctly.
+        *Thus with submesh==True it works in parallel.*"""
         # FIXME how to check that active1, active2 are in DG0 spaces?
-        # FIXME fails in parallel; the line generating proj2 will throw
-        #     AssertionError: Whoever made mesh_B should explicitly mark
-        #     mesh_A as having a compatible parallel layout.
-        if (
-            active1.function_space().mesh()._comm.size > 1
-            or active2.function_space().mesh()._comm.size > 1
-        ):
-            raise ValueError("jaccard() is not valid in parallel")
+        # FIXME how to check that, when submesh==True, active2 is actually
+        #       on a submesh of active1?
+        if submesh == False:
+            if (
+                active1.function_space().mesh()._comm.size > 1
+                or active2.function_space().mesh()._comm.size > 1
+            ):
+                raise ValueError("jaccard(.., submesh=False) is not valid in parallel")
         if self.debug:
             for a in [active1, active2]:
                 if len(a.dat.data_ro) > 0:
                     assert min(a.dat.data_ro) >= 0.0
                     assert max(a.dat.data_ro) <= 1.0
         mesh1 = active1.function_space().mesh()
-        proj2 = Function(active1.function_space()).project(active2)
-        AreaIntersection = assemble(proj2 * active1 * dx(mesh1))
-        AreaUnion = assemble((proj2 + active1 - (proj2 * active1)) * dx(mesh1))
-        assert AreaUnion > 0.0
+        if submesh:
+            new2 = Function(active1.function_space()).interpolate(active2)
+        else:
+            new2 = Function(active1.function_space()).project(active2)
+        AreaIntersection = assemble(new2 * active1 * dx(mesh1))
+        AreaUnion = assemble((new2 + active1 - (new2 * active1)) * dx(mesh1))
+        assert AreaUnion > 0.0, "jaccard() computed measure of the union as zero"
         return AreaIntersection / AreaUnion
 
     def hausdorff(self, E1, E2):

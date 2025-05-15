@@ -89,7 +89,6 @@ if args.data:
 else:
     # generate [0,L]^2 mesh via Firedrake
     mesh = RectangleMesh(args.m, args.m, L, L)
-assert (not args.jaccard) or mesh.comm.size == 1, 'jaccard does not work in parallel'
 
 # solver parameters
 sp = {"snes_type": "vinewtonrsls",
@@ -139,7 +138,7 @@ for i in range(args.refine + 1):
         #   for ice near margin (0.8 -> 0.9) and to then accomodate
         #   advance into ice-free areas because the margin is resolved
         #   (0.2 -> 0.1)
-        mark = amr.vcdmark(mesh, u, lb, bracket=[0.1, 0.9])
+        mark = amr.vcdmark(u, lb, bracket=[0.1, 0.9])
         if args.rmethod in ['always', 'alternate']:
             if args.rmethod == 'alternate' and i % 2 == 0:
                 print(' and uniformly in inactive ...')
@@ -229,7 +228,7 @@ for i in range(args.refine + 1):
     # report active set agreement between consecutive meshes using Jaccard index
     if i > 0 and args.jaccard:
         neweactive = amr.elemactive(u, lb)
-        jac = amr.jaccard(eactive, neweactive)
+        jac = amr.jaccard(neweactive, eactive, submesh=True)
         print(f'  glaciated areas Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]' )
         eactive = neweactive
 

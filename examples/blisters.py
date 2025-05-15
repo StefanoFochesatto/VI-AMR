@@ -104,7 +104,14 @@ for i in range(refinements + 1):
     solver.solve(bounds=(lb, ub))
 
     # evaluate inactive fraction
-    ifrac = assemble(amr.eleminactive(u, lb) * dx)
+    if i > 0:
+        neweactive = amr.elemactive(u, lb)
+        jac = amr.jaccard(neweactive, eactive, submesh=True)
+        print(f"  Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]")
+        eactive = neweactive
+    else:
+        eactive = amr.elemactive(u, lb)
+    ifrac = assemble(eactive * dx)
     print(f"  inactive fraction {ifrac:.6f}")
 
     # apply VCD AMR, optionally marking all inactive or by B&R indicator
