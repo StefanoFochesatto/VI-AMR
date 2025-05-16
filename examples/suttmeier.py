@@ -73,6 +73,7 @@ for i in range(refinements + 1):
     # apply VCD AMR, marking inactive by B&R indicator
     #   (choose more refinement in active set, relative to default bracket=[0.2, 0.8])
     mark = amr.vcdmark(u, psi, bracket=[0.1, 0.8])
+    #mark = amr.udomark(u, psi, n = 2)
     residual = -div(grad(u)) - fsource
     (imark, _, _) = amr.brinactivemark(u, psi, residual)
     # imark = amr.eleminactive(u, psi)  # alternative is to refine all inactive

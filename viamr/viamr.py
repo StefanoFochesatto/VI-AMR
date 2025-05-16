@@ -138,15 +138,13 @@ class VIAMR(OptionsManager):
         #
 
         DistParams = mesh._distribution_parameters
-
-        if (
-            DistParams["overlap_type"][0].name != "VERTEX"
-            or DistParams["overlap_type"][1] < 1
-        ):
-            # We will error out instead
-            raise ValueError(
-                """Error: For UDO to work ensure that distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
-            )
+        
+        if MPI.COMM_WORLD.Get_size() > 1:
+            if (DistParams["overlap_type"][0].name != "VERTEX" or DistParams["overlap_type"][1] < 1):
+                # We will error out instead
+                raise ValueError(
+                    """Error: For UDO to work ensure that distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
+                )
 
             # This workaround works for firedrake meshes, not netgen. It also forces me to return the mesh which is a bad user pattern.
             # MPI.COMM_WORLD.Barrier()
