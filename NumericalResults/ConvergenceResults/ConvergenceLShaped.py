@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
         elif method == methodlist[1]:  # udo
             mtic = time.perf_counter()
-            mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+            mark = amr_instance.udomark(mesh, u, lb, n=3)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
             mesh = amr_instance.refinemarkedelements(mesh, mark)
@@ -148,7 +148,7 @@ if __name__ == "__main__":
                 rtoc = time.perf_counter()
 
             else:  # adapt
-                mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+                mark = amr_instance.udomark(mesh, u, lb, n=3)
                 mtoc = time.perf_counter()
                 rtic = time.perf_counter()
                 mesh = amr_instance.refinemarkedelements(mesh, mark)
@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
         elif method == methodlist[7]:  # udo + br on inactive set
             mtic = time.perf_counter()
-            markFB = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+            markFB = amr_instance.udomark(mesh, u, lb, n=3)
             resUFL = Constant(0.0) + div(grad(u))
             markBR = amr_instance.BRinactivemark(
                 mesh, u, lb, resUFL, .5, markFB)

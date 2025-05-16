@@ -32,7 +32,9 @@ params = {
     "pc_factor_mat_solver_type": "mumps",
 }
 
-initial_mesh = RectangleMesh(m_initial, 2 * m_initial, 0.5, 1.0)
+# explicitly setting distribution parameters allows udomark() to run in parallel,
+# if it is desired
+initial_mesh = RectangleMesh(m_initial, 2 * m_initial, 0.5, 1.0, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
 
 amr = VIAMR(activetol=1.0e-12)
 meshhierarchy = [
@@ -79,7 +81,9 @@ for i in range(refinements + 1):
     imark, _, _ = amr.brinactivemark(
         u, lb, residual, theta=0.8
     )  # FIXME the distribution of eta has lots of elements close to eta.max(), and a few where eta is very small
-    mark = amr.unionmarks(amr.vcdmark(u, lb), imark)
+    fbmark = amr.vcdmark(u, lb)
+    # alternative: fbmark = amr.udomark(u, lb, n=2)
+    mark = amr.unionmarks(fbmark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 

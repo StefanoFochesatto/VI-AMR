@@ -1,6 +1,5 @@
 import sys
 import numpy as np
-from collections import deque
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
@@ -114,50 +113,8 @@ class VIAMR(OptionsManager):
             (mark1 + mark2) - (mark1 * mark2)
         )
 
-    def _bfsneighbors(self, mesh, border, levels):
-        """Element-wise multi-neighbor lookup using breadth-first search."""
-
-        # build dictionary which maps each vertex in the mesh
-        # to the cells that are incident to it
-        vertex_to_cells = {}
-        closure = mesh.topology.cell_closure  # cell to vertex connectivity
-        # loop over all cells to populate the dictionary
-        for i in range(mesh.num_cells()):
-            # first three entries correspond to the vertices
-            for vertex in closure[i][:3]:
-                if vertex not in vertex_to_cells:
-                    vertex_to_cells[vertex] = []
-                vertex_to_cells[vertex].append(i)
-
-        # loop over all cells to mark neighbors, and store the result in DG0
-        result = Function(border.function_space(), name="nNeighbors")
-        for i in range(mesh.num_cells()):
-            if border.dat.data[i] == 1.0:
-                # use BFS to find all cells within the specified number of levels
-                queue = deque([(i, 0)])
-                visited = set()
-                while queue:
-                    cell, level = queue.popleft()
-                    if cell not in visited and level <= levels:
-                        visited.add(cell)
-                        result.dat.data[cell] = 1
-                        for vertex in closure[cell][:3]:
-                            for neighbor in vertex_to_cells[vertex]:
-                                queue.append((neighbor, level + 1))
-        return result
-
     def udomark(self, uh, lb, n=2):
         """Mark mesh using Unstructured Dilation Operator (UDO) algorithm."""
-        mesh = uh.function_space().mesh()
-        if mesh.comm.size > 1:
-            raise ValueError("udomark() is not valid in parallel")
-        # generate element-wise indicator for border set
-        elemborder = self.elemborder(self.nodalactive(uh, lb))
-        # _bfs_neighbors() constructs N^n(B) indicator
-        return self._bfsneighbors(mesh, elemborder, n)
-
-    def udomarkParallel(self, uh, lb, n=2):
-        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements"""
 
         # Generate element-wise and nodal-wise indicators for active set
         mesh = uh.function_space().mesh()
@@ -170,44 +127,17 @@ class VIAMR(OptionsManager):
         mesh.name = "dmmesh"
         elemborder.rename("elemborder")
 
-        # Checkpointing to enforce distribution parameters which make UDO possible in parallel
-        # This workaround is necessary because:
-        # 1. firedrake does not have a way of changing distribution parameters after mesh initialization (feature request)
-        # 2. netgen meshes cannot be checkpointed in parallel (issue)
-        #
-        # In order for this to work we need to use PETSc refinemarkelements instead
-        # also instead of checkpointing we could write a warning telling the user to set the correct distribution parameters
-        #
-
         DistParams = mesh._distribution_parameters
 
-        if (
-            DistParams["overlap_type"][0].name != "VERTEX"
-            or DistParams["overlap_type"][1] < 1
-        ):
-            # We will error out instead
-            raise ValueError(
-                """Error: For UDO to work ensure that distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
-            )
+        if mesh.comm.size > 1:
+            if (
+                DistParams["overlap_type"][0].name != "VERTEX"
+                or DistParams["overlap_type"][1] < 1
+            ):
+                raise ValueError(
+                    """UDO in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
+                )
 
-            # This workaround works for firedrake meshes, not netgen. It also forces me to return the mesh which is a bad user pattern.
-            # MPI.COMM_WORLD.Barrier()
-            # PETSc.Sys.Print("entered bad params")
-            # PETSc.Sys.Print("writing")
-            # with CheckpointFile("udo.h5", 'w') as afile:
-            #     afile.save_mesh(mesh)
-            #     afile.save_function(elemborder)
-            # PETSc.Sys.Print("writing finished")
-            # PETSc.Sys.Print("reading")
-            # with CheckpointFile("udo.h5", 'r') as afile:
-            #     mesh = afile.load_mesh("dmmesh", distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)}) # <- enforcing distribution parameters
-            #     elemborder = afile.load_function(mesh, "elemborder")
-            # PETSc.Sys.Print("reading finished")
-
-            # # reconstruct DG0 space so result indicator has correct partition
-            # _, DG0 = self.spaces(mesh)
-
-        # Pull dm
         dm = mesh.topology_dm
 
         # This rest of this should really be written by turning the indicator function into a DMLabel
@@ -370,7 +300,7 @@ class VIAMR(OptionsManager):
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         with ieta.dat.vec_ro as ieta_:
             emax = ieta_.max()[1]
-            # eav = ieta_.sum() / ieta_.getSize()
+            # eav = ieta_.sum() / ieta_.getSize()b
             total_error_est = sqrt(ieta_.dot(ieta_))
         # print(f"eav = {eav}  emax = {emax}")
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
@@ -447,8 +377,10 @@ class VIAMR(OptionsManager):
     def refinemarkedelements(self, mesh, indicator, isUniform=False):
         """petsc4py implementation of Netgen's .refine_marked_elements().
         Usually is skeleton-based refinement (SBR; Plaza & Carey, 2000).
-        This version works in parallel, but only in 2D when using SBR???
-        See
+        This version works in parallel, but only in 2D when using SBR;
+        see TODO in
+          https://petsc.org/release/src/dm/impls/plex/transform/impls/refine/sbr/plexrefsbr.c.html.
+        See also
           https://petsc.org/release/overview/plex_transform_table/
         and associated links."""
         # Create Section for DG0 indicator
