@@ -12,13 +12,20 @@ from firedrake.petsc import PETSc
 # mpiexec -n 4 python3 generateSolution.py --refinements 2 --runtime parallel
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser(
-    description='Script for Parallel UDO Ideas Testing')
-parser.add_argument('--refinements', type=int, default=3,
-                    help='Number of refinement levels (default: 1)')
-parser.add_argument('--runtime', type=str, default='serial',
-                    choices=['serial', 'parallel'],
-                    help='Runtime type (options: serial, parallel)')
+parser = argparse.ArgumentParser(description="Script for Parallel UDO Ideas Testing")
+parser.add_argument(
+    "--refinements",
+    type=int,
+    default=3,
+    help="Number of refinement levels (default: 1)",
+)
+parser.add_argument(
+    "--runtime",
+    type=str,
+    default="serial",
+    choices=["serial", "parallel"],
+    help="Runtime type (options: serial, parallel)",
+)
 args = parser.parse_args()
 
 # Generate Mesh
@@ -39,7 +46,7 @@ for i in range(args.refinements):
     PETSc.Sys.Print("UDO marking")
     mark = z.udomark(mesh, u, lb, n=1)
     PETSc.Sys.Print("UDO marked")
-    
+
     if i < args.refinements - 1:
         PETSc.Sys.Print("refining")
         mesh = z.refinemarkedelements(mesh, mark)
@@ -49,8 +56,8 @@ if args.refinements > 0:
     mesh.name = f"{args.runtime}Mesh"
     mark.rename(f"{args.runtime}Mark")
 
-#VTKFile(f"results{args.runtime}.pvd").write(mark)
+# VTKFile(f"results{args.runtime}.pvd").write(mark)
 
-with CheckpointFile(f"{args.runtime}UDO.h5", 'w') as afile:
+with CheckpointFile(f"{args.runtime}UDO.h5", "w") as afile:
     afile.save_mesh(mesh)
     afile.save_function(mark)

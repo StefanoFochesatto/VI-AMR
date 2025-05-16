@@ -113,9 +113,8 @@ class VIAMR(OptionsManager):
             (mark1 + mark2) - (mark1 * mark2)
         )
 
-
     def udomark(self, uh, lb, n=2):
-        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements"""
+        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm."""
 
         # Generate element-wise and nodal-wise indicators for active set
         mesh = uh.function_space().mesh()
@@ -128,42 +127,17 @@ class VIAMR(OptionsManager):
         mesh.name = "dmmesh"
         elemborder.rename("elemborder")
 
-        # Checkpointing to enforce distribution parameters which make UDO possible in parallel
-        # This workaround is necessary because:
-        # 1. firedrake does not have a way of changing distribution parameters after mesh initialization (feature request)
-        # 2. netgen meshes cannot be checkpointed in parallel (issue)
-        #
-        # In order for this to work we need to use PETSc refinemarkelements instead
-        # also instead of checkpointing we could write a warning telling the user to set the correct distribution parameters
-        #
-
         DistParams = mesh._distribution_parameters
-        
-        if MPI.COMM_WORLD.Get_size() > 1:
-            if (DistParams["overlap_type"][0].name != "VERTEX" or DistParams["overlap_type"][1] < 1):
-                # We will error out instead
+
+        if mesh.comm.size > 1:
+            if (
+                DistParams["overlap_type"][0].name != "VERTEX"
+                or DistParams["overlap_type"][1] < 1
+            ):
                 raise ValueError(
-                    """Error: For UDO to work ensure that distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
+                    """UDO in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
                 )
 
-            # This workaround works for firedrake meshes, not netgen. It also forces me to return the mesh which is a bad user pattern.
-            # MPI.COMM_WORLD.Barrier()
-            # PETSc.Sys.Print("entered bad params")
-            # PETSc.Sys.Print("writing")
-            # with CheckpointFile("udo.h5", 'w') as afile:
-            #     afile.save_mesh(mesh)
-            #     afile.save_function(elemborder)
-            # PETSc.Sys.Print("writing finished")
-            # PETSc.Sys.Print("reading")
-            # with CheckpointFile("udo.h5", 'r') as afile:
-            #     mesh = afile.load_mesh("dmmesh", distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)}) # <- enforcing distribution parameters
-            #     elemborder = afile.load_function(mesh, "elemborder")
-            # PETSc.Sys.Print("reading finished")
-
-            # # reconstruct DG0 space so result indicator has correct partition
-            # _, DG0 = self.spaces(mesh)
-
-        # Pull dm
         dm = mesh.topology_dm
 
         # This rest of this should really be written by turning the indicator function into a DMLabel
@@ -403,8 +377,10 @@ class VIAMR(OptionsManager):
     def refinemarkedelements(self, mesh, indicator, isUniform=False):
         """petsc4py implementation of Netgen's .refine_marked_elements().
         Usually is skeleton-based refinement (SBR; Plaza & Carey, 2000).
-        This version works in parallel, but only in 2D when using SBR???
-        See
+        This version works in parallel, but only in 2D when using SBR;
+        see TODO in
+          https://petsc.org/release/src/dm/impls/plex/transform/impls/refine/sbr/plexrefsbr.c.html.
+        See also
           https://petsc.org/release/overview/plex_transform_table/
         and associated links."""
         # Create Section for DG0 indicator
