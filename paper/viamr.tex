@@ -396,37 +396,13 @@ For blistering-property problems, substantial AMR efficiency can be achieved by 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
 
-To explain our methods for adaptive mesh refinement for VIs, we will first review certain methods for adaptive mesh refinement from the literature for PDEs.  Tagging methods, are a class of adaptive methods which assess the suitability of a mesh element-by-element in computing a Quantity of Interest (QoI) like $L_2$ error or another post computation functional like drag or lift \cite{BangerthRannacher2003}. The main idea behind most tagging methods is the refinement loop:
+Two of our new methods for adaptive mesh refinement (AMR) for VIs are of \emph{tag-and-refine} type, and this section introduces those algorithms first.  In the context of PDEs, the tagging step uses a quantity of interest like energy or $L^2$ norm error, or a local functional \cite{BangerthRannacher2003}, to generate local error indicators $\eta_K$.  For the inactive set PDE (interior condition) of problem \eqref{eq:vi}, we have already discussed such indicators $\eta_K$ (Section \ref{sec:aposteriori}).  However, in this paper the primary quantity of interest for obstacle problems is \emph{vicinity to the unknown free boundary}.  To our knowledge there is no precise functional which computes this quantity, and so all of our method proceed heuristically to some degree.
 
-\begin{algorithm}
-  \caption{Tag and refine}
-  \begin{algorithmic}
-    \State Solve: Solve the PDE on the current mesh. 
-    \State Estimate: Estimate the error in the QoI element-by-element.
-    \State Tag: Tag elements for refinement based on the error estimate.
-    \State Refine: Refine or coarsen the mesh maintaining the minimum angle criteria.
-  \end{algorithmic}
-\end{algorithm}
+\newcommand{\DGzero}{\text{DG}_0}
 
-Throughout the literature (\cite{BeckerRannacher2001}, \cite{BangerthRannacher2003}, \cite{Suttmeier2008}) one finds a variety of ways to perform the "Estimate" step. As we mentioned in the Introduction a common way is by the Dual Weighted Residual (DWR) method introduced in \cite{BeckerRannacher2001}. For further details see \cite[Chapter 3]{BangerthRannacher2003}. A general approach for extending the DWR method to variational inequalities can be found in \cite{Suttmeier2008}.  However, the methods proposed here are not based on the DWR method. 
+Our tag-and-refine methods are loops that start by computing a solution $u_h \in \cK_h$ to FE VI problem \eqref{eq:fe:vi} over the current mesh $\cT_h$.  Then they generate a piecewise-constant, i.e.~$\DGzero$, function $I_h$ from the current solution $u_h$.  This refinement indicator function $I_h$ has values in $\{0,1\}$, with one for elements which are to be refined.  Our work then uses either skeleton-based-refinement \cite{PlazaCarey2000} from the PETSc DMPlex component \cite{petsc-user-ref} or from the Netgen library \cite{Betteridgeetal2024}, to generate new meshes with no hanging nodes and quasi-uniformity \cite{BangerthRannacher2003}.  (We also compare to an alternative metric-based framework which allows refinement and coarsening \cite{Wallworketal2020}.)  Then the loop repeats until a desired resolution is achieved.
 
-There are also several ways to perform the "Tag" step. Consider the following fixed-rate strategy found in \cite[Chapter 4]{BangerthRannacher2003}. For fractions $X, Y$ with $1 - X > Y$ and a mesh with $N$ elements, refine the $X\cdot N$ elements with the largest error indicator and coarsen the $Y\cdot N$ elements with the smallest error indicator. For appropriate choices of $X$ and $Y$ this has the effect of keeping the degrees of freedom almost constant. There are other more exotic solutions which accomplish different goals. For example there is a fairly impractical "error-balancing" strategy also described in \cite[Chapter 4]{BangerthRannacher2003} which seeks to equilibrate the error indicators across the mesh.
-
-The "Refine" step in Algorithm 2 addresses to refine cells once they have been selected for refinement. This process involves two considerations: maintaining the minimum angle condition and managing hanging nodes. As illustrated in Figure 2.4, elements can be refined in such a way that the minimum angle condition is violated, leading to poor convergence properties. The second issue concerns hanging nodes, which are nodes that do not have a "covering" relation to all neighboring elements; this concept will be elaborated on further.
-
-A tagging strategy like the one above can be implemented in Firedrake using Netgen/NGSolve integration \cite{Betteridgeetal2024}.  This integration brings several new features to Firedrake, but for our purposes the most important is the \texttt{refine\_marked\_elements()} method.  This method resides inside of a netgen mesh object and takes an indicator function over the domain representing which elements are marked for refinement. This method is capable of dealing with hanging nodes by use of transition cells
-
-The operation of interpolating a function into a DG0 space is central to our proposed methods for adaptive refinement. Conceptually this operation allows us to compute estimators (Estimate step of Algorithim 2) which take on a single value over vertices and then convert them, by averaging over an element into an estimator which takes on a single value over the element. Averaging a function over elements is equivalent to interpolation into a DG0 space. To see this, consider the definition of the interpolation operation given in the Firedrake user manual \cite{FiredrakeUserManual}. 
-Let $u$ be a function over some domain $\Omega$ and $V$ be a finite element space defined on $\Omega$ with basis $\{\phi_i\}_{i = 1}^N$. Then $interpolate(u, V)$ is given by $\sum_{i = 1}^N v_i \phi_i$ where $v_i = \phi^*_i$ and $\phi^*_i$ is an element of the dual basis of $V$. (Recall that the dual basis of $V_\Omega$ is given by the vector $\{\phi^*_i\}$, such that $\phi^*_i(\phi_j) = \delta_{ij}$). The corresponding dual basis vector of a DG0 space is the following average
-\begin{equation}
-  \phi_j^*(f) = \frac{1}{area(\triangle_j)}\int_{\triangle_j} f\, dx.
-\end{equation}
-Note that this choice of functional has the property that $\phi^*_i(\phi_j) = \delta_{ij}$. Now $interpolate(u, V) = \sum_{i = 1}^n v_i\theta_i$ where
-\begin{equation}
-  v_i = \frac{1}{area(\triangle_i)}\int_{\triangle_i} u \, dx.
-\end{equation}
-
-We propose two strategies for adaptive refinement of variational inequalities, which we call Variable Coefficient Diffusion (VCD) and Unstructured Dilation Operator (UDO). These methods are designed to enhance mesh resolution at the free boundary found when solving the VI. These methods are the Estimate and Tag steps in Algorithm 2. They effectively control the error associated with approximating the free boundary, as observed in Section 3.3 and illustrated in Figure 3.4. Note that Firedrake/Netgen is used for the Solve and Refine steps in Algorithim 2.
+FIXME (Recall that interpolation into $\DGzero$ is simply the element-wise averaging of function values.)
 
 The first strategy is called Variable Coefficient Diffusion (VCD). The idea is to use the residual $u^k - \psi$ and a positive tolerance to construct $s_0$, a node-wise indicator function for the active set. This indicator function is used as the initial condition of a variable-coefficient and time-dependent heat equation problem which has the effect of smoothing this indicator near the free boundary. This heat equation problem is solved for a single timestep via implicit Euler, the result of which, we'll call $s_1$. This problem is a linear elliptic PDE, hence "elliptic smoothing"
 \begin{equation}
