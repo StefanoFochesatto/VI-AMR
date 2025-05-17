@@ -329,6 +329,7 @@ class VIAMR(OptionsManager):
             emax = ieta_.max()[1]
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
         return (mark, eta)
+    
 
     def brinactivemark(self, uh, lb, res_ufl, theta=0.5):
         """Return marking within the computed inactive set by using the
@@ -368,12 +369,32 @@ class VIAMR(OptionsManager):
         # generate union of inactive mark and BR mark
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
+        
+        theta = .2
         with ieta.dat.vec_ro as ieta_:
-            emax = ieta_.max()[1]
-            # eav = ieta_.sum() / ieta_.getSize()
+            values = ieta_.array_r
+            sorted_values = np.sort(values)[::-1]
+            cumsum = np.cumsum(sorted_values)
+            total_sum = np.sum(values)
+            target = total_sum * theta
+            idx = np.argmax(cumsum >= target)
+            emax = sorted_values[idx]
             total_error_est = sqrt(ieta_.dot(ieta_))
+            
+        mark = Function(DG0).interpolate(conditional(gt(ieta, emax), 1, 0))
+        VTKFile("Suttmakr.pvd").write(mark)
+
+
+        
+        
+        
+        
+        #with ieta.dat.vec_ro as ieta_:
+        #    emax = ieta_.max()[1]
+        #    # eav = ieta_.sum() / ieta_.getSize()
+        #    total_error_est = sqrt(ieta_.dot(ieta_))
         # print(f"eav = {eav}  emax = {emax}")
-        mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
+        #mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
         return (mark, eta, total_error_est)
 
     def setmetricparameters(self, **kwargs):
