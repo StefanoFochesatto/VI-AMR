@@ -30,17 +30,21 @@ python3 -m pip install -e animate
 
 ## Installation
 
-### development install
+### clone the VIAMR repository and enter the directory
 
-From the VI-AMR directory, install editable with pip:
+```
+git clone https://github.com/StefanoFochesatto/VI-AMR.git
+cd VI-AMR/
+```
+
+### install
+
+Either install editable with pip:
 
 ```
 pip install -e .
 ```
-
-### production install
-
-From the VI-AMR directory, install with pip:
+or plain:
 
 ```
 pip install .
@@ -80,11 +84,11 @@ The sphere problem has a known exact solution while the spiral problem does not.
 
 View the output fields in `result_*.pvd` using [Paraview](https://www.paraview.org/).  These files contain the obstacle `psi`, the solution `u`, and the gap `u - psi`. The `result_sphere.pvd` file also contains the numerical error `|u - uexact|`.
 
-## Limitations
+## Known limitations
 
 The most important limitation is that, at the current time, Netgen meshes, created with `SplineGeometry().GenerateMesh()`, have different refinement capabilities from Firedrake/DMPlex meshes, e.g. those created with the [Firedrake utility mesh generators](https://www.firedrakeproject.org/_modules/firedrake/utility_meshes.html).  Items 1 and 2 below are related to this fact.  Future bug fixes and feature improvements in PETSc DMPlex might change this.
 
-  1. [PETSc's DMPlex mesh transformations](https://petsc.org/release/overview/plex_transform_table/) include skeleton based refinement in 2D, but [currently not in 3D](https://petsc.org/release/src/dm/impls/plex/transform/impls/refine/sbr/plexrefsbr.c.html).  This limits the `VIAMR.refinemarkedelements()` to applications in 2D.
+  1. [PETSc's DMPlex mesh transformations](https://petsc.org/release/overview/plex_transform_table/) include skeleton based refinement (SBR) in 2D, but [currently SBR is not available in 3D](https://petsc.org/release/src/dm/impls/plex/transform/impls/refine/sbr/plexrefsbr.c.html).  This limits `VIAMR.refinemarkedelements()` to applications in 2D.
   2. Parallel application of `VIAMR.udomark()` to Firedrake/DMPlex meshes requires that their distribution parameters be explicitly set.  For example, when using a utility mesh:
   ```UnitSquareMesh(m0, m0, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})```
   3. For the reason given on [this issue](https://github.com/firedrakeproject/mpi-pytest/issues/13), use of [pytest](https://docs.pytest.org/en/stable/) cannot easily be extended to parallel using the [mpi-pytest](https://github.com/firedrakeproject/mpi-pytest) plugin.  Thus parallel regression testing is manual; see the bottom of this page.  Future bug fixes by the mpi-pytest developers could fix this.
