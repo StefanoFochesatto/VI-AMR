@@ -19,6 +19,7 @@ class VIAMR(OptionsManager):
     def __init__(self, **kwargs):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
         self.debug = kwargs.pop("debug", False)
+        self.vcdsolveriters = 4
         self.metricparameters = None
 
     def spaces(self, mesh, p=1):
@@ -189,7 +190,15 @@ class VIAMR(OptionsManager):
 
         return elemborder
 
-    def vcdmark(self, uh, lb, bracket=[0.2, 0.8], returnSmooth=False):
+    def vcdmark(
+        self,
+        uh,
+        lb,
+        bracket=[0.2, 0.8],
+        returnSmooth=False,
+        directsolver=False,
+        printsolvertime=False,
+    ):
         """Mark mesh using Variable Coefficient Diffusion (VCD) algorithm.
         The algorithm computes a strict nodal active set indicator and then
         diffuses it, using a variable mesh-sized based coefficient, by
@@ -215,8 +224,30 @@ class VIAMR(OptionsManager):
         a = w * v * dx + timestep * inner(grad(w), grad(v)) * dx
         L = (1.0 - nodalactive) * v * dx
         u = Function(CG1, name="Smoothed Nodal Active")
-        # FIXME consider some solver; probably not this one: sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
-        solve(a == L, u)
+
+        if directsolver:
+            sp = {
+                "ksp_type": "preonly",
+                "pc_type": "lu",
+                "pc_factor_mat_solver_type": "mumps",
+            }
+        else:
+            sp = {
+                "ksp_type": "cg",
+                "ksp_max_it": self.vcdsolveriters,
+                "ksp_convergence_test": "skip",
+                "pc_type": "icc",
+            }
+            if mesh.comm.size > 0:
+                sp.update({"pc_type": "asm", "pc_asm_overlap": 1, "sub_pc_type": "icc"})
+        if printsolvertime:
+            import time
+
+            start = time.perf_counter()
+        solve(a == L, u, solver_parameters=sp, options_prefix="viamr_vcd")
+        if printsolvertime:
+            end = time.perf_counter()
+            PETSc.Sys.Print(f"INFO  vcdmark() solver time = {end - start:.6f} seconds")
 
         if returnSmooth:
             return u
