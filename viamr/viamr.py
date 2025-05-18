@@ -360,7 +360,7 @@ class VIAMR(OptionsManager):
         P1_ten = TensorFunctionSpace(mesh, "CG", 1)
         metric = RiemannianMetric(P1_ten)
         metric.set_parameters(self.metricparameters)
-        metric.compute_hessian(u)
+        metric.compute_hessian(uh)
         metric.normalise()
         return metric
 
@@ -394,7 +394,7 @@ class VIAMR(OptionsManager):
         # Build hessian based metric for interpolation error and average
         if hessian:
             VImetric = freeboundaryMetric.copy(deepcopy=True)
-            solutionMetric = self.metricfromhessian(u)
+            solutionMetric = self.metricfromhessian(uh)
             solutionMetric.normalise()
             VImetric.average(freeboundaryMetric, weights=weights)
         else:
