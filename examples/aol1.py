@@ -34,7 +34,16 @@ params = {
 
 # explicitly setting distribution parameters allows udomark() to run in parallel,
 # if it is desired
-initial_mesh = RectangleMesh(m_initial, 2 * m_initial, 0.5, 1.0, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+initial_mesh = RectangleMesh(
+    m_initial,
+    2 * m_initial,
+    0.5,
+    1.0,
+    distribution_parameters={
+        "partition": True,
+        "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
+    },
+)
 
 amr = VIAMR(activetol=1.0e-12)
 meshhierarchy = [

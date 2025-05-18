@@ -35,7 +35,15 @@ params = {
 # explicitly setting distribution parameters allows this to be a udomark() example
 # which still runs in parallel
 meshhierarchy = [
-    UnitSquareMesh(m0, m0, diagonal="crossed", distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)}),
+    UnitSquareMesh(
+        m0,
+        m0,
+        diagonal="crossed",
+        distribution_parameters={
+            "partition": True,
+            "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
+        },
+    ),
 ]
 amr = VIAMR()
 for i in range(refinements + 1):
@@ -72,11 +80,11 @@ for i in range(refinements + 1):
     if i == refinements:
         break
 
-    mark = amr.udomark(u, psi, n = 2)
+    mark = amr.udomark(u, psi, n=2)
 
     # alternative: apply VCD AMR, marking inactive by B&R indicator
     #   (choose more refinement in active set, relative to default bracket=[0.2, 0.8])
-    # mark = amr.vcdmark(u, psi, bracket=[0.1, 0.8])
+    # mark = amr.vcdmark(u, psi, bracket=[0.2, 0.9])
 
     residual = -div(grad(u)) - fsource
     (imark, _, _) = amr.brinactivemark(u, psi, residual)

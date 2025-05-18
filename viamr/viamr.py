@@ -1,4 +1,5 @@
 import sys
+import time
 import numpy as np
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
@@ -203,26 +204,22 @@ class VIAMR(OptionsManager):
         The algorithm computes a strict nodal active set indicator and then
         diffuses it, using a variable mesh-sized based coefficient, by
         computing a single backward Euler time step for the corresponding
-        heat equation.  (Equivalently we take a single time-step of variable
-        duration over the mesh.)"""
+        time-dependent diffusion equation.  Then the thresholding of this
+        field marks only elements close to the free boundary."""
 
         # Compute nodal active set indicator within some tolerance
         mesh = uh.function_space().mesh()
         CG1, DG0 = self.spaces(mesh)
         nodalactive = self.nodalactive(uh, lb)
 
-        # Vary timestep by average cell area of each patch.
-        # Not exactly an average because msh.cell_sizes is an L2 projection of
-        # the obvious DG0 function into CG1.
-        timestep = Function(CG1)
-        timestep.dat.data[:] = 0.5 * mesh.cell_sizes.dat.data[:] ** 2
-
-        # Solve one step implicitly using a linear solver
-        # Nodal indicator is initial condition to time dependent Heat eq
+        # Diffuse according to square of cell diameter:  Nodal active
+        # indicator gives initial field u0.  Then solve one backward
+        # Euler time-step, using a linear solver, to diffuse it.
         w = TrialFunction(CG1)
         v = TestFunction(CG1)
-        a = w * v * dx + timestep * inner(grad(w), grad(v)) * dx
-        L = (1.0 - nodalactive) * v * dx
+        h = CellDiameter(mesh)
+        a = w * v * dx + 0.5 * h**2 * inner(grad(w), grad(v)) * dx
+        L = nodalactive * v * dx
         u = Function(CG1, name="Smoothed Nodal Active")
 
         if directsolver:
@@ -241,8 +238,6 @@ class VIAMR(OptionsManager):
             if mesh.comm.size > 0:
                 sp.update({"pc_type": "asm", "pc_asm_overlap": 1, "sub_pc_type": "icc"})
         if printsolvertime:
-            import time
-
             start = time.perf_counter()
         solve(a == L, u, solver_parameters=sp, options_prefix="viamr_vcd")
         if printsolvertime:
@@ -283,9 +278,10 @@ class VIAMR(OptionsManager):
         sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
-        # generate union of inactive mark and BR mark
+        # restrict grad recovery eta to inactive set
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
+        # compute mark in inactive set
         with ieta.dat.vec_ro as ieta_:
             emax = ieta_.max()[1]
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
@@ -326,9 +322,10 @@ class VIAMR(OptionsManager):
         sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
-        # generate union of inactive mark and BR mark
+        # restrict BR eta to inactive set
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
+        # compute mark in inactive set
         with ieta.dat.vec_ro as ieta_:
             emax = ieta_.max()[1]
             # eav = ieta_.sum() / ieta_.getSize()b
