@@ -22,6 +22,12 @@ Now pip install [shapely](https://pypi.org/project/shapely/), siphash24, vtk, an
 pip install shapely siphash24 vtk ngspetsc
 ```
 
+To use metric-based refinement, the [animate](https://github.com/mesh-adaptation/animate) adaptive mesh refinement library is used.  To install this do
+```
+git clone https://github.com/mesh-adaptation/animate.git
+python3 -m pip install -e animate
+```
+
 ## Installation
 
 ### development install
