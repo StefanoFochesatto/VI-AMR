@@ -24,20 +24,25 @@ for i in range(levels + 1):
         "snes_vi_monitor": None,
     }
     u, lb = problem.solveProblem(mesh=mesh, u=u, moreparams=spmore)
+
+    uexact = problem.getExactSolution(u.function_space())
+    uexact.rename("u_exact")
+    print(f"|u - u_exact|_2 = {errornorm(u, uexact):.3e}")
+
     if i == levels:
         break
+    residual = -div(grad(u))
+    (imark, _, _) = amr.brinactivemark(u, lb, residual)
+    # mark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
+    mark = amr.vcdmark(u, lb)
     # alternative:  mark = amr.udomark(mesh, u, lb, n=2)
-    mark = amr.vcdmark(u, lb, bracket=[0.2, 0.9])
+    mark = amr.unionmarks(mark, imark)
     mesh = mesh.refine_marked_elements(mark)
     meshHist.append(mesh)
 
 V = u.function_space()
 gap = Function(V, name="gap = u-lb").interpolate(u - lb)
-uexact = problem.getExactSolution(V)
-uexact.rename("u_exact")
 error = Function(V, name="error = |u - u_exact|")
 error.interpolate(abs(u - uexact))
-
-print(f"|u - u_exact|_2 = {errornorm(u, uexact):.3e}")
 print(f"done ... writing to {outfile} ...")
 VTKFile(outfile).write(u, lb, gap, uexact, error)
