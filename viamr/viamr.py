@@ -20,7 +20,6 @@ class VIAMR(OptionsManager):
     def __init__(self, **kwargs):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
         self.debug = kwargs.pop("debug", False)
-        self.vcdsolveriters = 4
         self.metricparameters = None
 
     def spaces(self, mesh, p=1):
@@ -196,29 +195,32 @@ class VIAMR(OptionsManager):
         uh,
         lb,
         bracket=[0.2, 0.8],
+        coefficient=0.5,
         returnSmooth=False,
         directsolver=False,
+        vcdsolveriters=4,
         printsolvertime=False,
     ):
         """Mark mesh using Variable Coefficient Diffusion (VCD) algorithm.
-        The algorithm computes a strict nodal active set indicator and then
-        diffuses it, using a variable mesh-sized based coefficient, by
-        computing a single backward Euler time step for the corresponding
-        time-dependent diffusion equation.  Then the thresholding of this
-        field marks only elements close to the free boundary."""
+        The algorithm computes a nodal active set indicator and then
+        diffuses it, using a variable mesh-sized based coefficient.  Diffusion
+        is by solving a single backward Euler time step for the corresponding
+        time-dependent diffusion equation.  Thresholding for the middle
+        values of this field marks only those elements which are close to the
+        free boundary."""
 
         # Compute nodal active set indicator within some tolerance
         mesh = uh.function_space().mesh()
         CG1, DG0 = self.spaces(mesh)
         nodalactive = self.nodalactive(uh, lb)
 
-        # Diffuse according to square of cell diameter:  Nodal active
-        # indicator gives initial field u0.  Then solve one backward
-        # Euler time-step, using a linear solver, to diffuse it.
+        # Diffuse according to square of cell diameter: D = C h^2.  The nodal
+        # active indicator gives the initial field u0.  Then solve one backward
+        # Euler time-step using a linear solver.
         w = TrialFunction(CG1)
         v = TestFunction(CG1)
         h = CellDiameter(mesh)
-        a = w * v * dx + 0.5 * h**2 * inner(grad(w), grad(v)) * dx
+        a = w * v * dx + coefficient * h**2 * inner(grad(w), grad(v)) * dx
         L = nodalactive * v * dx
         u = Function(CG1, name="Smoothed Nodal Active")
 
@@ -231,7 +233,7 @@ class VIAMR(OptionsManager):
         else:
             sp = {
                 "ksp_type": "cg",
-                "ksp_max_it": self.vcdsolveriters,
+                "ksp_max_it": vcdsolveriters,
                 "ksp_convergence_test": "skip",
                 "pc_type": "icc",
             }
@@ -242,19 +244,18 @@ class VIAMR(OptionsManager):
         solve(a == L, u, solver_parameters=sp, options_prefix="viamr_vcd")
         if printsolvertime:
             end = time.perf_counter()
-            PETSc.Sys.Print(f"INFO  vcdmark() solver time = {end - start:.6f} seconds")
+            PETSc.Sys.Print(f"VIAMR INFO  vcdmark() solver time = {end - start:.6f} seconds")
 
         if returnSmooth:
             return u
-        else:
-            # Compute average over elements by interpolation into DG0
-            uDG0 = Function(DG0).interpolate(u)
-            # Applying thresholding parameters
-            mark = Function(DG0, name="VCD Marking")
-            mark.interpolate(
-                conditional(uDG0 > bracket[0], conditional(uDG0 < bracket[1], 1, 0), 0)
-            )
-            return mark
+
+        # Interpolate into DG0 (effectively a bit more diffusion) and apply thresholding.
+        uDG0 = Function(DG0).interpolate(u)
+        mark = Function(DG0, name="VCD Marking")
+        mark.interpolate(
+            conditional(uDG0 > bracket[0], conditional(uDG0 < bracket[1], 1, 0), 0)
+        )
+        return mark
 
     def gradrecinactivemark(self, uh, lb, theta=0.5):
         """Return marking within the computed inactive set by using an
@@ -263,7 +264,7 @@ class VIAMR(OptionsManager):
           Finite Element Analysis, John Wiley & Sons, Inc., New York."""
         mesh = uh.function_space().mesh()
         v = CellVolume(mesh)
-        # recover a CG1 gradient FIXME is this the preferred way?
+        # recover a CG1 gradient of uh by projection
         CG1vec = VectorFunctionSpace(mesh, "CG", 1)
         gradrecu = Function(CG1vec).project(grad(uh))
         # cell-wise error estimator
