@@ -94,9 +94,8 @@ for i in range(refinements + 1):
 
     marklower = amr.udomark(u, lb, n=1)
     markupper = amr.udomark(u, ub, n=1)
-    _, DG0 = amr.spaces(mesh)
-    mark = Function(DG0).interpolate((marklower + markupper) - (marklower * markupper))
-    mesh = mesh.refine_marked_elements(mark)
+    mark = amr.unionmarks(marklower, markupper)
+    mesh = mesh.refine_marked_elements(mark)  # uses Netgen refinement
     # VTKFile(f'test{i}.pvd').write(u, f, w, lb, ub, marklower, markupper, mark)
 
 outfile = "result_pollutant.pvd"
