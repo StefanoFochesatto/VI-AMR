@@ -56,6 +56,10 @@
 \newcommand{\cX}{\mathcal{X}}
 \newcommand{\cY}{\mathcal{Y}}
 
+\newcommand{\CG}{\text{CG}}
+\newcommand{\DG}{\text{DG}}
+
+
 \begin{document}
 
 %\articletype{ARTICLE TEMPLATE}% Specify the article type or omit as appropriate
@@ -193,6 +197,8 @@ The paper is organized as follows:  Table \ref{tab:abbrev} gives the few abbrevi
 AMR       & adaptive mesh refinement \\
 AVM$^*$   & averaged-metric \\
 BR        & Babu\v{s}ka--Rheinboldt, an error estimator \\
+CG        & continuous Galerkin \\
+DG        & discontinuous Galerkin \\
 DWR       & dual-weighted residual \\
 FE        & finite element \\
 PDE       & partial differential equation \\
@@ -396,88 +402,81 @@ For blistering-property problems, substantial AMR efficiency can be achieved by 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
 
-Two of our new methods for adaptive mesh refinement (AMR) for VIs are of \emph{tag-and-refine} type, and this section introduces those algorithms first.  In the context of PDEs, the tagging step uses a quantity of interest like energy or $L^2$ norm error, or a local functional \cite{BangerthRannacher2003}, to generate local error indicators $\eta_K$.  For the inactive set PDE (interior condition) of problem \eqref{eq:vi}, we have already discussed such indicators $\eta_K$ (Section \ref{sec:aposteriori}).  However, in this paper the primary quantity of interest for obstacle problems is \emph{vicinity to the unknown free boundary}.  To our knowledge there is no precise functional which computes this quantity, and so all of our method proceed heuristically to some degree.
+Two of our new methods for adaptive mesh refinement (AMR) for VIs are of \emph{tag-and-refine} type, and we introduce those algorithms first.  In the context of PDEs, the tagging step uses a quantity of interest like energy or $L^2$ norm error, or a local functional \cite{BangerthRannacher2003}, to generate error indicators $\eta_K$ for each element $K$.  For the interior condition (inactive set PDE) of problem \eqref{eq:vi}, we have discussed such indicators $\eta_K$ in Section \ref{sec:aposteriori}.
 
-\newcommand{\DGzero}{\text{DG}_0}
+We assert that a primary quantity of interest for obstacle problems is \emph{vicinity to the unknown free boundary}.  To our knowledge there is no precise functional which computes this quantity, and so all of our methods proceed heuristically to some degree.
 
-Our tag-and-refine methods are loops that start by computing a solution $u_h \in \cK_h$ to FE VI problem \eqref{eq:fe:vi} over the current mesh $\cT_h$.  Then they generate a piecewise-constant, i.e.~$\DGzero$, function $I_h$ from the current solution $u_h$.  This refinement indicator function $I_h$ has values in $\{0,1\}$, with one for elements which are to be refined.  Our work then uses either skeleton-based-refinement \cite{PlazaCarey2000} from the PETSc DMPlex component \cite{petsc-user-ref} or from the Netgen library \cite{Betteridgeetal2024}, to generate new meshes with no hanging nodes and quasi-uniformity \cite{BangerthRannacher2003}.  (We also compare to an alternative metric-based framework which allows refinement and coarsening \cite{Wallworketal2020}.)  Then the loop repeats until a desired resolution is achieved.
+The tag-and-refine methods below start from a computed solution $u_h \in \cK_h$ to FE VI problem \eqref{eq:fe:vi}, over some mesh $\cT_h$.  From this they generate a piecewise-constant refinement indicator function $I_h \in \DG_0$.  This function has values in $\{0,1\}$; the elements in $\{K \in \cT_h\,:\,I_h(K)=1\}$ are to be refined.  We then use either skeleton-based-refinement \cite{PlazaCarey2000} as implemented in the PETSc DMPlex component \cite{petsc-user-ref}, or as implemented in the Netgen library \cite{Betteridgeetal2024}, to generate new meshes with no hanging nodes and quasi-uniformity \cite{BangerthRannacher2003}.  (Later we also compare to a metric-based framework which allows refinement and coarsening \cite{Wallworketal2020}.)  Then the FE VI problem is solved again over the refined mesh, with iterations until a desired resolution is achieved.
 
-FIXME (Recall that interpolation into $\DGzero$ is simply the element-wise averaging of function values.)
-
-The first strategy is called Variable Coefficient Diffusion (VCD). The idea is to use the residual $u^k - \psi$ and a positive tolerance to construct $s_0$, a node-wise indicator function for the active set. This indicator function is used as the initial condition of a variable-coefficient and time-dependent heat equation problem which has the effect of smoothing this indicator near the free boundary. This heat equation problem is solved for a single timestep via implicit Euler, the result of which, we'll call $s_1$. This problem is a linear elliptic PDE, hence "elliptic smoothing"
-\begin{equation}
-  \frac{1}{\Delta t}(s_1 - s_0) = \nabla^2 s_1.
+One of our strategies is called Variable Coefficient Diffusion (VCD).  First, a nodal active set indicator $\nu_h \in \CG_1$ is computed using $u_h$, $\psi_h$, and a small tolerance for being close-enough to the obstacle.  (A default of $10^{-12}$ is used throughout.)  Then, conceptually-speaking, this indicator function is used as the initial condition of a time-dependent, variable-coefficient diffusion problem
+\begin{equation} \label{eq:diffusioneqn}
+\frac{\partial s}{\partial t} = \Div\left(D \grad s\right), \qquad s(t=0) = \nu_h,
 \end{equation}
-Our choice of timestep $\Delta t_i = \frac{1}{2}(\text{avg}(\text{diam}(\triangle_i)))^2$ where $\triangle_i$ is the set of all elements incident to vertex $i$. This choice depends on the element, thus "variable coefficient". Varying the timestep based off of neighboring element diameter has the effect of applying the same amount diffusion across all elements regardless of size. The result is then interpolated into a DG0 space and thresholded to produce the refinement indicator, as in Algorithim 2. There are various parameters to consider with this technique. The choice of timestep and thresholding parameters will substantially affect the "distance" about which the free boundary is resolved. 
+with Neumann (natural) boundary conditions.  The solution of \eqref{eq:diffusioneqn} at a given $t>0$ is a smoothed indicator function.
+
+We set the amount of diffusivity to depend on the element size: $D=C h^2$, where $C=0.5$ by default.  Thus the diffusion range is comparable to one element everywhere along the free boundary, independent of element size.  Then, in fact, we compute $s_h\in\CG_1$ by approximately solving \eqref{eq:diffusioneqn} over a single backward-Euler step of duration $\Delta t = 1$.  The default solver, applied using the PETSc library \cite{petsc-user-ref}, is four iterations conjugate gradient preconditioned by incomplete-Cholesky factorization \cite{Bueler2021}.  Note that this solver's complexity is linear in the number of mesh nodes; it is optimal.
+
+Now, within a few elements of the computed free boundary defined by $u_h$, the new field $s_h$ has values between, but away from, $\{0,1\}$.  These values are interpolated into $\DG_0$, and thresholded into a user-chosen middle interval, to produce the refinement indicator $I_h$.  See Algorithm \ref{alg:vcd}.
 
 \begin{algorithm}[H]
-	\caption{Variable Coefficient Diffusion Element Tagging for VIs}\label{alg:cap}
+	\caption{Variable Coefficient Diffusion (VCD) element tagging}
 	\begin{algorithmic}[1]
-		\Require $tol \in \mathbb{R}$, $u^k \in K_\psi, \psi \in V$, $W$ is DG0 FE space.
-		\Require Threshold parameters $0\leq \alpha < \beta \leq 1$.
-		\State Compute the nodal active set indicator function $s_0$
-		  \begin{equation*}
-			s_0 = \begin{cases}
-			  1 & \text{ if } u^k - \psi < tol\\
-			  0 & \text{ otherwise}
-			\end{cases}
-		  \end{equation*}
-		\State Let $\Delta t_i = \frac{1}{2}(\text{avg}(\text{diam}(\triangle_i)))^2$, a CG1 field.
-	  
-		\State Solve $\frac{1}{\Delta t}(s_1 - s_0) = \nabla^2 s_1$ with $g_D = s_0|_{\partial\Omega}$ impliclty with Firedrake defaults settings. 
-		\State Let $s_W = interpolate(s_1, W)$.
-		\State Define the refinement indicator $I \in W$ as follows:
+		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, coefficient $C>0$, and middle interval $0 < \alpha < \beta < 1$.
+		\State Compute $\nu_h \in \CG_1$ as $(\nu_h)(x_j)=1$ if $u_h(x_j) - \psi_h(x_j)<\text{tol}$, and zero otherwise, for all $\CG_1$ nodes $x_j$.
+		\State For $h$ the variable cell (element) diameter, let $D=C h^2$.
+		\State Approximately solve $s_h - \Div(D \grad s_h) = \nu_h$, i.e.~one step of \eqref{eq:diffusioneqn}, for $s_h\in\CG_1$.
+		\State Compute the refinement indicator $I_h \in \DG_0$ by thresholding the values of $s_h$, at $\DG_0$ degrees of freedom $x_K$, into $(\alpha,\beta)$:
 		\begin{equation*}
-		  I(\triangle) = \begin{cases}
-			1 & \text{ if } \alpha < s_W(\triangle) < \beta\\
+		  I_h(K) = \begin{cases}
+			1 & \text{ if } \alpha < s(x_K) < \beta\\
 			0 & \text{ otherwise}
 		  \end{cases}
 		\end{equation*}\\
-		\Return $I$
+		\Return $I_h$
 	\end{algorithmic}
-	\end{algorithm}
+\label{alg:vcd}
+\end{algorithm}
+
+FIXME There are various parameters to consider with this technique. 
 
 Figure \ref{fig:vcdillustration} illustrates the VCD algorithm applied to a one-dimensional obstacle problem.
 
 \begin{figure}[ht]
   \captionsetup[subfigure]{justification=centering}
   \centering
-  \null\hfill
-  \begin{subfigure}[b]{.35\textwidth}
-    \input{tikz/vcd-a.tex}
-    \caption{Iterate $u^k$(black) and obstacle $\psi$(red).}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{.35\textwidth}
-    \input{tikz/vcd-b.tex}
-    \caption{Nodal active set indicator $s_0$.}
-  \end{subfigure}
-  \null\hfill
-  \medskip
 
-  \null\hfill
-  \begin{subfigure}[b]{.35\textwidth}
+\mbox{\begin{subfigure}[t]{.45\textwidth}
+    \input{tikz/vcd-a.tex}
+    \caption{Iterate $u_h$(black) and obstacle $\psi_h$ (red).}
+  \end{subfigure}
+  \quad
+  \begin{subfigure}[t]{.45\textwidth}
+    \input{tikz/vcd-b.tex}
+    \caption{Nodal active set indicator $\nu_h$.}
+  \end{subfigure}}
+
+\medskip
+\mbox{\begin{subfigure}[b]{.35\textwidth}
     \centering
     \input{tikz/vcd-c.tex}
-    \caption{Smoothed $s_1$.}
+    \caption{Smoothed $s_h$.}
   \end{subfigure}
-  \hfill
+  \quad
   \begin{subfigure}[b]{.35\textwidth}
     \centering
     \input{tikz/vcd-d.tex}
-    \caption{$interpolate(s_1,W)$. Threshold values in red.}
-  \end{subfigure}
-  \null\hfill
-  \medskip
+    \caption{Threshold values in red.}
+  \end{subfigure}}
 
+\medskip
   \begin{subfigure}[b]{0.9\textwidth}
     \centering
     \input{tikz/vcd-e.tex}
-    \caption{Refinement indicator function $I$.}
+    \caption{Refinement indicator function $I_h$.}
   \end{subfigure}
-  \vspace*{.25cm}
-  \caption{Illustration of VCD.}
-  \label{fig:vcdillustration}
+
+\caption{Illustration of VCD.}
+\label{fig:vcdillustration}
 \end{figure}
 
 Support for unstructured meshes in Firedrake comes from the DMPlex class in PETSc, as developed by \cite{LangeKnepleyGorman2015}. DMPlex is a data management object which can store the topology (connectivity of mesh entities) and geometry (coordinates) of a discretization. In the DMPlex object every mesh entity is assigned a unique index. The connectivity of a mesh is stored as a layered directed acyclic graph (DAG) in which a "covering" relation specifies the edges of the graph. For example, for a tetrahedral element in a 3d mesh, a face is covered by 3 edges and a tetrahedral cell is covered by 4 faces. Each layer represents a class of mesh entity i.e vertices, edges, etc. Below is an example of how a single tetrahedral cell is represented by DMPlex.
@@ -528,11 +527,11 @@ FIXME
 \caption{Mesh (left) generated from the spiral problem, with $N=2.3\times 10^3$ elements, and the approximated active set (right).}
 \end{figure}
 
-We end this section with a minimal Python example code, Figure \ref{fig:exampleAOL}.  This solves Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution, on a coarse mesh and then applies VCD marking and refinement.  The initial mesh, marked elements near the free boundary, and refined mesh are shown in Figure \ref{fig:resultAOL}.
+We end this section with a minimal Python example code, Figure \ref{fig:exampleAOL}.  This solves Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution, on a coarse mesh and then applies VCD marking and refinement.  The initial mesh, marked elements near the free boundary, and refined mesh are shown in Figure \ref{fig:resultAOL}.  FIXME \href{https://github.com/StefanoFochesatto/VI-AMR}{\texttt{github.com/StefanoFochesatto/VI-AMR}}
 
 \begin{figure}[ht]
 \inputminted[linenos, frame=lines]{python}{static/exampleAOL.py}
-\caption{A minimal application using the \href{https://github.com/StefanoFochesatto/VI-AMR}{\texttt{github.com/StefanoFochesatto/VI-AMR}} Python library.}
+\caption{A minimal application using the VIAMR Python library.}
 \label{fig:exampleAOL}
 \end{figure}
 

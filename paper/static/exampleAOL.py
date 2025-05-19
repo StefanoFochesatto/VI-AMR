@@ -3,7 +3,7 @@ from viamr import VIAMR
 
 mesh0 = RectangleMesh(6, 12, 0.5, 1.0)
 x, y = SpatialCoordinate(mesh0)
-rr = (x + 1.0) ** 2 + y**2
+rr = (x + 1.0) ** 2 + y ** 2
 uex = conditional(rr < 2.0, 0.25 * rr - 0.5 - 0.5 * ln(0.5 * rr), 0.0)
 
 V = FunctionSpace(mesh0, "CG", 1)

@@ -26,18 +26,18 @@
   
       % Plot u(x) in three pieces
       \addplot[
-        thick,
-        blue,
+        very thick,
+        black,
         domain=-1:\a
       ] {((.5 - \a*\a)/(\a + 1))*(x + 1)};
       \addplot[
-        thick,
-        blue,
+        very thick,
+        black,
         domain=\a:\b
       ] {0.5 - x^2};
       \addplot[
-        thick,
-        blue,
+        very thick,
+        black,
         domain=\b:1
       ] {-((.5 - \b*\b)/(1 - \b))*(x - 1)};
       \addlegendentry{$u(x)$}
