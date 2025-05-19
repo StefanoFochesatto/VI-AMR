@@ -212,7 +212,7 @@ class VIAMR(OptionsManager):
         # Compute nodal active set indicator within some tolerance
         mesh = uh.function_space().mesh()
         CG1, DG0 = self.spaces(mesh)
-        nodalactive = self.nodalactive(uh, lb)
+        nu = self.nodalactive(uh, lb)
 
         # Diffuse according to square of cell diameter: D = C h^2.  The nodal
         # active indicator gives the initial field u0.  Then solve one backward
@@ -221,7 +221,7 @@ class VIAMR(OptionsManager):
         v = TestFunction(CG1)
         h = CellDiameter(mesh)
         a = w * v * dx + coefficient * h**2 * inner(grad(w), grad(v)) * dx
-        L = nodalactive * v * dx
+        L = nu * v * dx
         u = Function(CG1, name="Smoothed Nodal Active")
 
         if directsolver:
@@ -249,11 +249,10 @@ class VIAMR(OptionsManager):
         if returnSmooth:
             return u
 
-        # Interpolate into DG0 (effectively a bit more diffusion) and apply thresholding.
-        uDG0 = Function(DG0).interpolate(u)
+        # apply thresholding and interpolate into DG0
         mark = Function(DG0, name="VCD Marking")
         mark.interpolate(
-            conditional(uDG0 > bracket[0], conditional(uDG0 < bracket[1], 1, 0), 0)
+            conditional(u > bracket[0], conditional(u < bracket[1], 1, 0), 0)
         )
         return mark
 
