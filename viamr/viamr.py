@@ -145,7 +145,7 @@ class VIAMR(OptionsManager):
         # Generate map (set) from DMPlex to firedrake indices
         # (Is there a better way to do this in dmcommon?)
         plexelementlist = mesh.cell_closure[:, -1]
-        dm2fd = {number: index for index, number in enumerate(plexelementlist)}
+        dm2fd = np.argsort(plexelementlist) 
 
         # Find range of indices for vertex stratum
         jmin, jmax = dm.getDepthStratum(mesh.topological_dimension())[:2]
