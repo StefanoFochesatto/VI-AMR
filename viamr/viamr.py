@@ -115,80 +115,76 @@ class VIAMR(OptionsManager):
         )
 
     def udomark(self, uh, lb, n=2):
-        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm."""
+        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm.  The algorithm
+        first computes an element-wise indicator for the free boundary.  Then the elements
+        which neighbor the current free-boundary elements are added, and so on iteratively.
+        The input n gives the number of levels to expand the initial element border.  The
+        output is an element-wise marking for which elements, near the free boundary,
+        should be refined."""
 
-        # Generate element-wise and nodal-wise indicators for active set
+        # get mesh and its DMPlex
         mesh = uh.function_space().mesh()
-        _, DG0 = self.spaces(mesh)
-        nodalactive = self.nodalactive(uh, lb)
+        dm = mesh.topology_dm
 
-        # Generate border element indicator
-        elemborder = self.elemborder(nodalactive)
-
-        mesh.name = "dmmesh"
-        elemborder.rename("elemborder")
-
-        DistParams = mesh._distribution_parameters
-
+        # Check that distribution parameters are correct in parallel
         if mesh.comm.size > 1:
-            if (
-                DistParams["overlap_type"][0].name != "VERTEX"
-                or DistParams["overlap_type"][1] < 1
-            ):
+            dp = mesh._distribution_parameters
+            if (dp["overlap_type"][0].name != "VERTEX" or dp["overlap_type"][1] < 1):
                 raise ValueError(
-                    """UDO in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
+                    """udomark() in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
                 )
 
-        dm = mesh.topology_dm
+        # Use nodal indicators for active set to make element-wise border indicator  This is a DG0
+        # function with 1 for elements "on" free boundary.  It is updated (overwritten) at end
+        # of the main loop.
+        border = self.elemborder(self.nodalactive(uh, lb))
 
         # This rest of this should really be written by turning the indicator function into a DMLabel
         # and then writing the dmplex traversal in petsc4py. This is a workaround.
 
-        # Generate map from dm to fd indices (I think there is a better way to do this in dmcommon)
+        # Generate map (set) from DMPlex to firedrake indices
+        # (Is there a better way to do this in dmcommon?)
         plexelementlist = mesh.cell_closure[:, -1]
-        dm_to_fd = {number: index for index, number in enumerate(plexelementlist)}
+        dm2fd = {number: index for index, number in enumerate(plexelementlist)}
 
+        # Find range of indices for vertex stratum
+        jmin, jmax = dm.getDepthStratum(mesh.topological_dimension())[:2]
+
+        # main loop: expand element border out to n levels
+        #   (index convention:  i for levels, j for nodes/vertices, k for elements)
+        _, DG0 = self.spaces(mesh)
         for i in range(n):
-            # Pull border elements cell with dmplex cell indices
-            BorderSetElementsIndices = [
-                mesh.cell_closure[:, -1][i]
-                for i, value in enumerate(elemborder.dat.data_ro_with_halos)
+            # Pull DMPlex border element indices using dmplex cell indices
+            borderindices = [
+                plexelementlist[k]
+                for k, value in enumerate(border.dat.data_ro_with_halos)
                 if value != 0
             ]
 
-            # Pull indices of vertices which are incident to said border elements
+            # Pull DMPlex indices of all vertices which are incident to some border element,
+            # then flatten and remove duplicates
             incidentVertices = [
-                dm.getTransitiveClosure(i)[0][4:7] for i in BorderSetElementsIndices
+                dm.getTransitiveClosure(k)[0][4:7] for k in borderindices
             ]
+            incidentVertices = np.unique(np.ravel(incidentVertices))
 
-            # Flatten the list of lists and remove duplicates
-            flattened_array = np.ravel(incidentVertices)
-            incidentVertices = np.unique(flattened_array)
-
-            # Needs to be based of topological dimension
-            # Pull the depth stratum for the vertices
-            tdim = mesh.topological_dimension()
-            lb = dm.getDepthStratum(tdim)[0]
-            ub = dm.getDepthStratum(tdim)[1]
-            # Pull all elements which are neighbor to the incidentVertices. This produces the set N(B)
-            NeighborSet = []
-            for i in incidentVertices:
-                idx = np.where(
-                    (dm.getTransitiveClosure(i, useCone=False)[0] >= lb)
-                    & (dm.getTransitiveClosure(i, useCone=False)[0] < ub)
+            # Pull DMPlex indices of all elements which are incident (neighbor) to the
+            # incidentVertices; this is the set N(B) in the paper.  Then flatten and remove duplicates
+            neighborindices = []
+            for j in incidentVertices:
+                k = np.where(
+                    (dm.getTransitiveClosure(j, useCone=False)[0] >= jmin)
+                    & (dm.getTransitiveClosure(j, useCone=False)[0] < jmax)
                 )
-                NeighborSet.extend(dm.getTransitiveClosure(i, useCone=False)[0][idx])
-            # Flatten the list of lists and remove duplicates
-            NeighborSet = np.ravel(NeighborSet)
-            NeighborSet = np.unique(NeighborSet)
+                neighborindices.extend(dm.getTransitiveClosure(j, useCone=False)[0][k])
+            neighborindices = np.unique(np.ravel(neighborindices))
 
-            # Create new elemborder function
-            elemborder = Function(DG0).interpolate(Constant(0.0))
+            # update element-wise border indicator by adding neighbors
+            border = Function(DG0).interpolate(Constant(0.0))
+            for k in neighborindices:
+                border.dat.data_wo_with_halos[dm2fd[k]] = 1
 
-            for j in NeighborSet:
-                elemborder.dat.data_wo_with_halos[dm_to_fd[j]] = 1
-
-        return elemborder
+        return border
 
     def vcdmark(
         self,
@@ -207,7 +203,8 @@ class VIAMR(OptionsManager):
         is by solving a single backward Euler time step for the corresponding
         time-dependent diffusion equation.  Thresholding for the middle
         values of this field marks only those elements which are close to the
-        free boundary."""
+        free boundary.  The output is an element-wise marking for which elements,
+        near the free boundary, should be refined."""
 
         # Compute nodal active set indicator within some tolerance
         mesh = uh.function_space().mesh()
