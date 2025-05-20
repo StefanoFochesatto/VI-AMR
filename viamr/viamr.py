@@ -399,8 +399,8 @@ class VIAMR(OptionsManager):
             VImetric.average(freeboundaryMetric, weights=weights)
         else:
             VImetric = freeboundaryMetric.copy(deepcopy=True)
-
-        return VImetric
+            
+        return adapt(mesh, VImetric)
 
     def refinemarkedelements(self, mesh, indicator, isUniform=False):
         """petsc4py implementation of Netgen's .refine_marked_elements().
