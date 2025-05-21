@@ -27,7 +27,7 @@ for i in range(levels + 1):
     if i == levels:
         break
     mark = amr.udomark(u, lb, n=2)
-    # FIXME allow alternative?:  mark = amr.udomarkParallel(u, lb)
+    # FIXME allow alternative?:  mark = amr.udomark(u, lb)
     # alternative:  mark = amr.vcdmark(u, lb)
     mesh = mesh.refine_marked_elements(mark)
     meshHist.append(mesh)

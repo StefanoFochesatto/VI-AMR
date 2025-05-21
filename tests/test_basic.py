@@ -7,7 +7,7 @@ import os
 import pathlib
 
 
-def get_netgen_mesh(TriHeight=0.4, width=2):
+def _get_netgen_mesh(TriHeight=0.4, width=2):
     import netgen
     from netgen.geom2d import SplineGeometry
 
@@ -26,19 +26,7 @@ def get_netgen_mesh(TriHeight=0.4, width=2):
     )
 
 
-def test_netgen_mesh_creation():
-    mesh = get_netgen_mesh()
-    assert mesh.num_cells() == 228
-
-
-def test_spaces():
-    mesh = get_netgen_mesh(TriHeight=1.2)
-    CG1, DG0 = VIAMR(debug=True).spaces(mesh)
-    assert CG1.dim() == 19
-    assert DG0.dim() == 24
-
-
-def get_ball_obstacle(x, y):
+def _get_ball_obstacle(x, y):
     r = sqrt(x * x + y * y)
     r0 = 0.9
     psi0 = np.sqrt(1.0 - r0 * r0)
@@ -46,12 +34,24 @@ def get_ball_obstacle(x, y):
     return conditional(le(r, r0), sqrt(1.0 - r * r), psi0 + dpsi0 * (r - r0))
 
 
+def test_netgen_mesh_creation():
+    mesh = _get_netgen_mesh()
+    assert mesh.num_cells() == 228
+
+
+def test_spaces():
+    mesh = _get_netgen_mesh(TriHeight=1.2)
+    CG1, DG0 = VIAMR(debug=True).spaces(mesh)
+    assert CG1.dim() == 19
+    assert DG0.dim() == 24
+
+
 def test_mark_none():
-    mesh = get_netgen_mesh(TriHeight=1.2)
+    mesh = _get_netgen_mesh(TriHeight=1.2)
     amr = VIAMR(debug=True)
     CG1, _ = amr.spaces(mesh)
     (x, y) = SpatialCoordinate(mesh)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     mark = amr.udomark(psi, psi)  # all active
     assert norm(mark, "L1") == 0.0
     mark = amr.vcdmark(psi, psi)  # all active
@@ -71,19 +71,19 @@ def test_unionmarks():
     _, DG0 = amr.spaces(mesh)
     (x, y) = SpatialCoordinate(mesh)
     rightmark = Function(DG0).interpolate(conditional(x > 0.0, 1.0, 0.0))
-    discmark = Function(DG0).interpolate(get_ball_obstacle(x, y) > 0.0)
+    discmark = Function(DG0).interpolate(_get_ball_obstacle(x, y) > 0.0)
     mark = amr.unionmarks(rightmark, discmark)
     # VTKFile(f"result_unionmarks.pvd").write(rightmark, discmark, mark)
     assert abs(assemble(mark * dx) - 9.92) < 1.0e-10  # union of marked area
 
 
 def test_refine_udo():
-    mesh = get_netgen_mesh(TriHeight=1.2)
+    mesh = _get_netgen_mesh(TriHeight=1.2)
     amr = VIAMR(debug=True)
     CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 19
     (x, y) = SpatialCoordinate(mesh)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     # VTKFile(f"result_refine_0.pvd").write(u)
@@ -97,39 +97,13 @@ def test_refine_udo():
     # VTKFile(f"result_refine_1.pvd").write(ru)
 
 
-def test_refine_udo_parallelUDO():
-    mesh1 = get_netgen_mesh(TriHeight=0.1)
-    amr = VIAMR(debug=True)
-    CG1, _ = amr.spaces(mesh1)
-    (x, y) = SpatialCoordinate(mesh1)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
-    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
-    unorm0 = norm(u)
-    # VTKFile(f"result_refine_0.pvd").write(u)
-    mark1 = amr.udomark(u, psi)
-    rmesh1 = mesh1.refine_marked_elements(mark1)  # netgen's refine method
-    mesh2 = get_netgen_mesh(TriHeight=0.1)
-    CG1, _ = amr.spaces(mesh2)
-    (x, y) = SpatialCoordinate(mesh1)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
-    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
-    unorm0 = norm(u)
-    # VTKFile("result_refine_0.pvd").write(u)
-    mark2 = amr.udomarkParallel(u, psi)
-    rmesh2 = mesh2.refine_marked_elements(mark2)  # netgen's refine method
-    assert abs(amr.jaccard(mark1, mark2) - 1.0) < 1.0e-10
-    r1CG1, _ = amr.spaces(rmesh1)
-    r2CG1, _ = amr.spaces(rmesh2)
-    assert r1CG1.dim() == r2CG1.dim()
-
-
 def test_refine_vcd():
-    mesh = get_netgen_mesh(TriHeight=1.2)
+    mesh = _get_netgen_mesh(TriHeight=1.2)
     amr = VIAMR(debug=True)
     CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 19
     (x, y) = SpatialCoordinate(mesh)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     mark = amr.vcdmark(u, psi)
@@ -142,12 +116,12 @@ def test_refine_vcd():
 
 
 def test_petsc4py_refine_vcd():
-    mesh = get_netgen_mesh(TriHeight=1.2)
+    mesh = _get_netgen_mesh(TriHeight=1.2)
     amr = VIAMR(debug=True)
     CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 19
     (x, y) = SpatialCoordinate(mesh)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     mark = amr.vcdmark(u, psi)
@@ -167,7 +141,7 @@ def test_refine_vcd_petsc4py_firedrake():
     CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 36
     (x, y) = SpatialCoordinate(mesh)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
     mark = amr.vcdmark(u, psi)
@@ -185,7 +159,7 @@ def test_gradrecinactivemark():
     CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 85
     (x, y) = SpatialCoordinate(mesh)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))
     imark, _ = amr.gradrecinactivemark(u, psi, theta=0.5)
     # VTKFile(f"result_gradrecinactivemark.pvd").write(Function(CG1, name="diff").interpolate(u-psi), imark)
@@ -201,7 +175,7 @@ def test_brinactivemark():
     CG1, _ = amr.spaces(mesh)
     assert CG1.dim() == 81
     (x, y) = SpatialCoordinate(mesh)
-    psi = Function(CG1).interpolate(get_ball_obstacle(x, y))
+    psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))
     residual = -div(grad(u))  # largest near circle psi==0
     (imark, _, _) = amr.brinactivemark(u, psi, residual, theta=0.8)
@@ -213,7 +187,7 @@ def test_brinactivemark():
 
 
 def test_overlapping_jaccard():
-    mesh = get_netgen_mesh(TriHeight=1.2)
+    mesh = _get_netgen_mesh(TriHeight=1.2)
     amr = VIAMR(debug=True)
     _, DG0 = amr.spaces(mesh)
     x, _ = SpatialCoordinate(mesh)
@@ -224,7 +198,7 @@ def test_overlapping_jaccard():
 
 
 def test_nonoverlapping_jaccard():
-    mesh = get_netgen_mesh()
+    mesh = _get_netgen_mesh()
     amr = VIAMR(debug=True)
     _, DG0 = amr.spaces(mesh)
     x, _ = SpatialCoordinate(mesh)
@@ -236,7 +210,7 @@ def test_nonoverlapping_jaccard():
 
 
 def test_symmetry_jaccard():
-    mesh = get_netgen_mesh()
+    mesh = _get_netgen_mesh()
     amr = VIAMR(debug=True)
     _, DG0 = amr.spaces(mesh)
     x, _ = SpatialCoordinate(mesh)
@@ -262,60 +236,6 @@ def test_overlapping_and_nonoverlapping_hausdorff():
     assert amr.hausdorff(E1, E2) == 0.2
 
 
-def AVOID_test_parallel_udo():
-    # This test is not well encapsulated at all however barring crazy changes to the spiral utility problem
-    # and jaccard, we have good visibility of parallel udo and refinemarkedelements()
-
-    # Get the absolute path of the current test file
-    current_file = pathlib.Path(__file__).resolve()
-    # Navigate to the test root
-    test_root = current_file.parent
-    # Construct the absolute path to the script
-    script_path = test_root / "generateSolution.py"
-    # Convert to string for subprocess
-    script_path_str = str(script_path)
-
-    try:
-        # Run UDO method in both parallel and serial
-        subprocess.run(
-            ["python", script_path_str, "--refinements", "2", "--runtime", "serial"],
-            check=True,
-        )
-        subprocess.run(
-            [
-                "mpiexec",
-                "-n",
-                "4",
-                "python",
-                script_path_str,
-                "--refinements",
-                "2",
-                "--runtime",
-                "parallel",
-            ],
-            check=True,
-        )
-
-        # Checkpoint in files
-        with CheckpointFile("serialUDO.h5", "r") as afile:
-            serialMesh = afile.load_mesh("serialMesh")
-            serialMark = afile.load_function(serialMesh, "serialMark")
-
-        with CheckpointFile("parallelUDO.h5", "r") as afile:
-            parallelMesh = afile.load_mesh("parallelMesh")
-            parallelMark = afile.load_function(parallelMesh, "parallelMark")
-
-        # Compare overlap, perfect overlap will have Jaccard index 1.0
-        j = VIAMR(debug=True).jaccard(serialMark, parallelMark)
-        assert abs(j - 1.0) < 1.0e-10
-    finally:
-        # Clean up the generated files
-        for filename in ["serialUDO.h5", "parallelUDO.h5"]:
-            file_path = pathlib.Path(filename).resolve()
-            if file_path.exists():
-                file_path.unlink(missing_ok=True)
-
-
 if __name__ == "__main__":
     test_netgen_mesh_creation()
     test_spaces()
@@ -323,12 +243,10 @@ if __name__ == "__main__":
     test_unionmarks()
     test_refine_udo()
     test_refine_vcd()
-    test_gradrecinactivemark()
     test_brinactivemark()
     test_overlapping_jaccard()
     test_nonoverlapping_jaccard()
     test_symmetry_jaccard()
     test_overlapping_and_nonoverlapping_hausdorff()
-    test_refine_udo_parallelUDO()
     test_petsc4py_refine_vcd()
     test_refine_vcd_petsc4py_firedrake()

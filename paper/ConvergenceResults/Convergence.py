@@ -2,7 +2,7 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
-from viamr.utility import LShapedDomainProblem
+from viamr.utility import SphereObstacleProblem
 import time
 import math
 import argparse
@@ -11,13 +11,8 @@ import os
 from animate import adapt
 
 
-
-vcesHybridVertexCounts = [229,425,860,1616,3219,6385,116]
-vcesAdaptVertexCounts = [178,328,618,1207,2465,4855,116]
-
-
-
-
+vcesHybridVertexCounts = [413,623,2417,3221,12737,15837, 113]
+vcesAdaptVertexCounts = [194,436,842,1644,3216,6302, 113]
 
 methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif', 'udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
 
@@ -25,7 +20,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run convergence script with specified parameters.")
     parser.add_argument('-t', '--initTriHeight', type=float,
-                        default=0.45, help='Initial triangle height')
+                        default=.7, help='Initial triangle height')
     parser.add_argument('-i', '--maxIterations', type=int,
                         default=7, help='Maximum number of iterations')
     parser.add_argument('-m', '--method', type=str, 
@@ -34,16 +29,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
     method = args.method
 
-    problem_instance = LShapedDomainProblem(TriHeight=args.initTriHeight)
+    problem_instance = SphereObstacleProblem(TriHeight=args.initTriHeight)
     amr_instance = VIAMR()
-    mesh = problem_instance.setInitialMesh("lshaped.msh")
+    mesh = problem_instance.setInitialMesh()
     u = None
 
     # for debugging purposes
     #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
     
     # Load in data about exact solution
-    with CheckpointFile("ExactSolutionLShaped.h5", 'r') as afile:
+    with CheckpointFile("ExactSolution.h5", 'r') as afile:
         # The default name for checkpointing a netgen mesh is not the same as a firedrake mesh # this might be fixed in new firedrake builds 
         exactMesh = afile.load_mesh()
         exactU = afile.load_function(exactMesh, "ExactU")
@@ -88,6 +83,7 @@ if __name__ == "__main__":
         # L2Error = sqrt(
         #    assemble(dot((proju - exactU), (proju - exactU)) * dx(exactMesh)))
         
+        
         # Big switch style statement for methods
         if method == methodlist[0]:  # vces
             mtic = time.perf_counter()
@@ -99,7 +95,7 @@ if __name__ == "__main__":
 
         elif method == methodlist[1]:  # udo
             mtic = time.perf_counter()
-            mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+            mark = amr_instance.udomark(mesh, u, lb, n=3)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
             mesh = amr_instance.refinemarkedelements(mesh, mark)
@@ -148,7 +144,7 @@ if __name__ == "__main__":
                 rtoc = time.perf_counter()
 
             else:  # adapt
-                mark = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+                mark = amr_instance.udomark(mesh, u, lb, n=3)
                 mtoc = time.perf_counter()
                 rtic = time.perf_counter()
                 mesh = amr_instance.refinemarkedelements(mesh, mark)
@@ -177,7 +173,7 @@ if __name__ == "__main__":
 
         elif method == methodlist[7]:  # udo + br on inactive set
             mtic = time.perf_counter()
-            markFB = amr_instance.udomarkParallel(mesh, u, lb, n=3)
+            markFB = amr_instance.udomark(mesh, u, lb, n=3)
             resUFL = Constant(0.0) + div(grad(u))
             markBR = amr_instance.BRinactivemark(
                 mesh, u, lb, resUFL, .5, markFB)
@@ -196,11 +192,12 @@ if __name__ == "__main__":
             mesh = amr_instance.refinemarkedelements(mesh, mark, isUniform = True)
             rtoc = time.perf_counter()
 
+            
         else:
             raise ValueError(f"Method not implemented: {args.method}")
-
-        print(
-            f"Ran {method} refinement on iteration {i}. Solve: {toc - tic} Refinement: {mtoc - mtic}")
+        
+        
+        print(f"Ran {method} refinement on iteration {i}. Solve: {toc - tic} Refinement: {mtoc - mtic}")
 
         data.append({
             'L2': L2Error,
@@ -213,11 +210,11 @@ if __name__ == "__main__":
             'SizeMax': hmax,
             'PreMeshCompTime': mtoc - mtic,
             'RefineTime': rtoc - rtic,
-            'SolveTime': toc - tic
+            'SolveTime' : toc - tic
         })
 
     # Ensure the 'Results' directory exists
-    results_dir = "ResultsLShaped"
+    results_dir = "Results"
     os.makedirs(results_dir, exist_ok=True)
 
     # Construct the output file path

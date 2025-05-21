@@ -85,7 +85,7 @@ def create_multiindex_dataframe(result_dir, methodlist):
 
 
 if __name__ == "__main__":
-    os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
+    #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
     methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif', 'udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
 
 
@@ -99,7 +99,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif','udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
-    print(args.runconvergence)
     
     if args.lshaped:
         script_path = "ConvergenceLShaped.py"

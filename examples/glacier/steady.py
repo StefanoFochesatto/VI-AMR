@@ -135,9 +135,9 @@ for i in range(args.refine + 1):
             eactive = amr.elemactive(u, lb)
         print('refining free boundary (VCD)', end='')
         # expand bracket vs default [0.2, 0.8], to provide high-res
-        #   for ice near margin (0.8 -> 0.9) and to then accomodate
+        #   for ice near margin (0.2 -> 0.1) and to then accomodate
         #   advance into ice-free areas because the margin is resolved
-        #   (0.2 -> 0.1)
+        #   (0.8 -> 0.9)
         mark = amr.vcdmark(u, lb, bracket=[0.1, 0.9])
         if args.rmethod in ['always', 'alternate']:
             if args.rmethod == 'alternate' and i % 2 == 0:

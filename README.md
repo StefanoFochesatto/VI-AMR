@@ -1,4 +1,4 @@
-# VI-AMR
+# VIAMR
 
 This repository contains algorithms for adaptive mesh refinement for variational inequalities (VIs).  The methods require the constraint set to be defined by a lower-bound inequality, that is, they are for unilateral obstacle problems.  A primary goal is to have targeted refinement near a computed free boundary, and to be able to measure location errors in the free boundary.  Refinement in the inactive set using PDE-type error estimators is also supported.
 
@@ -22,19 +22,29 @@ Now pip install [shapely](https://pypi.org/project/shapely/), siphash24, vtk, an
 pip install shapely siphash24 vtk ngspetsc
 ```
 
-## Installation of VI-AMR
+To use metric-based refinement, the [animate](https://github.com/mesh-adaptation/animate) adaptive mesh refinement library is used.  To install this do
+```
+git clone https://github.com/mesh-adaptation/animate.git
+python3 -m pip install -e animate
+```
 
-### development install
+## Installation
 
-From the VI-AMR directory, install editable with pip:
+### clone the VIAMR repository and enter the directory
+
+```
+git clone https://github.com/StefanoFochesatto/VI-AMR.git
+cd VI-AMR/
+```
+
+### install
+
+Either install editable with pip:
 
 ```
 pip install -e .
 ```
-
-### production install
-
-From the VI-AMR directory, install with pip:
+or plain:
 
 ```
 pip install .
@@ -74,10 +84,28 @@ The sphere problem has a known exact solution while the spiral problem does not.
 
 View the output fields in `result_*.pvd` using [Paraview](https://www.paraview.org/).  These files contain the obstacle `psi`, the solution `u`, and the gap `u - psi`. The `result_sphere.pvd` file also contains the numerical error `|u - uexact|`.
 
+## Known limitations
+
+The most important limitation is that, at the current time, Netgen meshes, created with `SplineGeometry().GenerateMesh()`, have different refinement capabilities from Firedrake/DMPlex meshes, e.g. those created with the [Firedrake utility mesh generators](https://www.firedrakeproject.org/_modules/firedrake/utility_meshes.html).  Items 1 and 2 below are related to this fact.  Future bug fixes and feature improvements in PETSc DMPlex might change this.
+
+  1. [PETSc's DMPlex mesh transformations](https://petsc.org/release/overview/plex_transform_table/) include skeleton based refinement (SBR) in 2D, but [currently SBR is not available in 3D](https://petsc.org/release/src/dm/impls/plex/transform/impls/refine/sbr/plexrefsbr.c.html).  This limits `VIAMR.refinemarkedelements()` to applications in 2D.
+  2. Parallel application of `VIAMR.udomark()` to Firedrake/DMPlex meshes requires that their distribution parameters be explicitly set.  For example, when using a utility mesh:
+  ```UnitSquareMesh(m0, m0, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})```
+  3. For the reason given on [this issue](https://github.com/firedrakeproject/mpi-pytest/issues/13), use of [pytest](https://docs.pytest.org/en/stable/) cannot easily be extended to parallel using the [mpi-pytest](https://github.com/firedrakeproject/mpi-pytest) plugin.  Thus parallel regression testing is manual; see the bottom of this page.  Future bug fixes by the mpi-pytest developers could fix this.
+  4. `VIAMR.jaccard()` only works in parallel if one mesh is a submesh of the other.  See the doc string for that method.
+  5. `VIAMR.hausdorff()` does not work in parallel.  Also, it is the only part of VIAMR which depends on the [shapely](https://pypi.org/project/shapely/) library.
+
 ## Testing
 
-Software tests use [pytest](https://docs.pytest.org/en/stable/index.html). In the main directory `VI-AMR/` do
+Serial software tests use [pytest](https://docs.pytest.org/en/stable/index.html). In the main directory `VI-AMR/` do
 
 ```
 pytest .
 ```
+
+For parallel tests do the following or similar:
+```
+cd tests/
+mpiexec -n 3 python3 test_parallel.py
+```
+Success is completion without any error messages.

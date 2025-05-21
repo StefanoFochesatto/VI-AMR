@@ -1,6 +1,6 @@
 import sys
+import time
 import numpy as np
-from collections import deque
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
 from firedrake.output import VTKFile
@@ -114,191 +114,144 @@ class VIAMR(OptionsManager):
             (mark1 + mark2) - (mark1 * mark2)
         )
 
-    def _bfsneighbors(self, mesh, border, levels):
-        """Element-wise multi-neighbor lookup using breadth-first search."""
-
-        # build dictionary which maps each vertex in the mesh
-        # to the cells that are incident to it
-        vertex_to_cells = {}
-        closure = mesh.topology.cell_closure  # cell to vertex connectivity
-        # loop over all cells to populate the dictionary
-        for i in range(mesh.num_cells()):
-            # first three entries correspond to the vertices
-            for vertex in closure[i][:3]:
-                if vertex not in vertex_to_cells:
-                    vertex_to_cells[vertex] = []
-                vertex_to_cells[vertex].append(i)
-
-        # loop over all cells to mark neighbors, and store the result in DG0
-        result = Function(border.function_space(), name="nNeighbors")
-        for i in range(mesh.num_cells()):
-            if border.dat.data[i] == 1.0:
-                # use BFS to find all cells within the specified number of levels
-                queue = deque([(i, 0)])
-                visited = set()
-                while queue:
-                    cell, level = queue.popleft()
-                    if cell not in visited and level <= levels:
-                        visited.add(cell)
-                        result.dat.data[cell] = 1
-                        for vertex in closure[cell][:3]:
-                            for neighbor in vertex_to_cells[vertex]:
-                                queue.append((neighbor, level + 1))
-        return result
-
     def udomark(self, uh, lb, n=2):
-        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm."""
+        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm.  The algorithm
+        first computes an element-wise indicator for the free boundary.  Then the elements
+        which neighbor the current free-boundary elements are added, and so on iteratively.
+        The input n gives the number of levels to expand the initial element border.  The
+        output is an element-wise marking for which elements, near the free boundary,
+        should be refined."""
+
+        # get mesh and its DMPlex
         mesh = uh.function_space().mesh()
-        if mesh.comm.size > 1:
-            raise ValueError("udomark() is not valid in parallel")
-        # generate element-wise indicator for border set
-        elemborder = self.elemborder(self.nodalactive(uh, lb))
-        # _bfs_neighbors() constructs N^n(B) indicator
-        return self._bfsneighbors(mesh, elemborder, n)
-
-    def udomarkParallel(self, uh, lb, n=2):
-        """Mark mesh using Unstructured Dilation Operator (UDO) algorithm. Update to latest ngsPETSc otherwise refinement must be done with PETSc refinemarkedelements"""
-
-        # Generate element-wise and nodal-wise indicators for active set
-        mesh = uh.function_space().mesh()
-        _, DG0 = self.spaces(mesh)
-        nodalactive = self.nodalactive(uh, lb)
-
-        # Generate border element indicator
-        elemborder = self.elemborder(nodalactive)
-
-        mesh.name = "dmmesh"
-        elemborder.rename("elemborder")
-
-        # Checkpointing to enforce distribution parameters which make UDO possible in parallel
-        # This workaround is necessary because:
-        # 1. firedrake does not have a way of changing distribution parameters after mesh initialization (feature request)
-        # 2. netgen meshes cannot be checkpointed in parallel (issue)
-        #
-        # In order for this to work we need to use PETSc refinemarkelements instead
-        # also instead of checkpointing we could write a warning telling the user to set the correct distribution parameters
-        #
-
-        DistParams = mesh._distribution_parameters
-
-        if (
-            DistParams["overlap_type"][0].name != "VERTEX"
-            or DistParams["overlap_type"][1] < 1
-        ):
-            # We will error out instead
-            raise ValueError(
-                """Error: For UDO to work ensure that distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
-            )
-
-            # This workaround works for firedrake meshes, not netgen. It also forces me to return the mesh which is a bad user pattern.
-            # MPI.COMM_WORLD.Barrier()
-            # PETSc.Sys.Print("entered bad params")
-            # PETSc.Sys.Print("writing")
-            # with CheckpointFile("udo.h5", 'w') as afile:
-            #     afile.save_mesh(mesh)
-            #     afile.save_function(elemborder)
-            # PETSc.Sys.Print("writing finished")
-            # PETSc.Sys.Print("reading")
-            # with CheckpointFile("udo.h5", 'r') as afile:
-            #     mesh = afile.load_mesh("dmmesh", distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)}) # <- enforcing distribution parameters
-            #     elemborder = afile.load_function(mesh, "elemborder")
-            # PETSc.Sys.Print("reading finished")
-
-            # # reconstruct DG0 space so result indicator has correct partition
-            # _, DG0 = self.spaces(mesh)
-
-        # Pull dm
         dm = mesh.topology_dm
+
+        # Check that distribution parameters are correct in parallel
+        if mesh.comm.size > 1:
+            dp = mesh._distribution_parameters
+            if (dp["overlap_type"][0].name != "VERTEX" or dp["overlap_type"][1] < 1):
+                raise ValueError(
+                    """udomark() in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
+                )
+
+        # Use nodal indicators for active set to make element-wise border indicator  This is a DG0
+        # function with 1 for elements "on" free boundary.  It is updated (overwritten) at end
+        # of the main loop.
+        border = self.elemborder(self.nodalactive(uh, lb))
 
         # This rest of this should really be written by turning the indicator function into a DMLabel
         # and then writing the dmplex traversal in petsc4py. This is a workaround.
 
-        # Generate map from dm to fd indices (I think there is a better way to do this in dmcommon)
+        # Generate map (set) from DMPlex to firedrake indices
+        # (Is there a better way to do this in dmcommon?)
         plexelementlist = mesh.cell_closure[:, -1]
-        dm_to_fd = {number: index for index, number in enumerate(plexelementlist)}
+        dm2fd = np.argsort(plexelementlist) 
 
+        # Find range of indices for vertex stratum
+        jmin, jmax = dm.getDepthStratum(mesh.topological_dimension())[:2]
+
+        # main loop: expand element border out to n levels
+        #   (index convention:  i for levels, j for nodes/vertices, k for elements)
+        _, DG0 = self.spaces(mesh)
         for i in range(n):
-            # Pull border elements cell with dmplex cell indices
-            BorderSetElementsIndices = [
-                mesh.cell_closure[:, -1][i]
-                for i, value in enumerate(elemborder.dat.data_ro_with_halos)
+            # Pull DMPlex border element indices using dmplex cell indices
+            borderindices = [
+                plexelementlist[k]
+                for k, value in enumerate(border.dat.data_ro_with_halos)
                 if value != 0
             ]
 
-            # Pull indices of vertices which are incident to said border elements
+            # Pull DMPlex indices of all vertices which are incident to some border element,
+            # then flatten and remove duplicates
             incidentVertices = [
-                dm.getTransitiveClosure(i)[0][4:7] for i in BorderSetElementsIndices
+                dm.getTransitiveClosure(k)[0][4:7] for k in borderindices
             ]
+            incidentVertices = np.unique(np.ravel(incidentVertices))
 
-            # Flatten the list of lists and remove duplicates
-            flattened_array = np.ravel(incidentVertices)
-            incidentVertices = np.unique(flattened_array)
-
-            # Needs to be based of topological dimension
-            # Pull the depth stratum for the vertices
-            tdim = mesh.topological_dimension()
-            lb = dm.getDepthStratum(tdim)[0]
-            ub = dm.getDepthStratum(tdim)[1]
-            # Pull all elements which are neighbor to the incidentVertices. This produces the set N(B)
-            NeighborSet = []
-            for i in incidentVertices:
-                idx = np.where(
-                    (dm.getTransitiveClosure(i, useCone=False)[0] >= lb)
-                    & (dm.getTransitiveClosure(i, useCone=False)[0] < ub)
+            # Pull DMPlex indices of all elements which are incident (neighbor) to the
+            # incidentVertices; this is the set N(B) in the paper.  Then flatten and remove duplicates
+            neighborindices = []
+            for j in incidentVertices:
+                k = np.where(
+                    (dm.getTransitiveClosure(j, useCone=False)[0] >= jmin)
+                    & (dm.getTransitiveClosure(j, useCone=False)[0] < jmax)
                 )
-                NeighborSet.extend(dm.getTransitiveClosure(i, useCone=False)[0][idx])
-            # Flatten the list of lists and remove duplicates
-            NeighborSet = np.ravel(NeighborSet)
-            NeighborSet = np.unique(NeighborSet)
+                neighborindices.extend(dm.getTransitiveClosure(j, useCone=False)[0][k])
+            neighborindices = np.unique(np.ravel(neighborindices))
 
-            # Create new elemborder function
-            elemborder = Function(DG0).interpolate(Constant(0.0))
+            # update element-wise border indicator by adding neighbors
+            border = Function(DG0).interpolate(Constant(0.0))
+            for k in neighborindices:
+                border.dat.data_wo_with_halos[dm2fd[k]] = 1
 
-            for j in NeighborSet:
-                elemborder.dat.data_wo_with_halos[dm_to_fd[j]] = 1
+        return border
 
-        return elemborder
-
-    def vcdmark(self, uh, lb, bracket=[0.2, 0.8], returnSmooth=False):
+    def vcdmark(
+        self,
+        uh,
+        lb,
+        bracket=[0.2, 0.8],
+        coefficient=0.5,
+        returnSmooth=False,
+        directsolver=False,
+        vcdsolveriters=4,
+        printsolvertime=False,
+    ):
         """Mark mesh using Variable Coefficient Diffusion (VCD) algorithm.
-        The algorithm computes a strict nodal active set indicator and then
-        diffuses it, using a variable mesh-sized based coefficient, by
-        computing a single backward Euler time step for the corresponding
-        heat equation.  (Equivalently we take a single time-step of variable
-        duration over the mesh.)"""
+        The algorithm computes a nodal active set indicator and then
+        diffuses it, using a variable mesh-sized based coefficient.  Diffusion
+        is by solving a single backward Euler time step for the corresponding
+        time-dependent diffusion equation.  Thresholding for the middle
+        values of this field marks only those elements which are close to the
+        free boundary.  The output is an element-wise marking for which elements,
+        near the free boundary, should be refined."""
 
         # Compute nodal active set indicator within some tolerance
         mesh = uh.function_space().mesh()
         CG1, DG0 = self.spaces(mesh)
-        nodalactive = self.nodalactive(uh, lb)
+        nu = self.nodalactive(uh, lb)
 
-        # Vary timestep by average cell area of each patch.
-        # Not exactly an average because msh.cell_sizes is an L2 projection of
-        # the obvious DG0 function into CG1.
-        timestep = Function(CG1)
-        timestep.dat.data[:] = 0.5 * mesh.cell_sizes.dat.data[:] ** 2
-
-        # Solve one step implicitly using a linear solver
-        # Nodal indicator is initial condition to time dependent Heat eq
+        # Diffuse according to square of cell diameter: D = C h^2.  The nodal
+        # active indicator gives the initial field u0.  Then solve one backward
+        # Euler time-step using a linear solver.
         w = TrialFunction(CG1)
         v = TestFunction(CG1)
-        a = w * v * dx + timestep * inner(grad(w), grad(v)) * dx
-        L = (1.0 - nodalactive) * v * dx
+        h = CellDiameter(mesh)
+        a = w * v * dx + coefficient * h**2 * inner(grad(w), grad(v)) * dx
+        L = nu * v * dx
         u = Function(CG1, name="Smoothed Nodal Active")
-        # FIXME consider some solver; probably not this one: sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
-        solve(a == L, u)
+
+        if directsolver:
+            sp = {
+                "ksp_type": "preonly",
+                "pc_type": "lu",
+                "pc_factor_mat_solver_type": "mumps",
+            }
+        else:
+            sp = {
+                "ksp_type": "cg",
+                "ksp_max_it": vcdsolveriters,
+                "ksp_convergence_test": "skip",
+                "pc_type": "icc",
+            }
+            if mesh.comm.size > 0:
+                sp.update({"pc_type": "asm", "pc_asm_overlap": 1, "sub_pc_type": "icc"})
+        if printsolvertime:
+            start = time.perf_counter()
+        solve(a == L, u, solver_parameters=sp, options_prefix="viamr_vcd")
+        if printsolvertime:
+            end = time.perf_counter()
+            PETSc.Sys.Print(f"VIAMR INFO  vcdmark() solver time = {end - start:.6f} seconds")
 
         if returnSmooth:
             return u
-        else:
-            # Compute average over elements by interpolation into DG0
-            uDG0 = Function(DG0).interpolate(u)
-            # Applying thresholding parameters
-            mark = Function(DG0, name="VCD Marking")
-            mark.interpolate(
-                conditional(uDG0 > bracket[0], conditional(uDG0 < bracket[1], 1, 0), 0)
-            )
-            return mark
+
+        # apply thresholding and interpolate into DG0
+        mark = Function(DG0, name="VCD Marking")
+        mark.interpolate(
+            conditional(u > bracket[0], conditional(u < bracket[1], 1, 0), 0)
+        )
+        return mark
 
     def gradrecinactivemark(self, uh, lb, theta=0.5):
         """Return marking within the computed inactive set by using an
@@ -307,7 +260,7 @@ class VIAMR(OptionsManager):
           Finite Element Analysis, John Wiley & Sons, Inc., New York."""
         mesh = uh.function_space().mesh()
         v = CellVolume(mesh)
-        # recover a CG1 gradient FIXME is this the preferred way?
+        # recover a CG1 gradient of uh by projection
         CG1vec = VectorFunctionSpace(mesh, "CG", 1)
         gradrecu = Function(CG1vec).project(grad(uh))
         # cell-wise error estimator
@@ -322,9 +275,10 @@ class VIAMR(OptionsManager):
         sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
-        # generate union of inactive mark and BR mark
+        # restrict grad recovery eta to inactive set
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
+        # compute mark in inactive set
         with ieta.dat.vec_ro as ieta_:
             emax = ieta_.max()[1]
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
@@ -404,7 +358,7 @@ class VIAMR(OptionsManager):
         sp = {"mat_type": "matfree", "ksp_type": "richardson", "pc_type": "jacobi"}
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
-        # generate union of inactive mark and BR mark
+        # restrict BR eta to inactive set
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         if total:
@@ -444,7 +398,7 @@ class VIAMR(OptionsManager):
         P1_ten = TensorFunctionSpace(mesh, "CG", 1)
         metric = RiemannianMetric(P1_ten)
         metric.set_parameters(self.metricparameters)
-        metric.compute_hessian(u)
+        metric.compute_hessian(uh)
         metric.normalise()
         return metric
 
@@ -478,19 +432,21 @@ class VIAMR(OptionsManager):
         # Build hessian based metric for interpolation error and average
         if hessian:
             VImetric = freeboundaryMetric.copy(deepcopy=True)
-            solutionMetric = self.metricfromhessian(u)
+            solutionMetric = self.metricfromhessian(uh)
             solutionMetric.normalise()
             VImetric.average(freeboundaryMetric, weights=weights)
         else:
             VImetric = freeboundaryMetric.copy(deepcopy=True)
-
-        return VImetric
+            
+        return adapt(mesh, VImetric)
 
     def refinemarkedelements(self, mesh, indicator, isUniform=False):
         """petsc4py implementation of Netgen's .refine_marked_elements().
         Usually is skeleton-based refinement (SBR; Plaza & Carey, 2000).
-        This version works in parallel, but only in 2D when using SBR???
-        See
+        This version works in parallel, but only in 2D when using SBR;
+        see TODO in
+          https://petsc.org/release/src/dm/impls/plex/transform/impls/refine/sbr/plexrefsbr.c.html.
+        See also
           https://petsc.org/release/overview/plex_transform_table/
         and associated links."""
         # Create Section for DG0 indicator
