@@ -283,8 +283,47 @@ class VIAMR(OptionsManager):
             emax = ieta_.max()[1]
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
         return (mark, eta)
+    
+    
+    def _fixedratetotal(self, ieta, theta):
+        """ returns a fixed rate of theta marking of the total error estimate, refining largest elements first. Not equivalent in parallel will need to figure out how to do this with petsc.vec operations"""
+        DG0 = ieta.function_space()
+        with ieta.dat.vec_ro as ieta_:
+            values = ieta_.array_r
+            sorted_values = np.sort(values)[::-1] # Sort in descending order
+            cumsum = np.cumsum(sorted_values) # Compute cumulative sum
+            
+            # Compute proportion of total error
+            total_sum = np.sum(values) 
+            target = total_sum * theta
+            
+            # Find value for thresholding
+            idx = np.argmax(cumsum >= target)
+            ethresh = sorted_values[idx]
+            total_error_est = sqrt(ieta_.dot(ieta_))
+        
+        # This will mark approximately the target amount of error for refinement. 
+        mark = Function(DG0).interpolate(conditional(gt(ieta, ethresh), 1, 0))
+        return mark, ethresh, total_error_est
+        
+        
+        
+    def _fixedratemax(self, ieta, theta):
+        """ returns a fixed rate of (1 - theta) marking of the maximum error estimate """
+        DG0 = ieta.function_space()
+        with ieta.dat.vec_ro as ieta_:
+            emax = ieta_.max()[1]
+            total_error_est = sqrt(ieta_.dot(ieta_))
+            ethresh = theta * emax
+        
+        mark = Function(DG0).interpolate(conditional(gt(ieta, ethresh), 1, 0))
+        return mark, ethresh, total_error_est
+        
+        
+        
+        
 
-    def brinactivemark(self, uh, lb, res_ufl, theta=0.5):
+    def brinactivemark(self, uh, lb, res_ufl, theta=0.5, total = False):
         """Return marking within the computed inactive set by using the
         a posteriori Babuška-Rheinboldt residual error indicator.  The BR
         indicator eta is computed as a function in DG0.  Then
@@ -322,14 +361,16 @@ class VIAMR(OptionsManager):
         # restrict BR eta to inactive set
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
-        # compute mark in inactive set
-        with ieta.dat.vec_ro as ieta_:
-            emax = ieta_.max()[1]
-            # eav = ieta_.sum() / ieta_.getSize()b
-            total_error_est = sqrt(ieta_.dot(ieta_))
-        # print(f"eav = {eav}  emax = {emax}")
-        mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
+        if total:
+            mark, ethresh, total_error_est = self._fixedratetotal(ieta, theta)
+        else:
+            mark, ethresh, total_error_est = self._fixedratemax(ieta, theta)        
         return (mark, eta, total_error_est)
+        
+        
+        
+        
+        
 
     def setmetricparameters(self, **kwargs):
         self.target_complexity = kwargs.pop("target_complexity", 3000.0)
