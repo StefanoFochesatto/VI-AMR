@@ -9,12 +9,29 @@ from firedrake.output import VTKFile
 from firedrake.petsc import PETSc
 import numpy as np
 from viamr import VIAMR
-
+import argparse
 print = PETSc.Sys.Print  # enables correct printing in parallel
 
-refinements = 4
-m0 = 10
-outfile = "result_suttmeier.pvd"
+
+parser = argparse.ArgumentParser(description="Solve VI problem with AMR.")
+parser.add_argument('--total', action='store_true',
+                    help='Enable total marking strategy (default: False)')
+parser.add_argument('--theta', type=float, default=0.5,
+                    help='Fraction of elements to mark for refinement (default: 0.5)')
+parser.add_argument('--refinements', type=int, default=4,
+                    help='Number of refinements (default: 4)')
+parser.add_argument('--m0', type=int, default=10,
+                    help='initial mesh subdivision (default: 10)')
+
+args = parser.parse_args()
+
+refinements = args.refinements 
+m0 = args.m0 
+
+if args.total:
+    outfile = "result_suttmeier_total.pvd"
+else:
+    outfile = "result_suttmeier_max.pvd"
 
 params = {
     "snes_type": "vinewtonrsls",
@@ -87,7 +104,8 @@ for i in range(refinements + 1):
     # mark = amr.vcdmark(u, psi, bracket=[0.2, 0.9])
 
     residual = -div(grad(u)) - fsource
-    (imark, _, _) = amr.brinactivemark(u, psi, residual)
+    
+    (imark, _, _) = amr.brinactivemark(u, psi, residual, theta =  args.theta, total = args.total)
     # imark = amr.eleminactive(u, psi)  # alternative is to refine all inactive
     mark = amr.unionmarks(mark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
