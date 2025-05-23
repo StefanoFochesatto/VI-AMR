@@ -205,17 +205,15 @@ for i in range(args.refine + 1):
             # generate active set indicator so we can evaluate Jaccard index
             eactive = amr.elemactive(u, lb)
         print("refining free boundary (VCD)", end="")
-        # expand bracket vs default [0.2, 0.8], to provide high-res
-        #   for ice near margin (0.2 -> 0.1) and to then accomodate
-        #   advance into ice-free areas because the margin is resolved
-        #   (0.8 -> 0.9)
-        mark = amr.vcdmark(u, lb, bracket=[0.1, 0.9])
+        # change bracket vs default [0.2, 0.8], to provide more high-res
+        #   for ice near margin (0.2 -> 0.1), i.e. on inactive side
+        mark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
         if args.rmethod in ["always", "alternate"]:
             if args.rmethod == "alternate" and i % 2 == 0:
                 print(" and uniformly in inactive ...")
                 imark = amr.eleminactive(u, lb)
             else:
-                print(" and by grad recovery in inactive ...")
+                print(" and by gradient recovery in inactive ...")
                 imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
             _, DG0 = amr.spaces(mesh)
             mark = Function(DG0).interpolate((mark + imark) - (mark * imark))  # union
@@ -272,7 +270,7 @@ for i in range(args.refine + 1):
         DirichletBC(V, Constant(0.0), "on_boundary"),
     ]
     if args.newton:
-        F = weakform_primal(u, a, b)
+        F = weakform(u, a, b)
         problem = NonlinearVariationalProblem(F, u, bcs=bcs)
         solver = NonlinearVariationalSolver(
             problem, solver_parameters=sp, options_prefix="s"
@@ -283,7 +281,7 @@ for i in range(args.refine + 1):
         for k in range(args.freezecount):
             # print(f'  freeze tilt iteration {k+1} ...')
             Ztilt = Phi(uold, b)
-            F = weakform_primal(u, a, b, Z=Ztilt)
+            F = weakform(u, a, b, Z=Ztilt)
             problem = NonlinearVariationalProblem(F, u, bcs=bcs)
             solver = NonlinearVariationalSolver(
                 problem, solver_parameters=sp, options_prefix="s"
