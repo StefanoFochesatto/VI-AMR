@@ -1,32 +1,42 @@
-# Solve the VI problem in section 10.3 of
-#   F.-T. Suttmeier (2008).  Numerical Solution of Variational Inequalities
-#   by Adaptive Finite Elements, Vieweg + Teubner, Wiesbaden
-# Note there is an apparent typo there, since the source f(x,y) needs to be
-# negative to generate an active set.
-
-from firedrake import *
-from firedrake.output import VTKFile
-from firedrake.petsc import PETSc
-import numpy as np
-from viamr import VIAMR
 import argparse
+
+parser = argparse.ArgumentParser(
+    description="""Solve the VI problem in section 10.3 of
+   F.-T. Suttmeier (2008).  Numerical Solution of Variational Inequalities
+   by Adaptive Finite Elements, Vieweg + Teubner, Wiesbaden
+Note there is an apparent typo there, since the source f(x,y) needs to be
+negative to generate an active set."""
+)
+parser.add_argument(
+    "--total",
+    action="store_true",
+    help="Enable total marking strategy (default: False)",
+)
+parser.add_argument(
+    "--theta",
+    type=float,
+    default=0.5,
+    help="Fraction of elements to mark for refinement (default: 0.5)",
+)
+parser.add_argument(
+    "--refinements", type=int, default=4, help="Number of refinements (default: 4)"
+)
+parser.add_argument(
+    "--m0", type=int, default=10, help="initial mesh subdivision (default: 10)"
+)
+
+args, passthroughoptions = parser.parse_known_args()
+
+import petsc4py
+
+petsc4py.init(passthroughoptions)
+
+import numpy as np
+from firedrake import *
+from firedrake.petsc import PETSc
+
 print = PETSc.Sys.Print  # enables correct printing in parallel
-
-
-parser = argparse.ArgumentParser(description="Solve VI problem with AMR.")
-parser.add_argument('--total', action='store_true',
-                    help='Enable total marking strategy (default: False)')
-parser.add_argument('--theta', type=float, default=0.5,
-                    help='Fraction of elements to mark for refinement (default: 0.5)')
-parser.add_argument('--refinements', type=int, default=4,
-                    help='Number of refinements (default: 4)')
-parser.add_argument('--m0', type=int, default=10,
-                    help='initial mesh subdivision (default: 10)')
-
-args = parser.parse_args()
-
-refinements = args.refinements 
-m0 = args.m0 
+from viamr import VIAMR
 
 if args.total:
     outfile = "result_suttmeier_total.pvd"
@@ -53,8 +63,8 @@ params = {
 # which still runs in parallel
 meshhierarchy = [
     UnitSquareMesh(
-        m0,
-        m0,
+        args.m0,
+        args.m0,
         diagonal="crossed",
         distribution_parameters={
             "partition": True,
@@ -63,7 +73,7 @@ meshhierarchy = [
     ),
 ]
 amr = VIAMR()
-for i in range(refinements + 1):
+for i in range(args.refinements + 1):
     mesh = meshhierarchy[i]
     print(f"solving on mesh {i} ...")
     amr.meshreport(mesh)
@@ -78,7 +88,7 @@ for i in range(refinements + 1):
         -(((x - 0.5) ** 2 + (y - 0.5) ** 2) ** (3 / 2))
     )
     # typo? from Suttmeier: f = 10.0 * (x - x**2 + y - y **2)
-    fsource = Function(V, name="f").interpolate(-10.0 * (x - x**2 + y - y**2))
+    fsource = Function(V, name="f").interpolate(-10.0 * (x - x ** 2 + y - y ** 2))
 
     # weak form and problem
     v = TestFunction(V)
@@ -94,7 +104,7 @@ for i in range(refinements + 1):
     solver.solve(bounds=(psi, ub))
 
     print(f"u_h(1/8,1/4) = {u.at(0.125, 0.25):.6e}")
-    if i == refinements:
+    if i == args.refinements:
         break
 
     mark = amr.udomark(u, psi, n=2)
@@ -104,8 +114,10 @@ for i in range(refinements + 1):
     # mark = amr.vcdmark(u, psi, bracket=[0.2, 0.9])
 
     residual = -div(grad(u)) - fsource
-    
-    (imark, _, _) = amr.brinactivemark(u, psi, residual, theta =  args.theta, total = args.total)
+
+    (imark, _, _) = amr.brinactivemark(
+        u, psi, residual, theta=args.theta, total=args.total
+    )
     # imark = amr.eleminactive(u, psi)  # alternative is to refine all inactive
     mark = amr.unionmarks(mark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
