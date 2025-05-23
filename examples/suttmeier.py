@@ -5,7 +5,8 @@ parser = argparse.ArgumentParser(
    F.-T. Suttmeier (2008).  Numerical Solution of Variational Inequalities
    by Adaptive Finite Elements, Vieweg + Teubner, Wiesbaden
 Note there is an apparent typo there, since the source f(x,y) needs to be
-negative to generate an active set."""
+negative to generate an active set.  When run in serial this code reports
+the solution value u_h(1/8,1/4), for comparison to the reference."""
 )
 parser.add_argument(
     "-m0", type=int, default=10, help="initial mesh subdivision (default: 10)"
@@ -105,7 +106,10 @@ for i in range(args.refinements + 1):
     ub = Function(V).interpolate(Constant(PETSc.INFINITY))
     solver.solve(bounds=(psi, ub))
 
-    print(f"u_h(1/8,1/4) = {u.at(0.125, 0.25):.6e}")
+    # protect this print from the issue
+    #   https://www.firedrakeproject.org/point-evaluation.html#evaluation-with-a-distributed-mesh
+    if mesh.comm.size == 1:
+        print(f"u_h(1/8,1/4) = {u.at(0.125, 0.25):.6e}")
     if i == args.refinements:
         break
 
@@ -129,7 +133,7 @@ print("done ...")
 if args.opvd:
     print(f"writing u_h, psi, f, gap=u_h-psi, rank to {args.opvd} ...")
     gap = Function(V, name="gap = u_h - psi").interpolate(u - psi)
-    rank = Function(FunctionSpace(mesh, 'DG', 0))
+    rank = Function(FunctionSpace(mesh, "DG", 0))
     rank.dat.data[:] = mesh.comm.rank
-    rank.rename('rank')
+    rank.rename("rank")
     VTKFile(args.opvd).write(u, psi, fsource, gap, rank)
