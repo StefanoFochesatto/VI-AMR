@@ -52,24 +52,34 @@ class VIAMR(OptionsManager):
         )
         return None
 
+    def _checkadmissible(self, uh, bound, upper=False):
+        if upper:
+            bad = assemble(conditional(uh > bound, 1.0, 0.0) * dx)
+        else:
+            bad = assemble(conditional(uh < bound, 1.0, 0.0) * dx)
+        return bad == 0.0
+
     def nodalactive(self, uh, lb):
         """Compute nodal active set indicator in same function space as uh.
-        Applies to unilateral obstacle problems with u >= lb.  The active
+        Applies to unilateral obstacle problems.  The active
         set is {x : u(x) == lb(x)}, within activetol.  Active nodes get value 1.0."""
         if self.debug:
             if len(uh.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
                 assert min(uh.dat.data_ro - lb.dat.data_ro) >= 0.0
+            assert self._checkadmissible(uh, lb)
         z = Function(uh.function_space(), name="Nodal Active")
         z.interpolate(conditional(abs(uh - lb) < self.activetol, 1.0, 0.0))
         return z
 
     def elemactive(self, uh, lb):
-        """Compute element active set indicator in DG0.  Elements are marked
-        active if the DG0 degree of freedom for that element is active, within
-        activetol.  Active elements get value 1.0."""
+        """Compute element active set indicator in DG0.  Applies to unilateral
+        obstacle problems with.  Elements are marked active if the DG0 degree of
+        freedom for that element is active, within activetol.  Active elements get
+        value 1.0."""
         if self.debug:
             if len(uh.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
                 assert min(uh.dat.data_ro - lb.dat.data_ro) >= 0.0
+            assert self._checkadmissible(uh, lb)
         _, DG0 = self.spaces(uh.function_space().mesh())
         z = Function(DG0, name="Element Active")
         z.interpolate(conditional(abs(uh - lb) < self.activetol, 1.0, 0.0))
@@ -82,6 +92,7 @@ class VIAMR(OptionsManager):
         if self.debug:
             if len(uh.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
                 assert min(uh.dat.data_ro - lb.dat.data_ro) >= 0.0
+            assert self._checkadmissible(uh, lb)
         _, DG0 = self.spaces(uh.function_space().mesh())
         z = Function(DG0, name="Element Inactive")
         z.interpolate(conditional(abs(uh - lb) < self.activetol, 0.0, 1.0))
