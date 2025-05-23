@@ -256,16 +256,18 @@ class VIAMR(OptionsManager):
         return mark
 
     def _fixedrate(self, eta, theta, method):
-        """Marks elements according to the values of eta and a threshold.  The
-        default 'max' strategy marks all elements which have eta bigger than
+        """Marks elements according to the values of eta and a threshold which
+        depends on theta.  The number of elements marked is an increasing function
+        of theta.  The default 'max' strategy marks all elements with eta greater
+        than
           ethresh = theta * max eta
-        The 'total' strategy sorts the elements (i.e. those owned by the process)
-        by decreasing eta values.  Then
+        The 'total' strategy sorts the elements owned by the process by decreasing
+        eta value.  Then the threshold
           ethresh = eta(index)
-        is the eta value where theta times the total sum of eta is equal to the
-        sum of the eta values above ethresh.  The 'total' strategy is the
-        refine-only "fixed-rate" strategy, with X=theta and Y=0, described in
-        section 4.2 of
+        equals the eta value where theta times the total sum of eta is equal to the
+        sum of the eta values above ethresh.  (I.e. theta gives the fraction of the
+        total eta sum.)  The 'total' strategy is the refine-only version of the
+        "fixed-rate" strategy, with X=theta and Y=0, described in section 4.2 of
           W. Bangerth & R. Rannacher (2003).  Adaptive Finite Element Methods for
           Differential Equations, Springer Basel.
         WARNING: The 'total' strategy produces different results depending on
