@@ -161,7 +161,7 @@ def test_gradrecinactivemark():
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))
-    imark, _ = amr.gradrecinactivemark(u, psi, theta=0.5)
+    imark, _, _ = amr.gradrecinactivemark(u, psi, theta=0.5)
     # VTKFile(f"result_gradrecinactivemark.pvd").write(Function(CG1, name="diff").interpolate(u-psi), imark)
     rmesh = amr.refinemarkedelements(mesh, imark)
     # VTKFile(f"result_gradrecinactivemark_refined.pvd").write(rmesh)

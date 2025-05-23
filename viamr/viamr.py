@@ -255,7 +255,41 @@ class VIAMR(OptionsManager):
         )
         return mark
 
-    def gradrecinactivemark(self, uh, lb, theta=0.5):
+    def _fixedrate(self, eta, theta, method):
+        """Marks elements according to the values of eta and a threshold.  The
+        default 'max' strategy marks all elements which have eta bigger than
+          ethresh = theta * max eta
+        The 'total' strategy sorts the elements (i.e. those owned by the process)
+        by decreasing eta values.  Then
+          ethresh = eta(index)
+        is the eta value where theta times the total sum of eta is equal to the
+        sum of the eta values above ethresh.  The 'total' strategy is the
+        refine-only "fixed-rate" strategy, with X=theta and Y=0, described in
+        section 4.2 of
+          W. Bangerth & R. Rannacher (2003).  Adaptive Finite Element Methods for
+          Differential Equations, Springer Basel.
+        WARNING: The 'total' strategy produces different results depending on
+        the number of processes."""
+
+        with eta.dat.vec_ro as eta_:
+            if method == "max":
+                ethresh = theta * eta_.max()[1]
+            elif method == "total":
+                values = eta_.array_r
+                sorted_values = np.sort(values)[::-1]  # sort in descending order
+                cumsum = np.cumsum(sorted_values)
+                target = np.sum(values) * theta  # proportion of total error
+                idx = np.argmax(cumsum >= target)
+                ethresh = sorted_values[idx]
+            else:
+                raise ValueError("unknown method for VIAMR._fixedrate()")
+            total_error_est = sqrt(eta_.dot(eta_))
+
+        DG0 = eta.function_space()
+        mark = Function(DG0).interpolate(conditional(gt(eta, ethresh), 1, 0))
+        return mark, ethresh, total_error_est
+
+    def gradrecinactivemark(self, uh, lb, theta=0.5, method="max"):
         """Return marking within the computed inactive set by using an
         a posteriori gradient-recovery error indicator.  See Chapter 4 of
           M. Ainsworth & J. T. Oden (2000).  A Posteriori Error Estimation in
@@ -281,46 +315,10 @@ class VIAMR(OptionsManager):
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         # compute mark in inactive set
-        with ieta.dat.vec_ro as ieta_:
-            emax = ieta_.max()[1]
-        mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
-        return (mark, eta)
+        mark, _, total_error_est = self._fixedrate(ieta, theta, method)
+        return (mark, eta, total_error_est)
 
-    def _fixedrate(self, eta, theta, method="max"):
-        """Marks elements according to the values of eta and the threshold
-        theta.  The default 'max' strategy marks all elements which have
-        eta which is bigger than theta * max eta.  The alternate 'total'
-        strategy sorts the elements by decreasing eta values and finds where,  the
-        cumulative sum exceeds theta times the total sum, and marks those
-        elements where their eta values are above that threshold.
-        The 'total' strategy is not valid in parallel.
-        (Will need to figure out how to do this with petsc.vec operations)"""
-
-        if method == "total" and eta.function_space().mesh().comm.size > 1:
-            raise ValueError(
-                "VIAMR._fixedrate() with the 'total' strategy is not valid in parallel"
-            )
-        if method not in {"max", "total"}:
-            raise ValueError("unknown method for VIAMR._fixedrate()")
-
-        # find value for thresholding
-        with eta.dat.vec_ro as eta_:
-            if method == "max":
-                ethresh = theta * eta_.max()[1]
-            else:
-                values = eta_.array_r
-                sorted_values = np.sort(values)[::-1]  # sort in descending order
-                cumsum = np.cumsum(sorted_values)
-                target = np.sum(values) * theta  # proportion of total error
-                idx = np.argmax(cumsum >= target)
-                ethresh = sorted_values[idx]
-            total_error_est = sqrt(eta_.dot(eta_))
-
-        DG0 = eta.function_space()
-        mark = Function(DG0).interpolate(conditional(gt(eta, ethresh), 1, 0))
-        return mark, ethresh, total_error_est
-
-    def brinactivemark(self, uh, lb, res_ufl, theta=0.5, total=False):
+    def brinactivemark(self, uh, lb, res_ufl, theta=0.5, method="max"):
         """Return marking within the computed inactive set by using the
         a posteriori Babuška-Rheinboldt residual error indicator.  The BR
         indicator eta is computed as a function in DG0.  Then we call
@@ -356,9 +354,7 @@ class VIAMR(OptionsManager):
         # restrict BR eta to inactive set
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
-        mark, ethresh, total_error_est = self._fixedrate(
-            ieta, theta, method="total" if total else "max"
-        )
+        mark, _, total_error_est = self._fixedrate(ieta, theta, method)
         return (mark, eta, total_error_est)
 
     def setmetricparameters(self, **kwargs):

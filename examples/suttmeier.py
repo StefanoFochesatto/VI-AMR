@@ -8,21 +8,28 @@ Note there is an apparent typo there, since the source f(x,y) needs to be
 negative to generate an active set."""
 )
 parser.add_argument(
-    "--total",
-    action="store_true",
-    help="Enable total marking strategy (default: False)",
+    "-m0", type=int, default=10, help="initial mesh subdivision (default: 10)"
 )
 parser.add_argument(
-    "--theta",
+    "-opvd",
+    metavar="FILE",
+    type=str,
+    default="",
+    help="output file name for Paraview format (.pvd)",
+)
+parser.add_argument(
+    "-refinements", type=int, default=2, help="number of refinements (default: 2)"
+)
+parser.add_argument(
+    "-theta",
     type=float,
     default=0.5,
-    help="Fraction of elements to mark for refinement (default: 0.5)",
+    help="fraction of elements to mark for refinement (default: 0.5)",
 )
 parser.add_argument(
-    "--refinements", type=int, default=4, help="Number of refinements (default: 4)"
-)
-parser.add_argument(
-    "--m0", type=int, default=10, help="initial mesh subdivision (default: 10)"
+    "-total",
+    action="store_true",
+    help="enable total marking strategy (default: False)",
 )
 
 args, passthroughoptions = parser.parse_known_args()
@@ -37,11 +44,6 @@ from firedrake.petsc import PETSc
 
 print = PETSc.Sys.Print  # enables correct printing in parallel
 from viamr import VIAMR
-
-if args.total:
-    outfile = "result_suttmeier_total.pvd"
-else:
-    outfile = "result_suttmeier_max.pvd"
 
 params = {
     "snes_type": "vinewtonrsls",
@@ -116,13 +118,18 @@ for i in range(args.refinements + 1):
     residual = -div(grad(u)) - fsource
 
     (imark, _, _) = amr.brinactivemark(
-        u, psi, residual, theta=args.theta, total=args.total
+        u, psi, residual, theta=args.theta, method="total" if args.total else "max"
     )
     # imark = amr.eleminactive(u, psi)  # alternative is to refine all inactive
     mark = amr.unionmarks(mark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
-print(f"done ... writing u_h, psi, f, gap=u_h-psi to {outfile} ...")
-gap = Function(V, name="gap = u_h - psi").interpolate(u - psi)
-VTKFile(outfile).write(u, psi, fsource, gap)
+print("done ...")
+if args.opvd:
+    print(f"writing u_h, psi, f, gap=u_h-psi, rank to {args.opvd} ...")
+    gap = Function(V, name="gap = u_h - psi").interpolate(u - psi)
+    rank = Function(FunctionSpace(mesh, 'DG', 0))
+    rank.dat.data[:] = mesh.comm.rank
+    rank.rename('rank')
+    VTKFile(args.opvd).write(u, psi, fsource, gap, rank)
