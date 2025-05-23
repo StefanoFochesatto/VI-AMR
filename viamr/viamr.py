@@ -129,7 +129,7 @@ class VIAMR(OptionsManager):
         # Check that distribution parameters are correct in parallel
         if mesh.comm.size > 1:
             dp = mesh._distribution_parameters
-            if (dp["overlap_type"][0].name != "VERTEX" or dp["overlap_type"][1] < 1):
+            if dp["overlap_type"][0].name != "VERTEX" or dp["overlap_type"][1] < 1:
                 raise ValueError(
                     """udomark() in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
                 )
@@ -145,7 +145,7 @@ class VIAMR(OptionsManager):
         # Generate map (set) from DMPlex to firedrake indices
         # (Is there a better way to do this in dmcommon?)
         plexelementlist = mesh.cell_closure[:, -1]
-        dm2fd = np.argsort(plexelementlist) 
+        dm2fd = np.argsort(plexelementlist)
 
         # Find range of indices for vertex stratum
         jmin, jmax = dm.getDepthStratum(mesh.topological_dimension())[:2]
@@ -217,7 +217,7 @@ class VIAMR(OptionsManager):
         w = TrialFunction(CG1)
         v = TestFunction(CG1)
         h = CellDiameter(mesh)
-        a = w * v * dx + coefficient * h**2 * inner(grad(w), grad(v)) * dx
+        a = w * v * dx + coefficient * h ** 2 * inner(grad(w), grad(v)) * dx
         L = nu * v * dx
         u = Function(CG1, name="Smoothed Nodal Active")
 
@@ -241,7 +241,9 @@ class VIAMR(OptionsManager):
         solve(a == L, u, solver_parameters=sp, options_prefix="viamr_vcd")
         if printsolvertime:
             end = time.perf_counter()
-            PETSc.Sys.Print(f"VIAMR INFO  vcdmark() solver time = {end - start:.6f} seconds")
+            PETSc.Sys.Print(
+                f"VIAMR INFO  vcdmark() solver time = {end - start:.6f} seconds"
+            )
 
         if returnSmooth:
             return u
@@ -283,51 +285,46 @@ class VIAMR(OptionsManager):
             emax = ieta_.max()[1]
         mark = Function(DG0).interpolate(conditional(gt(ieta, theta * emax), 1, 0))
         return (mark, eta)
-    
-    
-    def _fixedratetotal(self, ieta, theta):
-        """ returns a fixed rate of theta marking of the total error estimate, refining largest elements first. Not equivalent in parallel will need to figure out how to do this with petsc.vec operations"""
-        DG0 = ieta.function_space()
-        with ieta.dat.vec_ro as ieta_:
-            values = ieta_.array_r
-            sorted_values = np.sort(values)[::-1] # Sort in descending order
-            cumsum = np.cumsum(sorted_values) # Compute cumulative sum
-            
-            # Compute proportion of total error
-            total_sum = np.sum(values) 
-            target = total_sum * theta
-            
-            # Find value for thresholding
-            idx = np.argmax(cumsum >= target)
-            ethresh = sorted_values[idx]
-            total_error_est = sqrt(ieta_.dot(ieta_))
-        
-        # This will mark approximately the target amount of error for refinement. 
-        mark = Function(DG0).interpolate(conditional(gt(ieta, ethresh), 1, 0))
-        return mark, ethresh, total_error_est
-        
-        
-        
-    def _fixedratemax(self, ieta, theta):
-        """ returns a fixed rate of (1 - theta) marking of the maximum error estimate """
-        DG0 = ieta.function_space()
-        with ieta.dat.vec_ro as ieta_:
-            emax = ieta_.max()[1]
-            total_error_est = sqrt(ieta_.dot(ieta_))
-            ethresh = theta * emax
-        
-        mark = Function(DG0).interpolate(conditional(gt(ieta, ethresh), 1, 0))
-        return mark, ethresh, total_error_est
-        
-        
-        
-        
 
-    def brinactivemark(self, uh, lb, res_ufl, theta=0.5, total = False):
+    def _fixedrate(self, eta, theta, method="max"):
+        """Marks elements according to the values of eta and the threshold
+        theta.  The default 'max' strategy marks all elements which have
+        eta which is bigger than theta * max eta.  The alternate 'total'
+        strategy sorts the elements by decreasing eta values and finds where,  the
+        cumulative sum exceeds theta times the total sum, and marks those
+        elements where their eta values are above that threshold.
+        The 'total' strategy is not valid in parallel.
+        (Will need to figure out how to do this with petsc.vec operations)"""
+
+        if method == "total" and eta.function_space().mesh().comm.size > 1:
+            raise ValueError(
+                "VIAMR._fixedrate() with the 'total' strategy is not valid in parallel"
+            )
+        if method not in {"max", "total"}:
+            raise ValueError("unknown method for VIAMR._fixedrate()")
+
+        # find value for thresholding
+        with eta.dat.vec_ro as eta_:
+            if method == "max":
+                ethresh = theta * eta_.max()[1]
+            else:
+                values = eta_.array_r
+                sorted_values = np.sort(values)[::-1]  # sort in descending order
+                cumsum = np.cumsum(sorted_values)
+                target = np.sum(values) * theta  # proportion of total error
+                idx = np.argmax(cumsum >= target)
+                ethresh = sorted_values[idx]
+            total_error_est = sqrt(eta_.dot(eta_))
+
+        DG0 = eta.function_space()
+        mark = Function(DG0).interpolate(conditional(gt(eta, ethresh), 1, 0))
+        return mark, ethresh, total_error_est
+
+    def brinactivemark(self, uh, lb, res_ufl, theta=0.5, total=False):
         """Return marking within the computed inactive set by using the
         a posteriori Babuška-Rheinboldt residual error indicator.  The BR
-        indicator eta is computed as a function in DG0.  Then
-        we mark where eta is larger than theta fraction of eta values.
+        indicator eta is computed as a function in DG0.  Then we call
+        VIAMR._fixedrate() to mark using eta and a threshold theta.
         Returns the marking mark, estimator eta, and a scalar estimate for
         the total error in energy norm.  (This last value is only valid for
         the Poisson equation.)  This function is on slide 109 of
@@ -337,8 +334,6 @@ class VIAMR(OptionsManager):
         and section 2.2 of
           M. Ainsworth & J. T. Oden (2000).  A Posteriori Error Estimation in
           Finite Element Analysis, John Wiley & Sons, Inc., New York."""
-        # FIXME use something other than theta and emax to mark?  see commented-out
-        #   lines below computing eta average
         # mesh quantities
         mesh = uh.function_space().mesh()
         h = CellDiameter(mesh)
@@ -350,7 +345,7 @@ class VIAMR(OptionsManager):
         w = TestFunction(DG0)
         G = (
             inner(eta_sq / v, w) * dx
-            - inner(h**2 * res_ufl**2, w) * dx
+            - inner(h ** 2 * res_ufl ** 2, w) * dx
             - inner(h("+") / 2 * jump(grad(uh), n) ** 2, w("+")) * dS
             - inner(h("-") / 2 * jump(grad(uh), n) ** 2, w("-")) * dS
         )
@@ -361,16 +356,10 @@ class VIAMR(OptionsManager):
         # restrict BR eta to inactive set
         imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
-        if total:
-            mark, ethresh, total_error_est = self._fixedratetotal(ieta, theta)
-        else:
-            mark, ethresh, total_error_est = self._fixedratemax(ieta, theta)        
+        mark, ethresh, total_error_est = self._fixedrate(
+            ieta, theta, method="total" if total else "max"
+        )
         return (mark, eta, total_error_est)
-        
-        
-        
-        
-        
 
     def setmetricparameters(self, **kwargs):
         self.target_complexity = kwargs.pop("target_complexity", 3000.0)
@@ -437,7 +426,7 @@ class VIAMR(OptionsManager):
             VImetric.average(freeboundaryMetric, weights=weights)
         else:
             VImetric = freeboundaryMetric.copy(deepcopy=True)
-            
+
         return adapt(mesh, VImetric)
 
     def refinemarkedelements(self, mesh, indicator, isUniform=False):
@@ -478,9 +467,9 @@ class VIAMR(OptionsManager):
             opts["dm_plex_transform_type"] = "refine_regular"
         else:
             opts["dm_plex_transform_active"] = "refinesbr"
-            opts["dm_plex_transform_type"] = (
-                "refine_sbr"  # <- skeleton based refinement is what netgen does.
-            )
+            opts[
+                "dm_plex_transform_type"
+            ] = "refine_sbr"  # <- skeleton based refinement is what netgen does.
 
         # Create a DMPlexTransform object to apply the refinement
         dmTransform = PETSc.DMPlexTransform().create(comm=mesh.comm)
