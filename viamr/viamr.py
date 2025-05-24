@@ -131,7 +131,8 @@ class VIAMR(OptionsManager):
         which neighbor the current free-boundary elements are added, and so on iteratively.
         The input n gives the number of levels to expand the initial element border.  The
         output is an element-wise marking for which elements, near the free boundary,
-        should be refined."""
+        should be refined.
+        Tuning advice:  Increase n to put more elements near the free boundary."""
 
         # get mesh and its DMPlex
         mesh = uh.function_space().mesh()
@@ -215,7 +216,10 @@ class VIAMR(OptionsManager):
         time-dependent diffusion equation.  Thresholding for the middle
         values of this field marks only those elements which are close to the
         free boundary.  The output is an element-wise marking for which elements,
-        near the free boundary, should be refined."""
+        near the free boundary, should be refined.
+        Tuning advice:  Generally the bracket [a,b] should be adjusted as follows:
+          * lower a from default 0.2 to put more elements in/near *inactive* set
+          * raise b from default 0.8 to put more elements in/near *active* set"""
 
         # Compute nodal active set indicator within some tolerance
         mesh = uh.function_space().mesh()
