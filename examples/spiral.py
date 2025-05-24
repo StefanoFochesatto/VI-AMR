@@ -1,5 +1,6 @@
-# This example generates a figure in the paper comparing n=2 UDO to default VCD
-# on the spiral problem.  It writes two .pvd files, result_spiral_{udo,vcd}.pvd
+# This example generates two .pvd files, result_spiral_{udo,vcd}.pvd, suitable for
+# a figure in the paper comparing n=1 UDO to [0.1,0.9] VCD on the spiral problem.
+# Note: Because of thin active set, jaccard agreement is zero until levels=4.
 
 from firedrake import *
 from firedrake.output import VTKFile
@@ -16,10 +17,10 @@ problem = SpiralObstacleProblem(TriHeight=h_initial)
 amr = VIAMR()
 spmore = {
     "snes_converged_reason": None,
-    "snes_vi_monitor": None,
+    #"snes_vi_monitor": None,
 }
 
-for amrtype in {"udo", "vcd"}:
+for amrtype in ("udo", "vcd"):
     mesh = problem.setInitialMesh()
     meshHist = [mesh]
     u = None
@@ -29,6 +30,13 @@ for amrtype in {"udo", "vcd"}:
         print(f"solving spiral problem with {amrtype} AMR on mesh {i} ...")
         amr.meshreport(mesh)
         u, lb = problem.solveProblem(mesh=mesh, u=u, moreparams=spmore)
+
+        neweactive = amr.elemactive(u, lb)
+        if i > 0:
+            jac = amr.jaccard(neweactive, eactive, submesh=True)
+            print(f"  Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]")
+        eactive = neweactive
+
         if i == levels:
             break
 
