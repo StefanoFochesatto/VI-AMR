@@ -414,11 +414,41 @@ For blistering-property problems, substantial AMR efficiency can be achieved by 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
 
-Two of our new methods for adaptive mesh refinement (AMR) for VIs are of \emph{tag-and-refine} type.  We introduce those algorithms first.  However, since these methods do not coarsen, after that we will compare to a more-expensive metric-based framework \cite{Wallworketal2020} which can hold the mesh complexity approximately constant.
+The first two new methods for adaptive mesh refinement (AMR) for VIs, in this Section, are of \emph{tag-and-refine} type.  Since these methods do not coarsen, we then compare to a third method, a more-expensive \emph{metric-based mesh adaptation} approach \cite{Wallworketal2020}, which can hold the mesh complexity approximately constant.
 
-Tagging generally targets quantities of interest, such as energy or $L^2$ norm error, or a local functional \cite{BangerthRannacher2003}, to generate error indicators $\eta_K$ for each element $K$.  For the interior condition (inactive set PDE) of problem \eqref{eq:vi}, we discussed such indicators $\eta_K$ in Section \ref{sec:aposteriori}.  However, a primary quantity of interest for obstacle problems is \emph{vicinity to the unknown free boundary}.  To our knowledge there is no precise functional which computes this quantity.  Therefore our methods proceed heuristically to some degree.
+Our methods start from a computed solution to FE VI problem \eqref{eq:fe:vi} over a mesh $\cT_h$, namely the admissible solution $u_h \in \cK_h \subset \cX_h$ and the obstacle $\psi_h \in \cX_h$.  The following two concepts are fundamental.
 
-Our tag-and-refine methods start from a computed solution $u_h \in \cK_h$, over mesh $\cT_h$, to FE VI problem \eqref{eq:fe:vi}.  From $u_h$ they generate a piecewise-constant refinement indicator function $I_h \in \DG_0(\cT_h)$ with values in $\{0,1\}$; the elements $K \in \cT_h$ such that $I_h(K)=1$ are the ones which will be refined.  We then apply \emph{skeleton-based refinement} (SBR) \cite{PlazaCarey2000}, which generates meshes with no hanging nodes and good mesh quality.  Two implementations of SBR are available, namely from the PETSc DMPlex component \cite{petsc-user-ref}, or from the Netgen library \cite{Betteridgeetal2024}.  Only the latter is (currently) capable of 3D refinement.  FE VI problem \eqref{eq:fe:vi} is then solved again over the refined mesh, with AMR iterations until a desired resolution is achieved.
+\begin{definition} \label{def:nodalactive}
+Given $u_h$, $\psi_h$, and a tolerance $\text{tol}>0$, the \emph{nodal active set indicator} is the function $\nu_j\in\CG_1(\cT_h)$, with values $\{0,1\}$ on the vertices $x_j\in\cT_h$, satisfying
+	$$\nu_j = \begin{cases} 1, & u_h(x_j) - \psi_h(x_j) < \text{tol} \\
+	                        0, & \text{otherwise}\end{cases}$$
+\end{definition}
+
+\begin{definition} \label{def:marking}
+An \emph{element marking} (\emph{tagging}) of a mesh $\cT_h$ is a piecewise-constant refinement indicator function $I_K \in \DG_0(\cT_h)$ with values in $\{0,1\}$.  Elements $K \in \cT_h$ such that $I_K=1$ will be refined.
+\end{definition}
+
+For PDE problems, an element marking typically targets a quantity of interest, such as energy or $L^2$ norm error, or a local functional \cite{BangerthRannacher2003}, represented by an error indicator $\eta_K$.  (For the interior condition PDE of problem \eqref{eq:vi}, we discussed such indicators in Section \ref{sec:aposteriori}.)  However, a primary quantity of interest for obstacle problems is \emph{vicinity to the unknown free boundary}.  To our knowledge there is no precise functional which computes this quantity.  Therefore our methods proceed heuristically to convert an \emph{a posteriori} nodal active set indicator $\nu_j$ (Definition \ref{def:nodalactive}) into an element marking $I_K$ (Definition \ref{def:marking}), with the goal of improving the approximation of the free boundary.
+
+Our tag-and-refine AMR methods solve FE VI problem \eqref{eq:fe:vi}, then apply one of the two Algorithms below to generate a marking $I_K$, and then apply \emph{skeleton-based refinement} (SBR) \cite{PlazaCarey2000} to generate a refined mesh with no hanging nodes and good mesh quality.  Two implementations of SBR are available in Firedrake applications, namely from the PETSc DMPlex component \cite{petsc-user-ref}, or from the Netgen library \cite{Betteridgeetal2024}; only the latter is (currently) capable of 3D refinement.
+
+FIXME the algorithm uses the DMPlex \emph{closure} and \emph{star} operations \cite{Langeetal2016}; note $x_K$ denotes the $\DG_0$ degree of freedom for element $K$; note $B_K=N(\Gamma_h)^i$ at the start of each pass in the \textbf{for} loop; note $\ell_j$ will denote number of elements incident to a vertex $j$
+
+\begin{algorithm}[ht]
+	\caption{Unstructured Dilation Operator (UDO) element marking}
+	\begin{algorithmic}[1]
+		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, and neighborhood depth $n\ge 1$.
+		\State Compute the nodal active set indicator $\nu_j \in \CG_1(\cT_h)$ (Definition \ref{def:nodalactive}).
+		\State Define the initial border marking $I_K \in \DG_0(\cT_k)$ by $I_K=1$ if $\nu_j(x_K) \in (0,1)$, and zero otherwise.
+		\For{$i=0,\dots,n-1$}
+		    \State For elements $K$ with $I_K=1$, find adjacent vertices $M_K=\{j_0,\dots,j_d\}$ using \emph{closure}.
+		    \State For vertices $j$ in some $M_K$, find adjacent elements $M_j = \{K_0,\dots,K_{\ell_j-1}\}$ using \emph{star}.
+		    \State Set $I_K=1$ for all elements $K$ in some $M_j$.
+		\EndFor \\
+		\Return marking $I_K$
+	\end{algorithmic}
+\label{alg:udo}
+\end{algorithm}
 
 One of our strategies is called Variable Coefficient Diffusion (VCD).  First, a nodal active set indicator $\nu_h \in \CG_1$ is computed using $u_h$, $\psi_h$, and a small tolerance for being close-enough to the obstacle.  (A default of $10^{-12}$ is used throughout.)  Then, conceptually-speaking, this indicator function is used as the initial condition of a time-dependent, variable-coefficient diffusion problem
 \begin{equation} \label{eq:diffusioneqn}
@@ -430,21 +460,21 @@ We set the amount of diffusivity to depend on the element size: $D=C h^2$, where
 
 Now, within a few elements of the computed free boundary defined by $u_h$, the new field $s_h$ has values between, but away from, $\{0,1\}$.  These values are interpolated into $\DG_0$, and thresholded into a user-chosen middle interval, to produce the refinement indicator $I_h$.  See Algorithm \ref{alg:vcd}. 
 
-\begin{algorithm}[H]
-	\caption{Variable Coefficient Diffusion (VCD) element tagging}
+\begin{algorithm}[ht]
+	\caption{Variable Coefficient Diffusion (VCD) element marking}
 	\begin{algorithmic}[1]
 		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, coefficient $C>0$, and middle interval $0 < \alpha < \beta < 1$.
-		\State Compute $\nu_h \in \CG_1$ as $(\nu_h)(x_j)=1$ if $u_h(x_j) - \psi_h(x_j)<\text{tol}$, and zero otherwise, for all $\CG_1$ nodes $x_j$.
-		\State For $h$ the variable cell (element) diameter, let $D=C h^2$.
-		\State Approximately solve $s_h - \Div(D \grad s_h) = \nu_h$, i.e.~one step of \eqref{eq:diffusioneqn}, for $s_h\in\CG_1$.
-		\State Compute the refinement indicator $I_h \in \DG_0$ by thresholding the values of $s_h$, at $\DG_0$ degrees of freedom $x_K$, into $(\alpha,\beta)$:
+		\State Compute the nodal active set indicator $\nu_j \in \CG_1(\cT_h)$ (Definition \ref{def:nodalactive}).
+		\State For $h$ the cell/element diameter, which varies over the mesh, let $D=C h^2$.
+		\State Approximately solve $s_h - \Div(D \grad s_h) = \nu_j$, i.e.~one step of \eqref{eq:diffusioneqn}, for $s_h\in\CG_1$.
+		\State Compute the element marking $I_K \in \DG_0(\cT_h)$ by thresholding the values of $s_h$ at the $\DG_0$ degrees of freedom $x_K$:
 		\begin{equation*}
-		  I_h(K) = \begin{cases}
+		  I_K = \begin{cases}
 			1 & \text{ if } \alpha < s(x_K) < \beta\\
 			0 & \text{ otherwise}
 		  \end{cases}
 		\end{equation*}\\
-		\Return $I_h$
+		\Return marking $I_K$
 	\end{algorithmic}
 \label{alg:vcd}
 \end{algorithm}
@@ -510,35 +540,6 @@ We identify the set $B$ of elements that border the computed free boundary $\Gam
 \end{equation} 
 With a repeated application of $star \circ cone$ we construct the set $N^n(B)$ and then assemble its corresponding indicator function. This process expands the support of the DG0 indicator function in a way that resembles the "dilation" operation in image processing as seen in \citep{OpenCV} but it is applied over an unstructured mesh.
 
-\begin{algorithm}[H]
-  \caption{Unstructured Dilation Operator Element Tagging for VIs}
-  \begin{algorithmic}[1]
-    \Require $tol \in \mathbb{R}$, $u^k \in K, \psi \in V$, $W$ is a DGO FE space, mesh $T$.
-    \Require Neighborhood Depth Parameter $n \in \mathbb{N}$.
-    \State Compute the nodal active set indicator function $s$
-    \begin{equation}
-    s = \begin{cases}
-      1 & \text{ if } u^k - \psi < tol\\
-      0 & \text{ otherwise}
-    \end{cases}.
-    \end{equation}
-  
-    \State Let $s_W = interpolate(s, W)$ .
-    \State Define the border element set $B$:
-    \begin{equation}
-    B = \{\triangle \in T: 0 < s_W(\triangle) < 1 \} .
-    \end{equation}
-
-    \State Use the \emph{closure} and \emph{star} methods to construct vertex-to-cell and cell-to-vertex mappings.
-
-    \State Use breadth-first search to construct the set $N^n(B)$ as in (5.2) and (5.3). 
-    \State Assemble the indicator function $I$ of the set $N^n(B)$. \\
-    \Return $I$
-  \end{algorithmic}
-  \end{algorithm}
-
-Using thresholding $u - \psi < 0.001$ to determine the active set, running this example generates the following Figure.
-
 \begin{figure}[ht]
 FIXME
 \caption{Mesh (left) generated from the spiral problem, with $N=2.3\times 10^3$ elements, and the approximated active set (right).}
@@ -549,7 +550,8 @@ We end this section with basic Python examples showing how the library\footnote{
 \begin{example} \label{example:AOL}
 Consider Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The following complete code, using the Firedrake and VIAMR libraries, generates a coarse mesh and then applies VCD marking and refinement around the free boundary:
 \inputminted[linenos, frame=lines]{python}{static/exampleAOL.py}
-The initial mesh, marked elements near the free boundary, and refined mesh are shown in Figure \ref{fig:resultAOL}.
+\medskip
+\noindent The initial mesh, marked elements near the free boundary, and refined mesh are shown in Figure \ref{fig:resultAOL}.
 \end{example}
 
 \begin{figure}[ht]
