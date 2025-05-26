@@ -137,6 +137,7 @@ class VIAMR(OptionsManager):
 
         # get mesh and its DMPlex
         mesh = uh.function_space().mesh()
+        d = mesh.cell_dimension()
         dm = mesh.topology_dm
 
         # Check that distribution parameters are correct in parallel
@@ -147,7 +148,7 @@ class VIAMR(OptionsManager):
                     """udomark() in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
                 )
 
-        # Use nodal indicators for active set to make element-wise border indicator  This is a DG0
+        # Use nodal active set indicator to make element border indicator  This is a DG0
         # function with 1 for elements "on" free boundary.  It is updated (overwritten) at end
         # of the main loop.
         border = self.elemborder(self.nodalactive(uh, lb))
@@ -155,7 +156,7 @@ class VIAMR(OptionsManager):
         # This rest of this should really be written by turning the indicator function into a DMLabel
         # and then writing the dmplex traversal in petsc4py. This is a workaround.
 
-        # Generate map (set) from DMPlex to firedrake indices
+        # Generate map from DMPlex to firedrake indices
         # (Is there a better way to do this in dmcommon?)
         plexelementlist = mesh.cell_closure[:, -1]
         dm2fd = np.argsort(plexelementlist)
@@ -177,14 +178,13 @@ class VIAMR(OptionsManager):
             # closure: Pull DMPlex indices of all vertices which are incident
             # to some border element, then flatten and remove duplicates.
             incidentVertices = [
-                dm.getTransitiveClosure(k)[0][4:7] for k in borderindices
+                dm.getTransitiveClosure(k)[0][-d-1:] for k in borderindices
             ]
             incidentVertices = np.unique(np.ravel(incidentVertices))
 
             # star: Pull DMPlex indices of all elements which are incident (neighbors)
-            # to the incidentVertices; this is the set N(B) in the paper.  Note that
-            # getTransitiveClosure() with useCone=False gives the star.  Then flatten
-            # and remove duplicates.
+            # to the incidentVertices.  Note that getTransitiveClosure() with
+            # useCone=False gives the star.  Then flatten and remove duplicates.
             neighborindices = []
             for j in incidentVertices:
                 star = dm.getTransitiveClosure(j, useCone=False)[0]
