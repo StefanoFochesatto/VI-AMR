@@ -135,6 +135,10 @@ class VIAMR(OptionsManager):
         Tuning advice:  Increase n to mark more elements near the free boundary, but
         on simple examples even n=1 may suffice."""
 
+        # FIXME the size of the halo surely is connected to n?  so this won't run in
+        #       parallel without communication or expanding the halo?  so this needs
+        #       to use PetscSF?
+
         # get mesh and its DMPlex
         mesh = uh.function_space().mesh()
         d = mesh.cell_dimension()
