@@ -128,11 +128,12 @@ class VIAMR(OptionsManager):
     def udomark(self, uh, lb, n=2):
         """Mark mesh using Unstructured Dilation Operator (UDO) algorithm.  The algorithm
         first computes an element-wise indicator for the free boundary.  Then the elements
-        which neighbor the current free-boundary elements are added, and so on iteratively.
+        which neighbor free-boundary elements are added, and so on iteratively.
         The input n gives the number of levels to expand the initial element border.  The
-        output is an element-wise marking for which elements, near the free boundary,
+        output is an element-wise marking for those elements near the free boundary which
         should be refined.
-        Tuning advice:  Increase n to put more elements near the free boundary."""
+        Tuning advice:  Increase n to mark more elements near the free boundary, but
+        on simple examples even n=1 may suffice."""
 
         # get mesh and its DMPlex
         mesh = uh.function_space().mesh()
@@ -159,8 +160,8 @@ class VIAMR(OptionsManager):
         plexelementlist = mesh.cell_closure[:, -1]
         dm2fd = np.argsort(plexelementlist)
 
-        # Find range of indices for vertex stratum
-        jmin, jmax = dm.getDepthStratum(mesh.topological_dimension())[:2]
+        # Find range of indices for element stratum
+        kmin, kmax = dm.getHeightStratum(0)[:2]
 
         # main loop: expand element border out to n levels
         #   (index convention:  i for levels, j for nodes/vertices, k for elements)
@@ -173,20 +174,22 @@ class VIAMR(OptionsManager):
                 if value != 0
             ]
 
-            # Pull DMPlex indices of all vertices which are incident to some border element,
-            # then flatten and remove duplicates
+            # closure: Pull DMPlex indices of all vertices which are incident
+            # to some border element, then flatten and remove duplicates.
             incidentVertices = [
                 dm.getTransitiveClosure(k)[0][4:7] for k in borderindices
             ]
             incidentVertices = np.unique(np.ravel(incidentVertices))
 
-            # Pull DMPlex indices of all elements which are incident (neighbor) to the
-            # incidentVertices; this is the set N(B) in the paper.  Then flatten and remove duplicates
+            # star: Pull DMPlex indices of all elements which are incident (neighbors)
+            # to the incidentVertices; this is the set N(B) in the paper.  Note that
+            # getTransitiveClosure() with useCone=False gives the star.  Then flatten
+            # and remove duplicates.
             neighborindices = []
             for j in incidentVertices:
                 k = np.where(
-                    (dm.getTransitiveClosure(j, useCone=False)[0] >= jmin)
-                    & (dm.getTransitiveClosure(j, useCone=False)[0] < jmax)
+                    (dm.getTransitiveClosure(j, useCone=False)[0] >= kmin)
+                    & (dm.getTransitiveClosure(j, useCone=False)[0] < kmax)
                 )
                 neighborindices.extend(dm.getTransitiveClosure(j, useCone=False)[0][k])
             neighborindices = np.unique(np.ravel(neighborindices))
@@ -218,8 +221,8 @@ class VIAMR(OptionsManager):
         free boundary.  The output is an element-wise marking for which elements,
         near the free boundary, should be refined.
         Tuning advice:  Generally the bracket [a,b] should be adjusted as follows:
-          * lower a from default 0.2 to put more elements in/near *inactive* set
-          * raise b from default 0.8 to put more elements in/near *active* set"""
+          * lower a from default 0.2 to mark more elements in/near *inactive* set
+          * raise b from default 0.8 to mark more elements in/near *active* set"""
 
         # Compute nodal active set indicator within some tolerance
         mesh = uh.function_space().mesh()
