@@ -152,54 +152,52 @@ class VIAMR(OptionsManager):
                     """udomark() in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
                 )
 
-        # Use nodal active set indicator to make element border indicator  This is a DG0
-        # function with 1 for elements "on" free boundary.  It is updated (overwritten) at end
-        # of the main loop.
-        border = self.elemborder(self.nodalactive(uh, lb))
-
         # This rest of this should really be written by turning the indicator function into a DMLabel
         # and then writing the dmplex traversal in petsc4py. This is a workaround.
 
-        # Generate map from DMPlex to firedrake indices
-        # (Is there a better way to do this in dmcommon?)
+        # Use nodal active set indicator to make a DG0 element border indicator, and then
+        # convert to element indices.
+        borderDG0 = self.elemborder(self.nodalactive(uh, lb))
         plexelementlist = mesh.cell_closure[:, -1]
-        dm2fd = np.argsort(plexelementlist)
+        borderindices = [
+            plexelementlist[k]
+            for k, value in enumerate(borderDG0.dat.data_ro_with_halos)
+            if value != 0
+        ]
 
         # Find range of indices for element stratum
         kmin, kmax = dm.getHeightStratum(0)[:2]
 
-        # main loop: expand element border out to n levels
+        # main loop: expand element border out to n levels, using only DMPlex indices
         #   (index convention:  i for levels, j for nodes/vertices, k for elements)
-        _, DG0 = self.spaces(mesh)
         for i in range(n):
-            # Pull DMPlex border element indices using dmplex cell indices
-            borderindices = [
-                plexelementlist[k]
-                for k, value in enumerate(border.dat.data_ro_with_halos)
-                if value != 0
-            ]
-
-            # closure: Pull DMPlex indices of all vertices which are incident
+            # closure: Pull indices of all vertices which are incident
             # to some border element, then flatten and remove duplicates.
             incidentVertices = [
                 dm.getTransitiveClosure(k)[0][-d-1:] for k in borderindices
             ]
             incidentVertices = np.unique(np.ravel(incidentVertices))
 
-            # star: Pull DMPlex indices of all elements which are incident (neighbors)
-            # to the incidentVertices.  Note that getTransitiveClosure() with
-            # useCone=False gives the star.  Then flatten and remove duplicates.
+            # star: Pull indices of all elements which are incident to the
+            # incidentVertices.  Note that getTransitiveClosure() with useCone=False
+            # gives the star, and that the number of elements incident to a vertex
+            # is not predictable.  Then flatten and remove duplicates.
             neighborindices = []
             for j in incidentVertices:
                 star = dm.getTransitiveClosure(j, useCone=False)[0]
                 mark = np.where((star >= kmin) & (star < kmax))
                 neighborindices.extend(star[mark])
-            neighborindices = np.unique(np.ravel(neighborindices))
+            borderindices = np.unique(np.ravel(neighborindices))
 
-            # update element-wise border indicator by adding neighbors
-            border = Function(DG0).interpolate(Constant(0.0))
-            for k in neighborindices:
-                border.dat.data_wo_with_halos[dm2fd[k]] = 1
+        # need map from DMPlex to firedrake indices
+        # (Is there a better way to do this in dmcommon?)
+        dm2fd = np.argsort(plexelementlist)
+
+        # generate DG0 element border indicator by adding neighbors
+        _, DG0 = self.spaces(mesh)
+        border = Function(DG0).interpolate(Constant(0.0))
+        for k in borderindices:
+            border.dat.data_wo_with_halos[dm2fd[k]] = 1
 
         return border
 
