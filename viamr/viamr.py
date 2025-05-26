@@ -187,11 +187,9 @@ class VIAMR(OptionsManager):
             # and remove duplicates.
             neighborindices = []
             for j in incidentVertices:
-                k = np.where(
-                    (dm.getTransitiveClosure(j, useCone=False)[0] >= kmin)
-                    & (dm.getTransitiveClosure(j, useCone=False)[0] < kmax)
-                )
-                neighborindices.extend(dm.getTransitiveClosure(j, useCone=False)[0][k])
+                star = dm.getTransitiveClosure(j, useCone=False)[0]
+                mark = np.where((star >= kmin) & (star < kmax))
+                neighborindices.extend(star[mark])
             neighborindices = np.unique(np.ravel(neighborindices))
 
             # update element-wise border indicator by adding neighbors
