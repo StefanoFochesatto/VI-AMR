@@ -209,6 +209,7 @@ AMR       & adaptive mesh refinement \\
 AVM$^*$   & averaged-metric \\
 BR        & Babu\v{s}ka--Rheinboldt, an error estimator \\
 CG        & continuous Galerkin \\
+DAG       & directed acyclic graph \\
 DG        & discontinuous Galerkin \\
 DWR       & dual-weighted residual \\
 FE        & finite element \\
@@ -414,38 +415,57 @@ For blistering-property problems, substantial AMR efficiency can be achieved by 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
 
-The first two new methods for adaptive mesh refinement (AMR) for VIs, in this Section, are of \emph{tag-and-refine} type.  Since these methods do not coarsen, we then compare to a third method, a more-expensive \emph{metric-based mesh adaptation} approach \cite{Wallworketal2020}, which can hold the mesh complexity approximately constant.
+Our first two new methods for adaptive mesh refinement (AMR) for VIs, namely Algorithms \ref{alg:udo} and \ref{alg:vcd} below, are of \emph{tag-and-refine} type.  Since these methods do not coarsen, we compare them to a more-expensive third method, a \emph{metric-based mesh adaptation} approach \cite{Wallworketal2020}, which can hold the mesh complexity approximately constant.
 
-Our methods start from a computed solution to FE VI problem \eqref{eq:fe:vi} over a mesh $\cT_h$, namely the admissible solution $u_h \in \cK_h \subset \cX_h$ and the obstacle $\psi_h \in \cX_h$.  The following two concepts are fundamental.
+Each method starts from a computed solution to FE VI problem \eqref{eq:fe:vi} over a mesh $\cT_h$, specifically using the admissible solution $u_h \in \cK_h \subset \cX_h$ and the obstacle $\psi_h \in \cX_h$.  The vertices of $\cT_h$, namely the degrees of freedom of $\CG_1(\cT_h)$, will be denoted $x_j$.  The following two concepts are fundamental.
 
 \begin{definition} \label{def:nodalactive}
-Given $u_h$, $\psi_h$, and a tolerance $\text{tol}>0$, the \emph{nodal active set indicator} is the function $\nu_j\in\CG_1(\cT_h)$, with values $\{0,1\}$ on the vertices $x_j\in\cT_h$, satisfying
-	$$\nu_j = \begin{cases} 1, & u_h(x_j) - \psi_h(x_j) < \text{tol} \\
-	                        0, & \text{otherwise}\end{cases}$$
+Given $u_h$, $\psi_h$, and a tolerance $\text{tol}>0$, the \emph{nodal active set indicator} is the function $\nu_h\in\CG_1(\cT_h)$ satisfying
+	$$\nu_h(x_j) = \begin{cases} 1, & u_h(x_j) - \psi_h(x_j) < \text{tol} \\
+	                             0, & \text{otherwise}\end{cases}$$
 \end{definition}
 
 \begin{definition} \label{def:marking}
-An \emph{element marking} (\emph{tagging}) of a mesh $\cT_h$ is a piecewise-constant refinement indicator function $I_K \in \DG_0(\cT_h)$ with values in $\{0,1\}$.  Elements $K \in \cT_h$ such that $I_K=1$ will be refined.
+An \emph{element marking} (\emph{tagging}) of a mesh $\cT_h$ is a piecewise-constant indicator function $I_h \in \DG_0(\cT_h)$ with values in $\{0,1\}$.  Elements $K \in \cT_h$ such that $I_h(K)=1$ will be refined.
 \end{definition}
 
-For PDE problems, an element marking typically targets a quantity of interest, such as energy or $L^2$ norm error, or a local functional \cite{BangerthRannacher2003}, represented by an error indicator $\eta_K$.  (For the interior condition PDE of problem \eqref{eq:vi}, we discussed such indicators in Section \ref{sec:aposteriori}.)  However, a primary quantity of interest for obstacle problems is \emph{vicinity to the unknown free boundary}.  To our knowledge there is no precise functional which computes this quantity.  Therefore our methods proceed heuristically to convert an \emph{a posteriori} nodal active set indicator $\nu_j$ (Definition \ref{def:nodalactive}) into an element marking $I_K$ (Definition \ref{def:marking}), with the goal of improving the approximation of the free boundary.
+For PDE problems, an element marking is typically derived from a quantity of interest, such as energy or $L^2$ norm error, or a local functional \cite{BangerthRannacher2003}, and an associated error estimator $\eta_K$.  For the interior condition PDE of problem \eqref{eq:vi}, we gave examples of such estimators in Section \ref{sec:aposteriori}.
 
-Our tag-and-refine AMR methods solve FE VI problem \eqref{eq:fe:vi}, then apply one of the two Algorithms below to generate a marking $I_K$, and then apply \emph{skeleton-based refinement} (SBR) \cite{PlazaCarey2000} to generate a refined mesh with no hanging nodes and good mesh quality.  Two implementations of SBR are available in Firedrake applications, namely from the PETSc DMPlex component \cite{petsc-user-ref}, or from the Netgen library \cite{Betteridgeetal2024}; only the latter is (currently) capable of 3D refinement.
+However, a primary quantity of interest for obstacle problems is \emph{vicinity to the unknown free boundary}.  To our knowledge there is no precise functional which computes this quantity.  Therefore Algorithms \ref{alg:udo} or \ref{alg:vcd} proceed heuristically to convert an \emph{a posteriori} nodal active set indicator $\nu_h$ (Definition \ref{def:nodalactive}) into an element marking $I_h$ (Definition \ref{def:marking}), with the goal of improving the approximation of the free boundary.  From the marking $I_h$ we then apply \emph{skeleton-based refinement} (SBR) \cite{PlazaCarey2000} to generate a refined mesh with no hanging nodes and good mesh quality.  Note that two implementations of SBR are available to Firedrake applications, namely from the DMPlex unstructured mesh component of PETSc \cite{petsc-user-ref}, or from the Netgen library \cite{Betteridgeetal2024}.  Only the latter implementation is (currently) capable of 3D refinement.
 
-FIXME the algorithm uses the DMPlex \emph{closure} and \emph{star} operations \cite{Langeetal2016}; note $x_K$ denotes the $\DG_0$ degree of freedom for element $K$; note $B_K=N(\Gamma_h)^i$ at the start of each pass in the \textbf{for} loop; note $\ell_j$ will denote number of elements incident to a vertex $j$
+The use of queries to a DMPlex object is essential to Algorithm \ref{alg:udo} below, so we sketch some aspects of how DMPlex supports unstructured meshes.  It is a domain management class \cite{Langeetal2016} which stores the topology (connectivity of entities) and geometry (coordinates of vertices) of an FE mesh.  Note that every mesh entity is assigned a unique index.   Mesh connectivity is then stored as a stratified directed acyclic graph (DAG) in which a ``covering'' relation determines the edges of the DAG.  For example, a triangle within a 2D mesh is covered by its three edges, each of which is covered by its two endpoints (vertices).  Conceptually-speaking, this covering relation is indicate by a down-arrow in the DAG.  Each stratum in the DAG represents a class of mesh entity; for example the cells, edges, and vertices in a 2D mesh have height strata 0,1,2 respectively.  A DMPlex object also has several methods for querying the mesh topology \citep{Langeetal2016}.  For example, if $p$ is the index of a mesh entity then $\text{\texttt{getCone}}(p)$ returns all entities which cover $p$.  The transitive closure of the cone operation is $\text{\texttt{getTransitiveClosure}}(p)$.  The dual operation of the cone, which finds all the entities which $p$ covers, is $\text{\texttt{getSupport}}(p)$, and its transitive closure is the star operation.
+
+FIXME WITH ALL THIS PREP WE CAN FINALLY SHOW UDO Algorithm \ref{alg:udo}
+
+The use of DMPlex queries is essential to our second strategy, the Unstructured Dilation Operator (UDO). To begin we define an element to neighbor another if it shares at least one vertex. The function $N(\triangle)$ returns the neighborhood of element $\triangle$:
+\begin{equation}
+  N(\triangle) = \{\triangle_i \in T: \triangle \text{ shares at least 1 vertex with } \triangle_i\}.
+\end{equation}
+This process is then repeated $n$ times to create a set of elements that are within $n$ neighborhood levels of a given set of elements:
+\begin{equation}
+  N^n(\triangle) = \underbrace{N(...N(\triangle))}_{n \text{ times}}.
+\end{equation}
+
+We identify the set $B$ of elements that border the computed free boundary $\Gamma_{u^k}$ by interpolating a nodal active indicator function into DG0 and thresholding for values in the range (0, 1). We then use the \emph{closure} and \emph{star} methods to construct the set $N^n(B)$. Note that the construction of $N(B)$ is simply the setwise application of,
+\begin{equation}
+  N(B) = star(cone(B)).
+\end{equation}
+With a repeated application of $star \circ cone$ we construct the set $N^n(B)$ and then assemble its corresponding indicator function. This process expands the support of the DG0 indicator function in a way that resembles the "dilation" operation in image processing as seen in \citep{OpenCV} but it is applied over an unstructured mesh.
+
+FIXME note $x_K$ denotes the $\DG_0$ degree of freedom for element $K$; note $B_K=N(\Gamma_h)^i$ at the start of each pass in the \textbf{for} loop; note $\ell_j$ will denote number of elements incident to a vertex $j$
 
 \begin{algorithm}[ht]
 	\caption{Unstructured Dilation Operator (UDO) element marking}
 	\begin{algorithmic}[1]
 		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, and neighborhood depth $n\ge 1$.
-		\State Compute the nodal active set indicator $\nu_j \in \CG_1(\cT_h)$ (Definition \ref{def:nodalactive}).
-		\State Define the initial border marking $I_K \in \DG_0(\cT_k)$ by $I_K=1$ if $\nu_j(x_K) \in (0,1)$, and zero otherwise.
+		\State Compute the nodal active set indicator $\nu_h \in \CG_1(\cT_h)$ (Definition \ref{def:nodalactive}).
+		\State Define the initial border marking $I_h \in \DG_0(\cT_k)$ by $I_h(K)=1$ if $\nu_h(x_K) \in (0,1)$, and zero otherwise.
 		\For{$i=0,\dots,n-1$}
-		    \State For elements $K$ with $I_K=1$, find adjacent vertices $M_K=\{j_0,\dots,j_d\}$ using \emph{closure}.
-		    \State For vertices $j$ in some $M_K$, find adjacent elements $M_j = \{K_0,\dots,K_{\ell_j-1}\}$ using \emph{star}.
-		    \State Set $I_K=1$ for all elements $K$ in some $M_j$.
+		    \State For each element $K$ with $I_h(K)=1$, find adjacent vertices $M_K=\{j_0,\dots,j_d\}$ using \emph{closure}.
+		    \State For each vertex index $j \in \bigcup M_K$, find adjacent elements $M_j = \{K_0,\dots,K_{\ell_j-1}\}$ using \emph{star}.
+		    \State Set $I_h(K)=1$ for all elements $K \in \bigcup M_j$.
 		\EndFor \\
-		\Return marking $I_K$
+		\Return marking $I_h$
 	\end{algorithmic}
 \label{alg:udo}
 \end{algorithm}
@@ -464,17 +484,17 @@ Now, within a few elements of the computed free boundary defined by $u_h$, the n
 	\caption{Variable Coefficient Diffusion (VCD) element marking}
 	\begin{algorithmic}[1]
 		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, coefficient $C>0$, and middle interval $0 < \alpha < \beta < 1$.
-		\State Compute the nodal active set indicator $\nu_j \in \CG_1(\cT_h)$ (Definition \ref{def:nodalactive}).
+		\State Compute the nodal active set indicator $\nu_h \in \CG_1(\cT_h)$ (Definition \ref{def:nodalactive}).
 		\State For $h$ the cell/element diameter, which varies over the mesh, let $D=C h^2$.
-		\State Approximately solve $s_h - \Div(D \grad s_h) = \nu_j$, i.e.~one step of \eqref{eq:diffusioneqn}, for $s_h\in\CG_1$.
-		\State Compute the element marking $I_K \in \DG_0(\cT_h)$ by thresholding the values of $s_h$ at the $\DG_0$ degrees of freedom $x_K$:
+		\State Approximately solve $s_h - \Div(D \grad s_h) = \nu_h$, i.e.~one step of \eqref{eq:diffusioneqn}, for $s_h\in\CG_1$.
+		\State Compute the element marking $I_h \in \DG_0(\cT_h)$ by thresholding the values of $s_h$ at the $\DG_0$ degrees of freedom $x_K$:
 		\begin{equation*}
-		  I_K = \begin{cases}
-			1 & \text{ if } \alpha < s(x_K) < \beta\\
+		  I_h(K) = \begin{cases}
+			1 & \text{ if } \alpha < s_h(x_K) < \beta \\
 			0 & \text{ otherwise}
 		  \end{cases}
 		\end{equation*}\\
-		\Return marking $I_K$
+		\Return marking $I_h$
 	\end{algorithmic}
 \label{alg:vcd}
 \end{algorithm}
@@ -521,24 +541,7 @@ Figure \ref{fig:vcdillustration} illustrates the VCD algorithm applied to a one-
 \label{fig:vcdillustration}
 \end{figure}
 
-Support for unstructured meshes in Firedrake comes from the DMPlex class in PETSc, as developed by \cite{Langeetal2016}. DMPlex is a data management object which can store the topology (connectivity of mesh entities) and geometry (coordinates) of a discretization. In the DMPlex object every mesh entity is assigned a unique index. The connectivity of a mesh is stored as a layered directed acyclic graph (DAG) in which a "covering" relation specifies the edges of the graph. For example, for a tetrahedral element in a 3d mesh, a face is covered by 3 edges and a tetrahedral cell is covered by 4 faces. Each layer represents a class of mesh entity i.e vertices, edges, etc. Below is an example of how a single tetrahedral cell is represented by DMPlex.
-
-The DMPlex object has several methods which make querying the mesh topology and geometry simple \citep{Langeetal2016}. For example, let $p$ be an index assigned by DMPlex. Then $\emph{cone}(p)$ returns all the in-neighbors of $p$. In the example above $\emph{cone}(0) = \{11, 12, 13, 14\}$. The transitive closure of $\emph{cone}(p)$ is also available with $\emph{closure}(p)$. The dual of $\emph{cone}(p)$ is $\emph{support}(p)$ which returns all the out-neighbors of $p$. In the example above $\emph{support}(6) = \{6, 7, 10\}$. The transitive closure of $\emph{support}(p)$ is also available with $\emph{star}(p)$. 
-
-The use of DMPlex queries is essential to our second strategy, the Unstructured Dilation Operator (UDO). To begin we define an element to neighbor another if it shares at least one vertex. The function $N(\triangle)$ returns the neighborhood of element $\triangle$:
-\begin{equation}
-  N(\triangle) = \{\triangle_i \in T: \triangle \text{ shares at least 1 vertex with } \triangle_i\}.
-\end{equation}
-This process is then repeated $n$ times to create a set of elements that are within $n$ neighborhood levels of a given set of elements:
-\begin{equation}
-  N^n(\triangle) = \underbrace{N(...N(\triangle))}_{n \text{ times}}.
-\end{equation}
-
-We identify the set $B$ of elements that border the computed free boundary $\Gamma_{u^k}$ by interpolating a nodal active indicator function into DG0 and thresholding for values in the range (0, 1). We then use the \emph{closure} and \emph{star} methods to construct the set $N^n(B)$. Note that the construction of $N(B)$ is simply the setwise application of,
-\begin{equation}
-  N(B) = star(cone(B)).
-\end{equation} 
-With a repeated application of $star \circ cone$ we construct the set $N^n(B)$ and then assemble its corresponding indicator function. This process expands the support of the DG0 indicator function in a way that resembles the "dilation" operation in image processing as seen in \citep{OpenCV} but it is applied over an unstructured mesh.
+FIXME
 
 \begin{figure}[ht]
 FIXME
