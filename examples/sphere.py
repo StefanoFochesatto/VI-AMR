@@ -1,5 +1,8 @@
-# This example generates two .pvd files, result_sphere_{udo,vcd}.pvd, suitable
-# for a figure in the paper comparing n=1 UDO to default [0.2,0.8] VCD on the
+# This example attempts to do apples-to-apples comparisons of all three
+# algorithms on the "ball" problem, where the exact solution is known
+# and we can compute norm convergence rates.  We generate three .pvd
+# files, result_sphere_{udo,vcd,avm}.pvd, suitable for a figure in the
+# paper.  Note we are comparing n=1 UDO to default [0.2,0.8] VCD on the
 # sphere problem, for which an exact solution is known.
 
 import numpy as np
@@ -9,9 +12,19 @@ from viamr import VIAMR
 from viamr.utility import SphereObstacleProblem
 
 levels = 3  # number of AMR refinements
-m0 = 20  # initial mesh is m0 x m0
+m0 = 20  # for UDO and VCD, initial mesh is m0 x m0
+includeAVM = True
+initialhAVM = 4.0 / m0  # for apples-to-apples
+targetAVM = 2000  # adjust to make apples-to-apples ish
 
-# miscellaneous
+if includeAVM:
+    try:
+        import netgen
+    except ImportError:
+        raise ImportError("Unable to import NetGen.  Exiting.")
+    from netgen.geom2d import SplineGeometry
+
+# set-up for boundary conditions and exact solution
 afree = 0.697965148223374
 A, B = 0.680259411891719, 0.471519893402112
 r0 = 0.9
@@ -36,10 +49,23 @@ sp = {
     "snes_converged_reason": None,
 }
 
-for amrtype in ("udo", "vcd"):
-    mesh0 = RectangleMesh(m0, m0, Lx=2.0, Ly=2.0, originX=-2.0, originY=-2.0)
-    meshHist = [mesh0]
+thetypes = ("udo", "vcd", "avm") if includeAVM else ("udo", "vcd")
+for amrtype in thetypes:
     amr = VIAMR()
+
+    if amrtype == "avm":
+        dp = {
+            "partition": True,
+            "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
+        }
+        geo = SplineGeometry()
+        geo.AddRectangle(p1=(-2, -2), p2=(2, 2), bc="rectangle")
+        ngmsh = geo.GenerateMesh(maxh=initialhAVM)
+        mesh0 = Mesh(ngmsh, distribution_parameters=dp)
+        amr.setmetricparameters(target_complexity=targetAVM, h_min=1.0e-4, h_max=1.0)
+    else:
+        mesh0 = RectangleMesh(m0, m0, Lx=2.0, Ly=2.0, originX=-2.0, originY=-2.0)
+    meshHist = [mesh0]
 
     for i in range(levels + 1):
         mesh = meshHist[i]
@@ -77,16 +103,18 @@ for amrtype in ("udo", "vcd"):
         if i == levels:
             break
 
-        residual = -div(grad(u))
-        (imark, _, _) = amr.brinactivemark(u, lb, residual, theta=0.7)
-        if amrtype == "udo":
-            mark = amr.udomark(u, lb, n=1)
-        elif amrtype == "vcd":
-            mark = amr.vcdmark(u, lb)
+        if amrtype == "avm":
+            mesh = amr.metricrefine(mesh, u, lb)
         else:
-            raise (ValueError, "unknown amrtype")
-        mark = amr.unionmarks(mark, imark)
-        mesh = amr.refinemarkedelements(mesh, mark)
+            residual = -div(grad(u))
+            (imark, _, _) = amr.brinactivemark(u, lb, residual, theta=0.7)
+            if amrtype == "udo":
+                mark = amr.udomark(u, lb, n=1)
+            elif amrtype == "vcd":
+                mark = amr.vcdmark(u, lb)
+            mark = amr.unionmarks(mark, imark)
+            mesh = amr.refinemarkedelements(mesh, mark)
+
         meshHist.append(mesh)
 
     outfile = "result_sphere_" + amrtype + ".pvd"
