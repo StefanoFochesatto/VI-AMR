@@ -50,6 +50,19 @@ or plain:
 pip install .
 ```
 
+#### Build notes May 2025
+
+When running a code which depends on animate, such as `examples/sphere.py`, you might get an error which ends with
+```
+...
+[0] Grid adaptor mmg not registered; you may need to add --download-mmg to your ./configure options
+```
+This error can be resolved by adding `--download-mmg --download-parmmg` to your PETSc configuration, and recompiling PETSc.  For example, go to the `petsc/` directory in your Firedrake installation and do
+```
+python3 ../firedrake-configure --show-petsc-configure-options | xargs -L1 ./configure --download-eigen --download-metis --download-parmetis --download-mmg --download-parmmg --download-eigen
+```
+Then do `make all` and perhaps `make check`.
+
 ### Using Docker
 
 A docker image is available with most of the setup compete. To get started ensure that you have [Docker](https://docs.docker.com/engine/install/) installed and running on your system.
