@@ -439,7 +439,7 @@ class VIAMR(OptionsManager):
             VImetric = freeboundaryMetric.copy(deepcopy=True)
             solutionMetric = self.metricfromhessian(uh)
             solutionMetric.normalise()
-            VImetric.average(freeboundaryMetric, weights=weights)
+            VImetric.average(solutionMetric, weights=weights)
         else:
             VImetric = freeboundaryMetric.copy(deepcopy=True)
 
