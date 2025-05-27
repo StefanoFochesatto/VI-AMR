@@ -194,7 +194,7 @@ Our focus in this paper is on AMR performance, but not solver performance.  We u
 
 VI solver performance can be substantially improved by combining the AMR meshing strategies here with a multilevel approach.  The solver in \cite{BuelerFarrell2024}, for example, uses coarse meshes to make large geometrical corrections in the free boundary.  This path, which promises highly-scalable solutions of obstacle problems, is for future research.
 
-To conclude this introduction, there are two overall features of the AMR methods of this paper:
+In summary, here are two principles of the AMR methods of this paper:
 \renewcommand{\labelenumi}{\arabic{enumi}.}
 \begin{enumerate}
 \item Relative to uniform refinement, the methods exhibit significant improvements in error norm convergence.  This is measured, per mesh degree of freedom, by norm error $\|u-u_h\|$ or free-boundary localization (geometrical) error.
@@ -205,14 +205,25 @@ The paper is organized as follows:  Table \ref{tab:abbrev} gives the few abbrevi
 
 \begin{table}[ht]
 \centering
-\begin{tabular}{ll}
+\begin{minipage}[t]{0.45\textwidth}
+\vspace{0pt}
+{\small
+\begin{tabular}{ll} \\
 AMR       & adaptive mesh refinement \\
 AVM$^*$   & averaged-metric \\
-BR        & Babu\v{s}ka--Rheinboldt, an error estimator \\
+BR        & Babu\v{s}ka--Rheinboldt \\
 CG        & continuous Galerkin \\
 DAG       & directed acyclic graph \\
 DG        & discontinuous Galerkin \\
-DWR       & dual-weighted residual \\
+DWR       & dual-weighted residual
+\end{tabular}
+}
+\end{minipage}
+\quad
+\begin{minipage}[t]{0.45\textwidth}
+\vspace{0pt}
+{\small
+\begin{tabular}{ll} \\
 FE        & finite element \\
 PDE       & partial differential equation \\
 SBR       & skeleton-based refinement \\
@@ -220,6 +231,9 @@ UDO$^*$   & unstructured dilation operator \\
 VCD$^*$   & variable-coefficient diffusion \\
 VI        & variational inequality
 \end{tabular}
+}
+\end{minipage}
+
 
 \caption{Abbreviations used in this paper.  Stars indicate the new AMR methods.}
 \label{tab:abbrev}
