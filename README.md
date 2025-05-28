@@ -59,7 +59,7 @@ When running a code which depends on animate, such as `examples/sphere.py`, you 
 ```
 This error can be resolved by adding `--download-mmg --download-parmmg` to your PETSc configuration, and recompiling PETSc.  For example, go to the `petsc/` directory in your Firedrake installation and do
 ```
-python3 ../firedrake-configure --show-petsc-configure-options | xargs -L1 ./configure --download-eigen --download-metis --download-parmetis --download-mmg --download-parmmg --download-eigen
+python3 ../firedrake-configure --show-petsc-configure-options | xargs -L1 ./configure --download-metis --download-parmetis --download-mmg --download-parmmg --download-eigen
 ```
 Then do `make all` and perhaps `make check`.
 
