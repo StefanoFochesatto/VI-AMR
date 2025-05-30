@@ -5,8 +5,13 @@ parser = argparse.ArgumentParser(
    F.-T. Suttmeier (2008).  Numerical Solution of Variational Inequalities
    by Adaptive Finite Elements, Vieweg + Teubner, Wiesbaden
 Note there is an apparent typo there, since the source f(x,y) needs to be
-negative to generate an active set.  When run in serial this code reports
-the solution value u_h(1/8,1/4), for comparison to the reference."""
+negative to generate an active set.  When run in serial with -samplepoint
+we report the solution value u_h(1/8,1/4), for comparison to the reference."""
+)
+parser.add_argument(
+    "-samplepoint",
+    action="store_true",
+    help="print u_h(1/8,1/4) (default: False; serial only)",
 )
 parser.add_argument(
     "-m0", type=int, default=10, help="initial mesh subdivision (default: 10)"
@@ -62,13 +67,12 @@ params = {
     "pc_factor_mat_solver_type": "mumps",
 }
 
-# explicitly setting distribution parameters allows this to be a udomark() example
-# which still runs in parallel
 meshhierarchy = [
     UnitSquareMesh(
         args.m0,
         args.m0,
         diagonal="crossed",
+        # FIXME explicitly setting distribution parameters allows udomark() to run in parallel
         distribution_parameters={
             "partition": True,
             "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
@@ -108,24 +112,18 @@ for i in range(args.refinements + 1):
 
     # protect this print from the issue
     #   https://www.firedrakeproject.org/point-evaluation.html#evaluation-with-a-distributed-mesh
-    if mesh.comm.size == 1:
+    if args.samplepoint and mesh.comm.size == 1:
         print(f"u_h(1/8,1/4) = {u.at(0.125, 0.25):.6e}")
     if i == args.refinements:
         break
 
-    mark = amr.udomark(u, psi, n=2)
-
-    # alternative: apply VCD AMR, marking inactive by B&R indicator
-    #   (choose more refinement in active set, relative to default bracket=[0.2, 0.8])
-    # mark = amr.vcdmark(u, psi, bracket=[0.2, 0.9])
-
+    # mark by default UDO and BR in inactive region
+    fbmark = amr.udomark(u, psi)
     residual = -div(grad(u)) - fsource
-
     (imark, _, _) = amr.brinactivemark(
         u, psi, residual, theta=args.theta, method="total" if args.total else "max"
     )
-    # imark = amr.eleminactive(u, psi)  # alternative is to refine all inactive
-    mark = amr.unionmarks(mark, imark)
+    mark = amr.unionmarks(fbmark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
