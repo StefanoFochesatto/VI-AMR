@@ -51,6 +51,7 @@ sp = {
 
 thetypes = ("udo", "vcd", "avm") if includeAVM else ("udo", "vcd")
 for amrtype in thetypes:
+    print(f"solving by VIAMR using {amrtype.upper()} method ...")
     amr = VIAMR()
 
     # setting distribution parameters should not be necessary ... but bug in netgen
