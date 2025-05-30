@@ -144,7 +144,9 @@ class VIAMR(OptionsManager):
         d = mesh.cell_dimension()
         dm = mesh.topology_dm
 
-        # Check that distribution parameters are correct in parallel
+        # FIXME check that distribution parameters are correct in parallel
+        #       this relates to a bug in netgen
+        #       this check should be bypassed for other meshes
         if mesh.comm.size > 1:
             dp = mesh._distribution_parameters
             if dp["overlap_type"][0].name != "VERTEX" or dp["overlap_type"][1] < 1:
