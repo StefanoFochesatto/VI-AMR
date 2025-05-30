@@ -68,16 +68,7 @@ params = {
 }
 
 meshhierarchy = [
-    UnitSquareMesh(
-        args.m0,
-        args.m0,
-        diagonal="crossed",
-        # FIXME explicitly setting distribution parameters allows udomark() to run in parallel
-        distribution_parameters={
-            "partition": True,
-            "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
-        },
-    ),
+    UnitSquareMesh(args.m0, args.m0, diagonal="crossed"),
 ]
 amr = VIAMR()
 for i in range(args.refinements + 1):
@@ -95,7 +86,7 @@ for i in range(args.refinements + 1):
         -(((x - 0.5) ** 2 + (y - 0.5) ** 2) ** (3 / 2))
     )
     # typo? from Suttmeier: f = 10.0 * (x - x**2 + y - y **2)
-    fsource = Function(V, name="f").interpolate(-10.0 * (x - x ** 2 + y - y ** 2))
+    fsource = Function(V, name="f").interpolate(-10.0 * (x - x**2 + y - y**2))
 
     # weak form and problem
     v = TestFunction(V)

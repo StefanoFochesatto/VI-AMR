@@ -15,15 +15,7 @@ def _get_netgen_mesh(TriHeight=0.4, width=2):
     geo.AddRectangle(
         p1=(-1 * width, -1 * width), p2=(1 * width, 1 * width), bc="rectangle"
     )
-    ngmsh = None
-    ngmsh = geo.GenerateMesh(maxh=TriHeight)
-    return Mesh(
-        ngmsh,
-        distribution_parameters={
-            "partition": True,
-            "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
-        },
-    )
+    return Mesh(geo.GenerateMesh(maxh=TriHeight))
 
 
 def _get_ball_obstacle(x, y):

@@ -81,7 +81,7 @@ def PARtest_refine_udo_parallelUDO():
     # VTKFile("result_refine_0.pvd").write(u)
     mark2 = amr.udomark(u, psi)
     rmesh2 = mesh2.refine_marked_elements(mark2)  # netgen's refine method
-    assert abs(amr.jaccard(mark1, mark2) - 1.0) < 1.0e-10
+    assert abs(amr.jaccard(mark1, mark2, submesh=True) - 1.0) < 1.0e-10
     r1CG1, _ = amr.spaces(rmesh1)
     r2CG1, _ = amr.spaces(rmesh2)
     assert r1CG1.dim() == r2CG1.dim()
@@ -93,16 +93,7 @@ def PARtest_parallel_udo():
     rank = comm.Get_rank()
 
     amr = VIAMR()
-    mesh = RectangleMesh(
-        20,
-        20,
-        1,
-        1,
-        distribution_parameters={
-            "partition": True,
-            "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
-        },
-    )
+    mesh = RectangleMesh(20, 20, 1, 1)
     CG1, _ = amr.spaces(mesh)
     u = Function(CG1).interpolate(1.0)
     x, y = SpatialCoordinate(mesh)
@@ -144,16 +135,7 @@ def PARtest_udo_regression():
     # as a regression test for the dmplex based implementation.
 
     amr = VIAMRRegression()
-    mesh = RectangleMesh(
-        20,
-        20,
-        1,
-        1,
-        distribution_parameters={
-            "partition": True,
-            "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
-        },
-    )
+    mesh = RectangleMesh(20, 20, 1, 1)
     CG1, _ = amr.spaces(mesh)
     u = Function(CG1).interpolate(1.0)
     x, y = SpatialCoordinate(mesh)

@@ -54,19 +54,18 @@ for amrtype in thetypes:
     print(f"solving by VIAMR using {amrtype.upper()} method ...")
     amr = VIAMR()
 
-    # setting distribution parameters should not be necessary ... but bug in netgen
-    dp = {
-        "partition": True,
-        "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
-    }
     if amrtype == "avm":
         geo = SplineGeometry()
         geo.AddRectangle(p1=(-2, -2), p2=(2, 2), bc="rectangle")
         ngmsh = geo.GenerateMesh(maxh=initialhAVM)
+        dp = {
+            "partition": True,
+            "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
+        }
         mesh0 = Mesh(ngmsh, distribution_parameters=dp)
         amr.setmetricparameters(target_complexity=targetAVM, h_min=1.0e-4, h_max=1.0)
     else:
-        mesh0 = RectangleMesh(m0, m0, Lx=2.0, Ly=2.0, originX=-2.0, originY=-2.0, distribution_parameters=dp)
+        mesh0 = RectangleMesh(m0, m0, Lx=2.0, Ly=2.0, originX=-2.0, originY=-2.0)
     meshHist = [mesh0]
 
     for i in range(levels + 1):
