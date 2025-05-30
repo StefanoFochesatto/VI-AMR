@@ -135,10 +135,6 @@ class VIAMR(OptionsManager):
         Tuning advice:  Increase n to mark more elements near the free boundary, but
         on simple examples even n=1 may suffice."""
 
-        # FIXME the size of the halo surely is connected to n?  so this won't run in
-        #       parallel without communication or expanding the halo?  so this needs
-        #       to use PetscSF?
-
         # get mesh and its DMPlex
         mesh = uh.function_space().mesh()
         d = mesh.cell_dimension()
@@ -146,7 +142,6 @@ class VIAMR(OptionsManager):
 
         # FIXME check that distribution parameters are correct in parallel
         #       this relates to a bug in netgen
-        #       this check should be bypassed for other meshes
         if mesh.comm.size > 1:
             dp = mesh._distribution_parameters
             if dp["overlap_type"][0].name != "VERTEX" or dp["overlap_type"][1] < 1:
@@ -234,7 +229,7 @@ class VIAMR(OptionsManager):
         nu = self.nodalactive(uh, lb)
 
         # Diffuse according to square of cell diameter: D = C h^2.  The nodal
-        # active indicator gives the initial field u0.  Then solve one backward
+        # active indicator gives the initial field u0.  Solve one backward
         # Euler time-step using a linear solver.
         w = TrialFunction(CG1)
         v = TestFunction(CG1)
@@ -250,6 +245,9 @@ class VIAMR(OptionsManager):
                 "pc_factor_mat_solver_type": "mumps",
             }
         else:
+            # optimal, approximate solver for linear problem
+            # WARNING: can produce different results according to number of
+            #          processes, because of ASM+ICC preconditioning
             sp = {
                 "ksp_type": "cg",
                 "ksp_max_it": vcdsolveriters,
