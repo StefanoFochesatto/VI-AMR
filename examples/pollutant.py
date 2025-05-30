@@ -11,9 +11,10 @@ from netgen.occ import *
 
 # 3D advection-diffusion problem with upper and lower bounds
 
-# This issue about refinement along the surface will be fixed in the next firedrake release. Install the latest ngsPETSc changes for now.
+# FIXME issue about refinement along the surface will be fixed
+# in the next firedrake release?  Install the latest ngsPETSc changes for now.
 
-refinements = 3
+refinements = 2
 
 # initial mesh
 box = Box((-1, -1, -1), (1, 1, 1))
