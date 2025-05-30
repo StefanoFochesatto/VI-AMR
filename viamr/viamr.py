@@ -157,22 +157,29 @@ class VIAMR(OptionsManager):
         # This rest of this should really be written by turning the indicator function into a DMLabel
         # and then writing the dmplex traversal in petsc4py. This is a workaround.
 
-        # Use nodal active set indicator to make a DG0 element border indicator, and then
-        # convert to element indices.
-        borderDG0 = self.elemborder(self.nodalactive(uh, lb))
-        plexelementlist = mesh.cell_closure[:, -1]
-        borderindices = [
-            plexelementlist[k]
-            for k, value in enumerate(borderDG0.dat.data_ro_with_halos)
-            if value != 0
-        ]
+        # Use nodal active set indicator to make an initial DG0 element border
+        # indicator.
+        border = self.elemborder(self.nodalactive(uh, lb))
 
         # Find range of indices for element stratum
         kmin, kmax = dm.getHeightStratum(0)[:2]
 
+        # need map from DMPlex to firedrake indices
+        # (Is there a better way to do this in dmcommon?)
+        plexelementlist = mesh.cell_closure[:, -1]
+        dm2fd = np.argsort(plexelementlist)
+
         # main loop: expand element border out to n levels, using only DMPlex indices
         #   (index convention:  i for levels, j for nodes/vertices, k for elements)
+        _, DG0 = self.spaces(mesh)
         for i in range(n):
+            # Pull DMPlex border element indices using dmplex cell indices
+            borderindices = [
+                plexelementlist[k]
+                for k, value in enumerate(border.dat.data_ro_with_halos)
+                if value != 0
+            ]
+
             # closure: Pull indices of all vertices which are incident
             # to some border element, then flatten and remove duplicates.
             incidentVertices = [
@@ -189,17 +196,12 @@ class VIAMR(OptionsManager):
                 star = dm.getTransitiveClosure(j, useCone=False)[0]
                 mark = np.where((star >= kmin) & (star < kmax))
                 neighborindices.extend(star[mark])
-            borderindices = np.unique(np.ravel(neighborindices))
+            neighborindices = np.unique(np.ravel(neighborindices))
 
-        # need map from DMPlex to firedrake indices
-        # (Is there a better way to do this in dmcommon?)
-        dm2fd = np.argsort(plexelementlist)
-
-        # generate DG0 element border indicator by adding neighbors
-        _, DG0 = self.spaces(mesh)
-        border = Function(DG0).interpolate(Constant(0.0))
-        for k in borderindices:
-            border.dat.data_wo_with_halos[dm2fd[k]] = 1
+            # re-generate DG0 element border indicator by adding neighbors
+            border = Function(DG0).interpolate(Constant(0.0))
+            for k in neighborindices:
+                border.dat.data_wo_with_halos[dm2fd[k]] = 1  # parallel communication *here*
 
         return border
 
