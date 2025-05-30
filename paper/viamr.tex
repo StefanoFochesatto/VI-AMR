@@ -123,21 +123,20 @@ be the admissible subset, closed and convex in $\cX$.  For $f\in L^2(\Omega)$, t
 \int_\Omega \nabla u \cdot \nabla(v - u) \ge \int_\Omega f(v - u) \quad \text{ for all } v \in \cK.
 \end{equation}
 
-Section \ref{sec:vifem} will recall some of the theory of such VIs, and of their finite element (FE) approximation.  However, we will generalize from elliptic bilinear forms, as in \eqref{eq:classical:vi}, to coercive nonlinear operators over Banach spaces.  A conforming FE approximation $u_h$ of the VI solves the same weak form, but now over a finite-dimensional admissible set constructed on a mesh $\cT_h$.  Similarly to Cea's lemma for PDEs \cite{ElmanSilvesterWathen2014}, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori} by extending the Falk \cite{Falk1974} technique to nonlinear operators (Theorem \ref{thm:genfalk}).  These norm errors are controlled by the approximation properties of the FE space, but subject to additional VI-specific concerns regarding admissibility and the construction of the FE obstacle.
+In Section \ref{sec:vifem} we will recall some of the theory of such VIs, and their finite element (FE) approximation.  However, we will generalize from elliptic bilinear forms like \eqref{eq:classical:vi} to coercive nonlinear operators over Banach spaces.  A conforming FE approximation $u_h$ of the VI solves the same weak form, but now over a finite-dimensional admissible set constructed on a mesh $\cT_h$.  Similarly to Cea's lemma for PDEs \cite{ElmanSilvesterWathen2014}, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori} by extending the Falk \cite{Falk1974} technique to nonlinear operators.  In fact, Theorem \ref{thm:genfalk} will show how norm errors are controlled by the approximation properties of the FE space, but also subject to VI-specific concerns regarding admissibility and the construction of the FE obstacle.
 
-Adaptive mesh refinement (AMR) uses \emph{a posteriori} information from a coarser-mesh calculation to strategically add elements to a mesh, to reduce numerical error.  For VI problems the geometrical error in locating the free-boundary $\Gamma_u$ on a given mesh can, by itself, influence the global error $\|u-u_h\|$.  This fact, somewhat acknowledged in the FE literature for VIs \cite{Suttmeier2008}, is clearly seen in the following 1D example.
+Adaptive mesh refinement (AMR) uses \emph{a posteriori} information from the numerical solution over a given mesh to strategically add elements to the mesh to reduce the  numerical error.  However, for VI problems the geometrical error in locating the free-boundary $\Gamma_u$ on a mesh can, by itself, influence the global error $\|u-u_h\|$.  This fact, somewhat acknowledged in the FE literature for VIs \cite{Suttmeier2008}, is clearly seen in the following 1D example.
 
 \begin{example} \label{example:oned} Suppose $\Omega = (-1,1)$, $\psi(x)=0.5 - x^2$, $f=0$, and $g=0$.  The exact solution $u$ of \eqref{eq:classical:vi} for this data is easily calculated.  Free boundaries are at $x_*=\pm(1-2^{-1/2})$ (Figure \ref{fig:parabola}).  For an FE approximation using piecewise-linear elements and a uniform mesh, let $\Delta_h$ be the minimum distance between a node and $x_*$.  Noting that $x_*$ are irrational, under uniform refinements $\Delta_h = O(h)$ is an irregular function of $h$.  Figure \ref{fig:parabola} (right) compares $H^1$ and $L^2$ norm errors to $\Delta_h$.  The erratic behavior of the norm errors closely follows the purely-geometrical free-boundary location error $\Delta_h$. \end{example}
 
 \begin{figure}[ht]
-\mbox{
+\noindent \mbox{
 \begin{minipage}[t]{0.45\textwidth}
 \input{tikz/parabola.tex}
 \end{minipage}
-\quad
-\begin{minipage}[t]{0.55\textwidth}
-\includegraphics[width=0.9\textwidth]{static/VIConvergence.png}
-% FIXME regenerate with labels ||u-u_h||_{H^1} = O(h^1.09), ||u-u_h||_{L^2} = O(h^1.57), \Delta_h
+\,
+\begin{minipage}[t]{0.53\textwidth}
+\includegraphics[width=\textwidth]{static/VIConvergence.png}
 \end{minipage}
 }
 \caption{A one-dimensional obstacle problem (left), for which the geometrical free-boundary location error $\Delta_h$ predicts norm error $\|u-u_h\|$ behavior (right).}
