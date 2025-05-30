@@ -140,6 +140,15 @@ class VIAMR(OptionsManager):
         d = mesh.cell_dimension()
         dm = mesh.topology_dm
 
+        # FIXME check that distribution parameters are correct in parallel
+        #       this relates to a bug in netgen
+        if mesh.comm.size > 1:
+            dp = mesh._distribution_parameters
+            if dp["overlap_type"][0].name != "VERTEX" or dp["overlap_type"][1] < 1:
+                raise ValueError(
+                    """udomark() in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
+                )
+
         # This rest of this should really be written by turning the indicator function into a DMLabel
         # and then writing the dmplex traversal in petsc4py. This is a workaround.
 
@@ -371,8 +380,8 @@ class VIAMR(OptionsManager):
         return (mark, eta, total_error_est)
 
     def setmetricparameters(self, **kwargs):
-        self.target_complexity = kwargs.pop("target_complexity", 1000.0)
-        self.h_min = kwargs.pop("h_min", 1.0e-4)
+        self.target_complexity = kwargs.pop("target_complexity", 3000.0)
+        self.h_min = kwargs.pop("h_min", 1.0e-7)
         self.h_max = kwargs.pop("h_max", 1.0)
         mp = {
             "target_complexity": self.target_complexity,  # target number of nodes
