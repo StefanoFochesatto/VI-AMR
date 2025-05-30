@@ -8,30 +8,12 @@ The short programs `sphere.py` and `spiral.py` show many core abilities of the `
 
   * `spiral.py` does a similar comparison on a classical obstacle problem from Graeser & Kornhuber (2009).  Only the UDO and VCD methods are demonstrated.
 
+  * `aol.py` is a simple example that only does one level of refinement on a problem from M. Ainsworth, J.T. Oden, and C. Lee, Local a posteriori error estimators for variational inequalities, Numerical Methods for Partial Differential Equations 9 (1993), pp. 23–33.
+  It is quoted in full in the paper, and used to produce a figure there.
+
 ## other examples
 
 Programs `blister.py`, `pollutant.py`, and `suttmeier.py` are documented only by their source code.  Also, the `glaciers/` directory contains another example; see `glaciers/README.md` for what it is doing and how to run it.
-
-## animate dependency
-
-FIXME THIS MAY BE COMPLETELY WRONG AND OUT OF DATE.  FOLLOW THE INSTALL INSTRUCTIONS AT THE animate PAGE?
-
-Basic example `metric.py` uses [animate](https://github.com/mesh-adaptation/animate) to do metric-based AMR.  For this, Ed had to do the following:
-
-    git clone https://github.com/mesh-adaptation/animate.git
-    cd animate/
-    cp Makefile Makefile2
-    curl -O https://raw.githubusercontent.com/mesh-adaptation/mesh-adaptation-docs/main/install/Makefile
-    curl -O https://raw.githubusercontent.com/mesh-adaptation/mesh-adaptation-docs/main/install/petsc_configure_options.txt
-    # hand edit Makefile: add this as line 33:
-    #      FIREDRAKE_CONFIGURE_OPTIONS += "--netgen"
-    unset PETSC_DIR; unset PYTHONPATH
-    make install
-    source firedrake-jan25/bin/activate   # or similar; activate the new (animate) venv
-    make -f Makefile2 install             # uses "pip install -e ."
-    pip install shapely siphash24
-    cd ~/VI-AMR/                          # or similar
-    pip install -e .
 
 ### cleaning up
 
