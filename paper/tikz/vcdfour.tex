@@ -1,0 +1,198 @@
+\begin{tikzpicture}[line cap=round,line join=round,>=triangle 45,scale=1.4]
+
+%%%%%% (a) %%%%%
+    \draw (0.4,0.9) -- (0.8,0.6);
+    \draw (0.8,0.6) -- (1.2,0.4);
+    \draw (1.2,0.4) -- (1.6,0.2);
+    \draw (-0.4,0.9) -- (-0.8,0.6);
+    \draw (-0.8,0.6) -- (-1.2,0.4);
+    \draw (-1.2,0.4) -- (-1.6,0.2);
+    \draw (-1.6,0.2) -- (-2,0);
+    \draw (1.6,0.2) -- (2,0);
+    \draw (-0.4,0.9) -- (0,1);
+    \draw (0,1) -- (0.4,0.9);
+
+    % New red curve aligning with black nodes
+    \draw[red,dashed] (1.6,-.2) -- (2,-.6);
+    \draw[red,dashed] (1.2,0.2) -- (1.6,-.2);
+    \draw[red,dashed] (0.8,0.6) -- (1.2,0.2);
+    \draw[red,dashed] (0.4,0.9) -- (0.8,0.6);
+    \draw[red,dashed] (0,1) -- (0.4,0.9);
+    \draw[red,dashed] (-0.4,0.9) -- (0,1);
+    \draw[red,dashed] (-0.4,0.9) -- (-0.8,0.6);
+    \draw[red,dashed] (-0.8,0.6) -- (-1.2,.2);
+    \draw[red,dashed] (-1.2, .2) -- (-1.6,-.2);
+    \draw[red,dashed] (-1.6,-.2) -- (-2,-.6);
+
+    \begin{scriptsize}
+      \fill [color=black] (-0.4,0.9) circle (1.5pt);
+      \fill [color=black] (0.4,0.9) circle (1.5pt);
+      \fill [color=black] (0.8,0.6) circle (1.5pt);
+      \fill [color=black] (1.2,0.4) circle (1.5pt);
+      \fill [color=black] (1.6,0.2) circle (1.5pt);
+      \fill [color=black] (-0.8,0.6) circle (1.5pt);
+      \fill [color=black] (-1.2,0.4) circle (1.5pt);
+      \fill [color=black] (-1.6,0.2) circle (1.5pt);
+      \fill [color=black] (-2,0) circle (1.5pt);
+      \fill [color=black] (2,0) circle (1.5pt);
+      \fill [color=black] (0,1) circle (1.5pt);
+    \end{scriptsize}
+
+    % Add Axes
+    \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+    \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+
+    \node at (-2.4,1.4) {(a)};
+
+
+%%%%%% (b) %%%%%
+\begin{scope}[shift={(5.5,0.0)}]
+    \draw (1.6,0) -- (2,0);
+    \draw (1.2,0) -- (1.6,0);
+    \draw (0.8,1) -- (1.2,0);
+    \draw (0.4,1) -- (0.8,1);
+    \draw (0,1) -- (0.4,1);
+    \draw (-0.4,1) -- (0,1);
+    \draw (-0.4,1) -- (-0.8,1);
+    \draw (-0.8,1) -- (-1.2,0);
+    \draw (-1.2,0) -- (-1.6,0);
+    \draw (-1.6,0) -- (-2,0);
+
+    % Add black vertices
+    \begin{scriptsize}
+      \fill [color=black] (1.6,0) circle (1.5pt);
+      \fill [color=black] (2,0) circle (1.5pt);
+      \fill [color=black] (1.2,0) circle (1.5pt);
+      \fill [color=black] (0.8,1) circle (1.5pt);
+      \fill [color=black] (1.2,0) circle (1.5pt);
+      \fill [color=black] (0.4,1) circle (1.5pt);
+      \fill [color=black] (0.8,1) circle (1.5pt);
+      \fill [color=black] (0,1) circle (1.5pt);
+      \fill [color=black] (0.4,1) circle (1.5pt);
+      \fill [color=black] (-0.4,1) circle (1.5pt);
+      \fill [color=black] (0,1) circle (1.5pt);
+      \fill [color=black] (-0.4,1) circle (1.5pt);
+      \fill [color=black] (-0.8,1) circle (1.5pt);
+      \fill [color=black] (-1.2,0) circle (1.5pt);
+      \fill [color=black] (-1.6,0) circle (1.5pt);
+      \fill [color=black] (-2,0) circle (1.5pt);
+    \end{scriptsize}
+    
+    % Add Axes
+    \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+    \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+
+    % Label y=1
+    \node at (-0.05,1.15) [left] {1};
+
+    \node at (-2.4,1.4) {(b)};
+\end{scope}
+
+
+%%%%%% (c) %%%%%
+\begin{scope}[shift={(0.0,-3.0)}]
+    % Draw the smoothed curve
+    \draw (1.6, 0.1) -- (2,0);      
+    \draw (1.2, 0.33) -- (1.6, 0.1);
+    \draw (0.8, 0.66) -- (1.2, 0.33);
+    \draw (0.4, 0.95) -- (0.8, 0.66);
+    \draw (0,1) -- (0.4, 0.95);
+    \draw (-0.4, 0.95) -- (0,1);
+    \draw (-0.4, 0.95) -- (-0.8, 0.66);
+    \draw (-0.8, 0.66) -- (-1.2, 0.33);
+    \draw (-1.2, 0.33) -- (-1.6, 0.1);
+    \draw (-1.6, 0.1) -- (-2,0);
+
+    % Add black circles at element centers
+    \begin{scriptsize}
+      \draw [color=black] (1.8, 0.05) circle (1.5pt);
+      \draw [color=black] (1.4, 0.215) circle (1.5pt);
+      \draw [color=black] (1.0, 0.5) circle (1.5pt);
+      \draw [color=black] (0.6, 0.805) circle (1.5pt);
+      \draw [color=black] (0.2, 0.975) circle (1.5pt);
+      \draw [color=black] (-0.2, 0.975) circle (1.5pt);
+      \draw [color=black] (-0.6, 0.805) circle (1.5pt);
+      \draw [color=black] (-1.0, 0.5) circle (1.5pt);
+      \draw [color=black] (-1.4, 0.215) circle (1.5pt);
+      \draw [color=black] (-1.8, 0.05) circle (1.5pt);
+    \end{scriptsize}
+
+    % Add Axes
+    \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+    \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+
+    % Label y=1
+    \node at (-0.05,1.15) [left] {1};
+
+    % Add red horizontal lines; pretend heights are 0.8 and 0.2
+    \draw[red] (-2.5, 0.83) -- (2.5, 0.83);
+    \draw[red] (-2.5, 0.24) -- (2.5, 0.24);
+    % Label the heights of the red lines
+    \node[red] at (2, 0.8) [above] {0.8};
+    \node[red] at (2, 0.2) [above] {0.2};
+
+    \node at (-2.4,1.4) {(c)};
+\end{scope}
+
+
+%%%%%% (d) %%%%%
+\begin{scope}[shift={(5.5,-3.0)}]
+
+    \draw[very thick] (1.6,0) -- (2,0);      
+    \draw[very thick] (1.2,0) -- (1.6,0);
+    \draw[very thick] (0.8,1) -- (1.2,1);
+    \draw[very thick] (0.4,1) -- (0.8,1);
+    \draw[very thick] (0,0) -- (0.4,0);
+    \draw[very thick] (-0.4,0) -- (0,0);
+    \draw[very thick] (-0.4,1) -- (-0.8,1);
+    \draw[very thick] (-0.8,1) -- (-1.2,1);
+    \draw[very thick] (-1.2,0) -- (-1.6,0);
+    \draw[very thick] (-1.6,0) -- (-2,0);
+
+    % Add Axes
+    \draw[-] (-2.5,0) -- (2.5,0); % x-axis
+    \draw[-] (0,-0.5) -- (0,1.45); % y-axis
+
+    % Label y=1
+    \node at (-0.05,1.15) [left] {1};
+
+    % Add Nodes in white to separate elements
+    \begin{scriptsize}
+    \fill [color=white] (1.6,0) circle (1.0pt);
+    \fill [color=white] (2,0) circle (1.0pt);      
+    \fill [color=white] (1.2,0) circle (1.0pt);
+    \fill [color=white] (0.8,1) circle (1.0pt);
+    \fill [color=white] (1.2,1) circle (1.0pt);
+    \fill [color=white] (0.4,1) circle (1.0pt);
+    \fill [color=white] (0.8,1) circle (1.0pt);
+    \fill [color=white] (0,0) circle (1.0pt);
+    \fill [color=white] (0.4,0) circle (1.0pt);
+    \fill [color=white] (-0.4,0) circle (1.0pt);
+    \fill [color=white] (0,0) circle (1.0pt);
+    \fill [color=white] (-0.4,1) circle (1.0pt);
+    \fill [color=white] (-0.8,1) circle (1.0pt);
+    \fill [color=white] (-1.2,1) circle (1.0pt);
+    \fill [color=white] (-1.2,0) circle (1.0pt);
+    \fill [color=white] (-1.6,0) circle (1.0pt);
+    \fill [color=white] (-2,0) circle (1.0pt);
+    \end{scriptsize}
+
+    % Add black circles at element centers
+    \begin{scriptsize}
+      \draw [color=black] (1.8, 0.0) circle (1.5pt);
+      \draw [color=black] (1.4, 0.0) circle (1.5pt);
+      \draw [color=black] (1.0, 1.0) circle (1.5pt);
+      \draw [color=black] (0.6, 1.0) circle (1.5pt);
+      \draw [color=black] (0.2, 0.0) circle (1.5pt);
+      \draw [color=black] (-0.2, 0.0) circle (1.5pt);
+      \draw [color=black] (-0.6, 1.0) circle (1.5pt);
+      \draw [color=black] (-1.0, 1.0) circle (1.5pt);
+      \draw [color=black] (-1.4, 0.0) circle (1.5pt);
+      \draw [color=black] (-1.8, 0.0) circle (1.5pt);
+    \end{scriptsize}
+
+    \node at (-2.4,1.4) {(d)};
+\end{scope}
+
+\end{tikzpicture}
+  

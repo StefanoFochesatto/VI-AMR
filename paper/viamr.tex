@@ -489,40 +489,8 @@ FIXME There are various parameters to consider with this technique.
 FIXME Figure \ref{fig:vcdillustration} illustrates the VCD algorithm applied to a one-dimensional obstacle problem.
 
 \begin{figure}[ht]
-  \captionsetup[subfigure]{justification=centering}
-  \centering
-
-\mbox{\begin{subfigure}[t]{.45\textwidth}
-    \input{tikz/vcd-a.tex}
-    \caption{Iterate $u_h$(black) and obstacle $\psi_h$ (red).}
-  \end{subfigure}
-  \quad
-  \begin{subfigure}[t]{.45\textwidth}
-    \input{tikz/vcd-b.tex}
-    \caption{Nodal active set indicator $\nu_h$.}
-  \end{subfigure}}
-
-\medskip
-\mbox{\begin{subfigure}[b]{.35\textwidth}
-    \centering
-    \input{tikz/vcd-c.tex}
-    \caption{Smoothed $s_h$.}
-  \end{subfigure}
-  \quad
-  \begin{subfigure}[b]{.35\textwidth}
-    \centering
-    \input{tikz/vcd-d.tex}
-    \caption{Threshold values in red.}
-  \end{subfigure}}
-
-\medskip
-  \begin{subfigure}[b]{0.9\textwidth}
-    \centering
-    \input{tikz/vcd-e.tex}
-    \caption{Refinement indicator function $I_h$.}
-  \end{subfigure}
-
-\caption{Illustration of VCD.}
+\input{tikz/vcdfour.tex}
+\caption{Illustration of VCD: (a) Iterate $u_h$ (solid), with nodes $x_j$ shown (solid dots), and obstacle $\psi_h$ (red dashed).  (b) Nodal active set indicator $\nu_h$, with values in $\{0,1\}$.  (c) Smoothed indicator $s_h$ (solid), with element degrees of freedom $x_k$ (circles), and levels $\alpha=0.2$ and $\beta=0.8$ for thresholding (red).  (d) Element marking $I_h$; 4 elements are marked for refinement.}
 \label{fig:vcdillustration}
 \end{figure}
 
