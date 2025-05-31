@@ -532,18 +532,15 @@ class VIAMR(OptionsManager):
         # FIXME how to check that active1, active2 are in DG0 spaces?
         # FIXME how to check that, when submesh==True, active2 is actually
         #       on a submesh of active1?
-        if submesh == False:
-            if (
-                active1.function_space().mesh()._comm.size > 1
-                or active2.function_space().mesh()._comm.size > 1
-            ):
-                raise ValueError("jaccard(.., submesh=False) is not valid in parallel")
+        mesh1 = active1.function_space().mesh()
+        mesh2 = active2.function_space().mesh()
+        if submesh == False and (mesh1._comm.size > 1 or mesh1._comm.size > 1):
+            raise ValueError("jaccard(.., submesh=False) is not valid in parallel")
         if self.debug:
             for a in [active1, active2]:
                 if len(a.dat.data_ro) > 0:
                     assert min(a.dat.data_ro) >= 0.0
                     assert max(a.dat.data_ro) <= 1.0
-        mesh1 = active1.function_space().mesh()
         if submesh:
             new2 = Function(active1.function_space()).interpolate(active2)
         else:
