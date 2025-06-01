@@ -105,13 +105,13 @@ for i in range(refinements + 1):
 
     # evaluate inactive fraction
     if i > 0:
-        neweactive = amr.elemactive(u, lb)
-        jac = amr.jaccard(neweactive, eactive, submesh=True)
+        newei = amr._eleminactive(u, lb)
+        jac = amr.jaccard(newei, ei, submesh=True)
         print(f"  Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]")
-        eactive = neweactive
+        ei = newei
     else:
-        eactive = amr.elemactive(u, lb)
-    ifrac = assemble(eactive * dx)
+        ei = amr._eleminactive(u, lb)
+    ifrac = assemble(ei * dx)
     print(f"  inactive fraction {ifrac:.6f}")
 
     # apply VCD AMR, optionally marking all inactive or by B&R indicator
