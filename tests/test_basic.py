@@ -34,13 +34,9 @@ def _get_ball_obstacle(x, y):
     return conditional(le(r, r0), sqrt(1.0 - r * r), psi0 + dpsi0 * (r - r0))
 
 
-def test_netgen_mesh_creation():
-    mesh = _get_netgen_mesh()
-    assert mesh.num_cells() == 228
-
-
 def test_spaces():
     mesh = _get_netgen_mesh(TriHeight=1.2)
+    assert mesh.num_cells() == 24
     CG1, DG0 = VIAMR(debug=True).spaces(mesh)
     assert CG1.dim() == 19
     assert DG0.dim() == 24
@@ -237,7 +233,6 @@ def test_overlapping_and_nonoverlapping_hausdorff():
 
 
 if __name__ == "__main__":
-    test_netgen_mesh_creation()
     test_spaces()
     test_mark_none()
     test_unionmarks()
