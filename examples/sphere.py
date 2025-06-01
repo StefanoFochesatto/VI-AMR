@@ -106,7 +106,7 @@ for amrtype in thetypes:
             break
 
         if amrtype == "avm":
-            mesh = amr.metricrefine(mesh, u, lb)
+            mesh = amr.adaptaveragedmetric(mesh, u, lb)
         else:
             residual = -div(grad(u))
             (imark, _, _) = amr.brinactivemark(u, lb, residual, theta=0.7)

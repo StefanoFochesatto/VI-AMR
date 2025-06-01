@@ -107,7 +107,7 @@ Note that Netgen meshes, created with e.g. `SplineGeometry().GenerateMesh()`, ha
   3. For the reason given on [this issue](https://github.com/firedrakeproject/mpi-pytest/issues/13), use of [pytest](https://docs.pytest.org/en/stable/) cannot easily be extended to parallel using the [mpi-pytest](https://github.com/firedrakeproject/mpi-pytest) plugin.  Thus parallel regression testing is manual; see the bottom of this page.  Future bug fixes by the mpi-pytest developers could fix this.
   4. `VIAMR.jaccard()` only works in parallel if one mesh is a submesh of the other.  See the doc string for that method.
   5. `VIAMR.hausdorff()` does not work in parallel.  Also, it is the only part of VIAMR which depends on the [shapely](https://pypi.org/project/shapely/) library.
-  6. `VIAMR.metricrefine()` and `VIAMR.vcdmark()` are known to generate different results in serial and parallel.  See [issue #37](https://github.com/StefanoFochesatto/VI-AMR/issues/37) and [issue #38](https://github.com/StefanoFochesatto/VI-AMR/issues/38), respectively.
+  6. `VIAMR.adaptaveragedmetric()` and `VIAMR.vcdmark()` are known to generate different results in serial and parallel.  See [issue #37](https://github.com/StefanoFochesatto/VI-AMR/issues/37) and [issue #38](https://github.com/StefanoFochesatto/VI-AMR/issues/38), respectively.
 
 ## Testing
 

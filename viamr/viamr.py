@@ -178,7 +178,7 @@ class VIAMR(OptionsManager):
             # closure: Pull indices of all vertices which are incident
             # to some border element, then flatten and remove duplicates.
             incidentVertices = [
-                dm.getTransitiveClosure(k)[0][-d-1:] for k in borderindices
+                dm.getTransitiveClosure(k)[0][-d - 1 :] for k in borderindices
             ]
             incidentVertices = np.unique(np.ravel(incidentVertices))
 
@@ -196,7 +196,9 @@ class VIAMR(OptionsManager):
             # re-generate DG0 element border indicator by adding neighbors
             border = Function(DG0).interpolate(Constant(0.0))
             for k in neighborindices:
-                border.dat.data_wo_with_halos[dm2fd[k]] = 1  # parallel communication *here*
+                border.dat.data_wo_with_halos[
+                    dm2fd[k]
+                ] = 1  # parallel communication *here*
 
         return border
 
@@ -379,74 +381,6 @@ class VIAMR(OptionsManager):
         mark, _, total_error_est = self._fixedrate(ieta, theta, method)
         return (mark, eta, total_error_est)
 
-    def setmetricparameters(self, **kwargs):
-        self.target_complexity = kwargs.pop("target_complexity", 3000.0)
-        self.h_min = kwargs.pop("h_min", 1.0e-7)
-        self.h_max = kwargs.pop("h_max", 1.0)
-        mp = {
-            "target_complexity": self.target_complexity,  # target number of nodes
-            "p": 2.0,  # normalisation order
-            "h_min": self.h_min,  # minimum allowed edge length
-            "h_max": self.h_max,  # maximum allowed edge length
-        }
-        self.metricparameters = {"dm_plex_metric": mp}
-        return None
-
-    def metricfromhessian(self, uh):
-        """Construct a hessian based metric from a solution"""
-
-        assert (
-            self.metricparameters is not None
-        ), "call setmetricparameters() before calling metricfromhessian()"
-
-        from animate import RiemannianMetric
-
-        mesh = uh.function_space().mesh()
-        P1_ten = TensorFunctionSpace(mesh, "CG", 1)
-        metric = RiemannianMetric(P1_ten)
-        metric.set_parameters(self.metricparameters)
-        metric.compute_hessian(uh)
-        metric.normalise()
-        return metric
-
-    def metricrefine(self, mesh, uh, lb, weights=[0.50, 0.50], hessian=True):
-        """Implementation of anisotropic metric based refinement which is
-        free-boundary aware. Constructs both the hessian based metric and an
-        isotropic metric computed from the magnitude of the gradient of the
-        smoothed VCD indicator.  These metrics are averaged using the weights."""
-
-        assert (
-            self.metricparameters is not None
-        ), "call setmetricparameters() before calling metricrefine()"
-
-        from animate import adapt, RiemannianMetric
-
-        # Construct isotropic metric from abs(grad(smoothed_vcd_indicator))
-        V, _ = self.spaces(mesh)
-        dim = mesh.topological_dimension()
-
-        # Get magnitude of gradients
-        s = self.vcdmark(uh, lb, returnSmooth=True)
-        ags = Function(V).interpolate(sqrt(dot(grad(s), grad(s))))
-
-        # Constructing metric. Basically "L2" option in metric.compute_isotropic_metric,
-        # however we already have a P1 indicator
-        freeboundaryMetric = RiemannianMetric(TensorFunctionSpace(mesh, "CG", 1))
-        freeboundaryMetric.set_parameters(self.metricparameters)
-        freeboundaryMetric.interpolate(ags * ufl.Identity(dim))
-        freeboundaryMetric.normalise()
-
-        # Build hessian based metric for interpolation error and average
-        if hessian:
-            VImetric = freeboundaryMetric.copy(deepcopy=True)
-            solutionMetric = self.metricfromhessian(uh)
-            solutionMetric.normalise()
-            VImetric.average(solutionMetric, weights=weights)
-        else:
-            VImetric = freeboundaryMetric.copy(deepcopy=True)
-
-        return adapt(mesh, VImetric)
-
     def refinemarkedelements(self, mesh, indicator, isUniform=False):
         """petsc4py implementation of Netgen's .refine_marked_elements().
         Usually is skeleton-based refinement (SBR; Plaza & Carey, 2000).
@@ -516,6 +450,56 @@ class VIAMR(OptionsManager):
         opts["dm_plex_transform_type"] = "refine_regular"
 
         return refinedmesh
+
+    def setmetricparameters(self, **kwargs):
+        self.target_complexity = kwargs.pop("target_complexity", 3000.0)
+        self.h_min = kwargs.pop("h_min", 1.0e-7)
+        self.h_max = kwargs.pop("h_max", 1.0)
+        mp = {
+            "target_complexity": self.target_complexity,  # target number of nodes
+            "p": 2.0,  # normalisation order
+            "h_min": self.h_min,  # minimum allowed edge length
+            "h_max": self.h_max,  # maximum allowed edge length
+        }
+        self.metricparameters = {"dm_plex_metric": mp}
+        return None
+
+    def adaptaveragedmetric(self, mesh, uh, lb, weights=[0.50, 0.50], hessian=True):
+        """From the solution uh, of an obstacle problem with obstacle lb, constructs both an anisotropic Hessian-based metric and an isotropic metric computed from the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged (linearly-combined) using the weights.  (This is anisotropic metric based refinement which is free-boundary aware.)  Then the mesh is adapted according to the metric parameters.  Implemented by calls to the animate mesh-adaptation library."""
+
+        try:
+            import animate
+        except ImportError:
+            print("ImportError.  Unable to import animate.  Exiting.")
+            sys.exit(0)
+
+        assert (
+            self.metricparameters is not None
+        ), "call setmetricparameters() before calling adaptaveragedmetric()"
+
+        # Construct free-boundary isotropic metric from abs(grad(s)) where s is the
+        # (smooth) output of vcdmark().  Compare "L2" option in
+        # animate.compute_isotropic_metric(); here we already have a P1 indicator.)
+        CG1, _ = self.spaces(mesh)
+        P1tensor = TensorFunctionSpace(mesh, "CG", 1)
+        s = self.vcdmark(uh, lb, returnSmooth=True)
+        maggrads = Function(CG1).interpolate(sqrt(dot(grad(s), grad(s))))
+        VIMetric = animate.RiemannianMetric(P1tensor)
+        VIMetric.set_parameters(self.metricparameters)
+        VIMetric.interpolate(maggrads * ufl.Identity(mesh.topological_dimension()))
+        VIMetric.normalise()
+
+        # Build hessian based metric for interpolation error and average
+        if hessian:
+            hessmetric = animate.RiemannianMetric(P1tensor)
+            hessmetric.set_parameters(self.metricparameters)
+            # re method: default "mixed_L2" is more expensive
+            hessmetric.compute_hessian(uh, method="L2")
+            hessmetric.normalise()
+            VIMetric.average(hessmetric, weights=weights)
+
+        # normalize and adapt
+        return animate.adapt(mesh, VIMetric)
 
     def jaccard(self, active1, active2, submesh=False):
         """Compute the Jaccard metric from two element-wise active set
