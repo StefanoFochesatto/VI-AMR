@@ -100,19 +100,17 @@ parser.add_argument(
     help="number of AMR refinements [default 3]",
 )
 parser.add_argument(
-    "-rmethod",
-    type=str,
-    default="always",
-    metavar="X",
-    choices=["always", "alternate", "vcdonly"],
-    help="choose refinement agenda from {always, alternate, vcdonly}",
-)
-parser.add_argument(
     "-theta",
     type=float,
     default=0.3,
     metavar="X",
     help="theta to use in 'total' fixed-rate marking strategy in inactive set [default=0.3]",
+)
+parser.add_argument(
+    "-udo",
+    action="store_true",
+    default=False,
+    help="apply n=1 UDO free-boundary marking instead of default VCD",
 )
 args, passthroughoptions = parser.parse_known_args()
 
@@ -140,7 +138,7 @@ if args.data:
 
     topg_nc = DataNetCDF(args.data, "topg")
     topg_nc.preview()
-    topg_nc.describe_grid(print=print, indent=4)
+    topg_nc.describe_grid(print=PETSc.Sys.Print, indent=4)
     print(f"putting topg onto matching Firedrake structured data mesh ...")
     topg, nearb = topg_nc.function(delnear=100.0e3)
 else:
@@ -148,13 +146,20 @@ else:
         f"generating synthetic {args.m} x {args.m} initial mesh for problem {args.prob} ..."
     )
 
+# setting distribution parameters should not be necessary ...
+dp = {
+    "partition": True,
+    "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
+}
 if args.data:
     # generate netgen mesh compatible with data mesh, but unstructured
     # and at user (-m) resolution, typically lower
-    mesh = topg_nc.ngmesh(args.m)
+    mesh = topg_nc.ngmesh(args.m, distribution_parameters=dp)
 else:
     # generate [0,L]^2 mesh via Firedrake
-    mesh = RectangleMesh(args.m, args.m, L, L, diagonal="crossed")
+    mesh = RectangleMesh(
+        args.m, args.m, L, L, diagonal="crossed", distribution_parameters=dp
+    )
 
 # solver parameters
 sp = {
@@ -201,22 +206,16 @@ amr = VIAMR(debug=True)
 for i in range(args.refine + 1):
     # mark and refine based on constraint u >= 0
     if i > 0:
-        if args.jaccard:
-            # generate active set indicator so we can evaluate Jaccard index
-            eactive = amr.elemactive(u, lb)
-        print("refining free boundary (VCD)", end="")
-        # change bracket vs default [0.2, 0.8], to provide more high-res
-        #   for ice near margin (0.2 -> 0.1), i.e. on inactive side
-        mark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
-        if args.rmethod in ["always", "alternate"]:
-            if args.rmethod == "alternate" and i % 2 == 0:
-                print(" and uniformly in inactive ...")
-                imark = amr.eleminactive(u, lb)
-            else:
-                print(" and by gradient recovery in inactive ...")
-                imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
-            _, DG0 = amr.spaces(mesh)
-            mark = Function(DG0).interpolate((mark + imark) - (mark * imark))  # union
+        print(f"refining free boundary ({'UDO' if args.udo else 'VCD'})", end="")
+        if args.udo:
+            fbmark = amr.udomark(u, lb, n=1)
+        else:
+            # change bracket vs default [0.2, 0.8], to provide more high-res
+            #   for ice near margin (0.2 -> 0.1), i.e. on inactive side
+            fbmark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
+        print(" and by gradient recovery in inactive ...")
+        imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
+        mark = amr.unionmarks(fbmark, imark)
         mesh = amr.refinemarkedelements(mesh, mark)
 
     # describe current mesh
@@ -301,12 +300,17 @@ for i in range(args.refine + 1):
         err_av = norm(sdiff, "l1") / L ** 2
         print("  |s-s_exact|_2 = %.3f m,  |s-s_exact|_av = %.3f m" % (err_l2, err_av))
 
-    # report active set agreement between consecutive meshes using Jaccard index
-    if i > 0 and args.jaccard:
-        neweactive = amr.elemactive(u, lb)
-        jac = amr.jaccard(neweactive, eactive, submesh=True)
-        print(f"  glaciated areas Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]")
-        eactive = neweactive
+    # report glaciated area and inactive set agreement using Jaccard index
+    if args.jaccard:
+        ei = amr._eleminactive(u, lb)
+        area = assemble(ei * dx)
+        print(
+            f"  glaciated area {area / 1000.0**2:.2e} km^2", end="" if i > 0 else "\n"
+        )
+        if i > 0:
+            jac = amr.jaccard(ei, oldei, submesh=True)
+            print(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
+        oldei = ei
 
 # save results from final mesh
 if args.opvd:
