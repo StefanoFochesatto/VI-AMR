@@ -56,7 +56,7 @@ class VIAMRRegression(VIAMR):
         if mesh.comm.size > 1:
             raise ValueError("udomark() is not valid in parallel")
         # generate element-wise indicator for border set
-        elemborder = self.elemborder(self.nodalactive(uh, lb))
+        elemborder = self._elemborder(self._nodalactive(uh, lb))
         # _bfs_neighbors() constructs N^n(B) indicator
         return self._bfsneighbors(mesh, elemborder, n)
 

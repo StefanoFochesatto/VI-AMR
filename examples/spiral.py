@@ -31,7 +31,7 @@ for amrtype in ("udo", "vcd"):
         amr.meshreport(mesh)
         u, lb = problem.solveProblem(mesh=mesh, u=u, moreparams=spmore)
 
-        neweactive = amr.elemactive(u, lb)
+        neweactive = amr._elemactive(u, lb)
         if i > 0:
             jac = amr.jaccard(neweactive, eactive, submesh=True)
             print(f"  Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]")

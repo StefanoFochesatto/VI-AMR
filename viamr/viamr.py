@@ -1,25 +1,48 @@
 import sys
 import time
 import numpy as np
+from pyop2.mpi import MPI
 from firedrake import *
 from firedrake.petsc import OptionsManager, PETSc
-from firedrake.output import VTKFile
 from firedrake.utils import IntType
 import firedrake.cython.dmcommon as dmcommon
-from pyop2.mpi import MPI
+import animate
 
 
 class VIAMR(OptionsManager):
-    """VIAMR object manages adaptive mesh refinement based on variational
-    inequality concepts.  The central notion is that refinement near the
-    free boundary will improve solution quality.  Those functions that
-    do not work in parallel, namely udomark(), jaccard(), and hausdorff(), halt with
-    ValueError on the size of the communicator for the mesh.  All other
-    methods should work the same in serial and parallel."""
+    r"""A VIAMR object manages adaptive mesh refinement (AMR) for a Firedrake variational inequality (VI) solver.  Central notions are that refinement near the free boundary will improve solution quality, and that refinement in the active set can be wasted effort.  Complementary refinement in the inactive set is also supported.  Both refinement modes are necessary for convergence under AMR.
+
+    The public API of the VIAMR class consists of:
+      1. udomark(), vcdmark():  two marking methods which target the computed free boundary
+      2. gradreinactivemark(), brinactivemark():  two classical a posterior error indicator marking methods applied in the computed inactive set
+      3. unionmark():  a method for combining existing marks
+      4. refinemarkedelements():  a method which calls PETSc for skeleton-based-refinement (SBR); compare refine_marked_elements() from NetGen/ngspetsc
+      5  adaptaveragedmetric():  a method which does metric-based mesh adaptation by combining an anisotropic metric with a free-boundary targeted isotropic metric
+
+    The default calls are as follows:
+
+    .. code-block:: python3
+
+      amr = VIAMR()
+      mark = amr.udomark(uh, lb)                     # free-boundary targeted marking method
+      mark = amr.vcdmark(uh, lb)                     # same, but based on diffusion
+      mark = amr.gradrecinactivemark(uh, lb)         # classical gradient recovery in inactive set
+      mark = amr.brinactivemark(uh, lb, res_ufl)     # classical Babuska & Rheinboldt in inactive set
+      mark = amr.unionmarks(mark1, mark2)            # union existing marks
+      rmesh = amr.refinemarkelements(mesh, mark)     # calls PETSc DMPlexTransform method for SBR
+      rmesh = amr.adaptaveragedmetric(mesh, uh, lb)  # calls animate library for metric-based adaptation
+
+    Regarding the arguments: uh is a computed VI solution, lb=psi is the lower bound (obstacle), res_ufl is a UFL expression for the residual (applicable in the inactive set), mark is an element marking in DG0 (Definition 4.2 in paper), and rmesh is a refined or adapted mesh.
+
+    There are also some public utility methods: spaces(), meshsizes(), meshreport(), and checkadmissible().  Other methods starting with an underscore are (roughly) intended to be private to the VIAMR class.
+
+    Certain functions do not work in parallel: 1. jaccard() with submesh=False, and 2. hausdorff().
+
+    Certain functions run both in serial and parallel, but can give different results depending on the number of processes: 1. vcdmark() and 2. adaptaveragedmetric().  See the paper for more details."""
 
     def __init__(self, **kwargs):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
-        self.debug = kwargs.pop("debug", False)
+        self.debug = kwargs.pop("debug", False)  # extra checks with debug=True
         self.metricparameters = None
 
     def spaces(self, mesh, p=1):
@@ -52,26 +75,26 @@ class VIAMR(OptionsManager):
         )
         return None
 
-    def _checkadmissible(self, uh, bound, upper=False):
+    def checkadmissible(self, uh, bound, upper=False):
         if upper:
             bad = assemble(conditional(uh > bound, 1.0, 0.0) * dx)
         else:
             bad = assemble(conditional(uh < bound, 1.0, 0.0) * dx)
         return bad == 0.0
 
-    def nodalactive(self, uh, lb):
+    def _nodalactive(self, uh, lb):
         """Compute nodal active set indicator in same function space as uh.
         Applies to unilateral obstacle problems.  The active
         set is {x : u(x) == lb(x)}, within activetol.  Active nodes get value 1.0."""
         if self.debug:
             if len(uh.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
                 assert min(uh.dat.data_ro - lb.dat.data_ro) >= 0.0
-            assert self._checkadmissible(uh, lb)
+            assert self.checkadmissible(uh, lb)
         z = Function(uh.function_space(), name="Nodal Active")
         z.interpolate(conditional(abs(uh - lb) < self.activetol, 1.0, 0.0))
         return z
 
-    def elemactive(self, uh, lb):
+    def _elemactive(self, uh, lb):
         """Compute element active set indicator in DG0.  Applies to unilateral
         obstacle problems with.  Elements are marked active if the DG0 degree of
         freedom for that element is active, within activetol.  Active elements get
@@ -79,32 +102,29 @@ class VIAMR(OptionsManager):
         if self.debug:
             if len(uh.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
                 assert min(uh.dat.data_ro - lb.dat.data_ro) >= 0.0
-            assert self._checkadmissible(uh, lb)
+            assert self.checkadmissible(uh, lb)
         _, DG0 = self.spaces(uh.function_space().mesh())
         z = Function(DG0, name="Element Active")
         z.interpolate(conditional(abs(uh - lb) < self.activetol, 1.0, 0.0))
         return z
 
-    def eleminactive(self, uh, lb):
+    def _eleminactive(self, uh, lb):
         """Compute element inactive set indicator in DG0.  Elements are marked
         inactive if the DG0 degree of freedom for that element is inactive, within
         activetol.  Inactive elements get value 1.0."""
         if self.debug:
             if len(uh.dat.data_ro) > 0 and len(lb.dat.data_ro) > 0:
                 assert min(uh.dat.data_ro - lb.dat.data_ro) >= 0.0
-            assert self._checkadmissible(uh, lb)
+            assert self.checkadmissible(uh, lb)
         _, DG0 = self.spaces(uh.function_space().mesh())
         z = Function(DG0, name="Element Inactive")
         z.interpolate(conditional(abs(uh - lb) < self.activetol, 0.0, 1.0))
         return z
 
-    def elemborder(self, nodalactive):
-        """From *nodal* active set indicator nodalactive, computes bordering
-        element indicator.  Crucially uses the fact that the DG0 degree of
-        freedom is strictly inside the element.  (Possibly only works if z is
-        in CG1.)  Returns 1.0 for elements with
-          0 < nodalactive(x_K) < 1
-        at x_K which is the DG0 dof for element K."""
+    def _elemborder(self, nodalactive):
+        """From *nodal* active set indicator nodalactive, computes bordering element indicator.  Crucially uses the fact that the DG0 degree of freedom is strictly inside the element.  Probably only works if z is in CG1.  Returns 1.0 for elements with
+          0 < nu_h(x_K) < 1
+        for nodal active set indicator nu_h, and at x_K which is the DG0 dof for element K."""
         if self.debug:
             if len(nodalactive.dat.data_ro) > 0:
                 assert min(nodalactive.dat.data_ro) >= 0.0
@@ -141,7 +161,6 @@ class VIAMR(OptionsManager):
         dm = mesh.topology_dm
 
         # FIXME check that distribution parameters are correct in parallel
-        #       this relates to a bug in netgen
         if mesh.comm.size > 1:
             dp = mesh._distribution_parameters
             if dp["overlap_type"][0].name != "VERTEX" or dp["overlap_type"][1] < 1:
@@ -149,12 +168,12 @@ class VIAMR(OptionsManager):
                     """udomark() in parallel requires distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)} on mesh initialization."""
                 )
 
-        # This rest of this should really be written by turning the indicator function into a DMLabel
+        # FIXME This rest of this should really be written by turning the indicator function into a DMLabel
         # and then writing the dmplex traversal in petsc4py. This is a workaround.
 
         # Use nodal active set indicator to make an initial DG0 element border
         # indicator.
-        border = self.elemborder(self.nodalactive(uh, lb))
+        border = self._elemborder(self._nodalactive(uh, lb))
 
         # Find range of indices for element stratum
         kmin, kmax = dm.getHeightStratum(0)[:2]
@@ -228,7 +247,7 @@ class VIAMR(OptionsManager):
         # Compute nodal active set indicator within some tolerance
         mesh = uh.function_space().mesh()
         CG1, DG0 = self.spaces(mesh)
-        nu = self.nodalactive(uh, lb)
+        nu = self._nodalactive(uh, lb)
 
         # Diffuse according to square of cell diameter: D = C h^2.  The nodal
         # active indicator gives the initial field u0.  Solve one backward
@@ -336,7 +355,7 @@ class VIAMR(OptionsManager):
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
         # restrict grad recovery eta to inactive set
-        imark = self.eleminactive(uh, lb)
+        imark = self._eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         # compute mark in inactive set
         mark, _, total_error_est = self._fixedrate(ieta, theta, method)
@@ -376,7 +395,7 @@ class VIAMR(OptionsManager):
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
         # restrict BR eta to inactive set
-        imark = self.eleminactive(uh, lb)
+        imark = self._eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         mark, _, total_error_est = self._fixedrate(ieta, theta, method)
         return (mark, eta, total_error_est)
@@ -467,12 +486,6 @@ class VIAMR(OptionsManager):
     def adaptaveragedmetric(self, mesh, uh, lb, weights=[0.50, 0.50], hessian=True):
         """From the solution uh, of an obstacle problem with obstacle lb, constructs both an anisotropic Hessian-based metric and an isotropic metric computed from the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged (linearly-combined) using the weights.  (This is anisotropic metric based refinement which is free-boundary aware.)  Then the mesh is adapted according to the metric parameters.  Implemented by calls to the animate mesh-adaptation library."""
 
-        try:
-            import animate
-        except ImportError:
-            print("ImportError.  Unable to import animate.  Exiting.")
-            sys.exit(0)
-
         assert (
             self.metricparameters is not None
         ), "call setmetricparameters() before calling adaptaveragedmetric()"
@@ -551,8 +564,8 @@ class VIAMR(OptionsManager):
         CellVertexMap = mesh.topology.cell_closure
 
         # Get active indicators
-        elemactive = self.elemactive(uh, lb)  # cell
-        elemborder = self.elemborder(self.nodalactive(uh, lb))  # bordering cell
+        elemactive = self._elemactive(uh, lb)  # cell
+        elemborder = self._elemborder(self._nodalactive(uh, lb))  # bordering cell
 
         # Pull Indices
         ActiveSetElementsIndices = [
