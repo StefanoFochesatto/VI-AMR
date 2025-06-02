@@ -34,12 +34,16 @@ def _get_ball_obstacle(x, y):
     return conditional(le(r, r0), sqrt(1.0 - r * r), psi0 + dpsi0 * (r - r0))
 
 
-def test_spaces():
+def test_spaces_sizes():
     mesh = _get_netgen_mesh(TriHeight=1.2)
     assert mesh.num_cells() == 24
-    CG1, DG0 = VIAMR(debug=True).spaces(mesh)
-    assert CG1.dim() == 19
-    assert DG0.dim() == 24
+    amr = VIAMR(debug=True)
+    CG1, DG0 = amr.spaces(mesh)
+    nv, ne, hmin, hmax = amr.meshsizes(mesh)
+    assert nv == CG1.dim() == 19
+    assert ne == DG0.dim() == 24
+    assert 1.0 < hmin < 1.2
+    assert 1.9 < hmax < 2.0
 
 
 def test_mark_none():
@@ -161,10 +165,16 @@ def test_refine_vcd_petsc4py_firedrake():
     mark = amr.vcdmark(u, psi)
     rmesh = amr.refinemarkedelements(mesh, mark)
     rCG1, _ = amr.spaces(rmesh)
-    assert rCG1.dim() == 73
+    # check that direct solver gets same result
+    markDS = amr.vcdmark(u, psi, directsolver=True)
+    rmeshDS = amr.refinemarkedelements(mesh, markDS)
+    rCG1DS, _ = amr.spaces(rmeshDS)
+    assert rCG1DS.dim() == rCG1.dim() == 73
+    assert errornorm(mark, markDS) < 1.0e-14
+    # check conservative cross-mesh interpolation
     rV = FunctionSpace(rmesh, "CG", 1)
-    ru = Function(rV).interpolate(u)  # cross-mesh interpolation
-    assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
+    ru = Function(rV).interpolate(u)
+    assert abs(norm(ru) - unorm0) < 1.0e-10
 
 
 def test_gradrecinactivemark():
@@ -176,9 +186,7 @@ def test_gradrecinactivemark():
     psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))
     imark, _, _ = amr.gradrecinactivemark(u, psi, theta=0.5)
-    # VTKFile(f"result_gradrecinactivemark.pvd").write(Function(CG1, name="diff").interpolate(u-psi), imark)
     rmesh = amr.refinemarkedelements(mesh, imark)
-    # VTKFile(f"result_gradrecinactivemark_refined.pvd").write(rmesh)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 165
 
@@ -193,11 +201,25 @@ def test_brinactivemark():
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))
     residual = -div(grad(u))  # largest near circle psi==0
     (imark, _, _) = amr.brinactivemark(u, psi, residual, theta=0.8)
-    # VTKFile(f"result_brinactivemark.pvd").write(Function(CG1, name="diff").interpolate(u-psi), imark)
     rmesh = amr.refinemarkedelements(mesh, imark)
     # VTKFile(f"result_brinactivemark_refined.pvd").write(rmesh)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 147
+
+
+def test_brinactivemark_total():
+    mesh = RectangleMesh(8, 8, 2.0, 2.0, originX=-2.0, originY=-2.0)
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
+    assert CG1.dim() == 81
+    (x, y) = SpatialCoordinate(mesh)
+    psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi + 1.0, psi))
+    residual = -div(grad(u))  # largest near circle psi==0
+    (imark, _, _) = amr.brinactivemark(u, psi, residual, theta=0.8, method="total")
+    rmesh = amr.refinemarkedelements(mesh, imark)
+    rCG1, _ = amr.spaces(rmesh)
+    assert rCG1.dim() == 154
 
 
 def test_overlapping_jaccard():
@@ -235,6 +257,18 @@ def test_symmetry_jaccard():
     assert abs(amr.jaccard(active1, active2) - amr.jaccard(active2, active1)) < 1.0e-10
 
 
+def test_jaccard_submesh_uniform():
+    mesh = UnitSquareMesh(5, 4)
+    amr = VIAMR(debug=True)
+    _, DG0 = amr.spaces(mesh)
+    x, _ = SpatialCoordinate(mesh)
+    mark = Function(DG0).interpolate(conditional(x < 0.5, 1.0, 0.0))
+    rmesh = amr.refinemarkedelements(mesh, mark, isUniform=True)
+    rx, _ = SpatialCoordinate(mesh)
+    rmark = Function(DG0).interpolate(conditional(x < 0.7, 1.0, 0.0))
+    assert amr.jaccard(mark, rmark, submesh=True) == amr.jaccard(mark, rmark)
+
+
 def test_overlapping_and_nonoverlapping_hausdorff():
     # to have free boundaries line up with conditional statements
     mesh = RectangleMesh(10, 10, 1, 1)
@@ -251,16 +285,18 @@ def test_overlapping_and_nonoverlapping_hausdorff():
 
 
 if __name__ == "__main__":
-    test_spaces()
+    test_spaces_sizes()
     test_mark_none()
     test_unionmarks()
     test_refine_udo()
     test_refine_vcd()
     test_adapt_avm()
     test_brinactivemark()
+    test_brinactivemark_total()
     test_overlapping_jaccard()
     test_nonoverlapping_jaccard()
     test_symmetry_jaccard()
+    test_jaccard_submesh_uniform()
     test_overlapping_and_nonoverlapping_hausdorff()
     test_petsc4py_refine_vcd()
     test_refine_vcd_petsc4py_firedrake()
