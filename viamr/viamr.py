@@ -483,8 +483,10 @@ class VIAMR(OptionsManager):
         self.metricparameters = {"dm_plex_metric": mp}
         return None
 
-    def adaptaveragedmetric(self, mesh, uh, lb, weights=[0.50, 0.50], hessian=True):
-        """From the solution uh, of an obstacle problem with obstacle lb, constructs both an anisotropic Hessian-based metric and an isotropic metric computed from the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged (linearly-combined) using the weights.  (This is anisotropic metric based refinement which is free-boundary aware.)  Then the mesh is adapted according to the metric parameters.  Implemented by calls to the animate mesh-adaptation library."""
+    def adaptaveragedmetric(self, mesh, uh, lb, gamma=0.50):
+        """From the solution uh, of an obstacle problem with obstacle lb, constructs both an anisotropic Hessian-based metric and an isotropic metric computed from the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged (linearly-combined) using gamma:
+          M(x) = gamma (isotropic) + (1-gamma) (anisotropic)
+        The result M(x) is an anisotropic metric which is free-boundary aware.  Then the mesh is adapted, according to the metric parameters, via calls to the Animate mesh-adaptation library, by the MMG mesher."""
 
         assert (
             self.metricparameters is not None
@@ -500,18 +502,17 @@ class VIAMR(OptionsManager):
         VIMetric = animate.RiemannianMetric(P1tensor)
         VIMetric.set_parameters(self.metricparameters)
         VIMetric.interpolate(maggrads * ufl.Identity(mesh.topological_dimension()))
-        VIMetric.normalise()
+        VIMetric.normalise()  # normalize *before* averaging
 
-        # Build hessian based metric for interpolation error and average
-        if hessian:
-            hessmetric = animate.RiemannianMetric(P1tensor)
-            hessmetric.set_parameters(self.metricparameters)
-            # re method: default "mixed_L2" is more expensive
-            hessmetric.compute_hessian(uh, method="L2")
-            hessmetric.normalise()
-            VIMetric.average(hessmetric, weights=weights)
+        # Build hessian based metric for interpolation error
+        hessmetric = animate.RiemannianMetric(P1tensor)
+        hessmetric.set_parameters(self.metricparameters)
+        # re method: default "mixed_L2" is more expensive
+        hessmetric.compute_hessian(uh, method="L2")
+        hessmetric.normalise()  # normalize *before* averaging
 
-        # normalize and adapt
+        # average and actually adapt
+        VIMetric.average(hessmetric, weights=[gamma, 1.0 - gamma])
         return animate.adapt(mesh, VIMetric)
 
     def jaccard(self, active1, active2, submesh=False):
