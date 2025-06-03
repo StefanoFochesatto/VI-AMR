@@ -483,7 +483,7 @@ class VIAMR(OptionsManager):
         self.metricparameters = {"dm_plex_metric": mp}
         return None
 
-    def adaptaveragedmetric(self, mesh, uh, lb, gamma=0.50):
+    def adaptaveragedmetric(self, mesh, uh, lb, gamma=0.50, intersect=False):
         """From the solution uh, of an obstacle problem with obstacle lb, constructs both an anisotropic Hessian-based metric and an isotropic metric computed from the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged (linearly-combined) using gamma:
           M(x) = gamma (isotropic) + (1-gamma) (anisotropic)
         The result M(x) is an anisotropic metric which is free-boundary aware.  Then the mesh is adapted, according to the metric parameters, via calls to the Animate mesh-adaptation library, by the MMG mesher."""
@@ -511,9 +511,12 @@ class VIAMR(OptionsManager):
         hessmetric.compute_hessian(uh, method="L2")
         hessmetric.normalise()  # normalize *before* averaging
 
-        # average and actually adapt
-        VIMetric.average(hessmetric, weights=[gamma, 1.0 - gamma])
-        return animate.adapt(mesh, VIMetric)
+        # average (or intersect) and actually adapt
+        if intersect:
+            return animate.adapt(mesh, VIMetric, hessmetric)
+        else:
+            VIMetric.average(hessmetric, weights=[gamma, 1.0 - gamma])
+            return animate.adapt(mesh, VIMetric)
 
     def jaccard(self, active1, active2, submesh=False):
         """Compute the Jaccard metric from two element-wise active set

@@ -125,12 +125,24 @@ def test_adapt_avm():
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
-    #VTKFile(f"result_adapt_avm_0.pvd").write(u, psi, Function(CG1).interpolate(u - psi))
     amr.setmetricparameters(target_complexity=100, h_min=1.0e-4, h_max=1.0)
     rmesh = amr.adaptaveragedmetric(mesh, u, psi)
-    #VTKFile(f"result_adapt_avm.pvd").write(rmesh)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 152
+
+
+def test_adapt_avm_intersect():
+    mesh = RectangleMesh(8, 8, 2.0, 2.0, originX=-2.0, originY=-2.0)
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
+    assert CG1.dim() == 81
+    (x, y) = SpatialCoordinate(mesh)
+    psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
+    u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
+    amr.setmetricparameters(target_complexity=100, h_min=1.0e-4, h_max=1.0)
+    rmesh = amr.adaptaveragedmetric(mesh, u, psi, intersect=True)
+    rCG1, _ = amr.spaces(rmesh)
+    assert rCG1.dim() == 189
 
 
 def test_petsc4py_refine_vcd():
@@ -291,6 +303,7 @@ if __name__ == "__main__":
     test_refine_udo()
     test_refine_vcd()
     test_adapt_avm()
+    test_adapt_avm_intersect()
     test_brinactivemark()
     test_brinactivemark_total()
     test_overlapping_jaccard()
