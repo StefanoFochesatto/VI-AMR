@@ -12,10 +12,10 @@ known.  Option -prob cap generates a random, but smooth, bed topography, but
 keeps the dome SMB.  Option -prob range generates a different SMB and a
 disconnected glacier.
 
-We apply the VCD method for free-boundary refinement.  The default refinement
-mode is to do VCD and gradient-recovery refinement, in the inactive set, on
-every refinement.  The default marking strategy in the inactive set uses the
-"total" fixed-rate strategy.
+We apply the UDO or VCD methods for free-boundary refinement.  The default mode
+does n=1 UDO at the free boundary plus gradient-recovery refinement in the
+inactive set.  The default marking strategy in the inactive set uses the "total"
+fixed-rate strategy.
 
 The default VI solver is Picard iteration on the tilt (Jouvet & Bueler, 2012),
 and vinewtonrsls (+ mumps) for each tilt.  A full Newton iteration, i.e. simply
@@ -35,8 +35,7 @@ FIXME: redo now that "total" fixed-rate and diagonal="crossed" are the defaults
 such runs reveal less than perfect refinement right along the free boundary
 at very high resolution.
 
-Actually the -newton solve works decently too, but seems to need a very
-coarse initial grid:
+The -newton solve works well but needs a coarser initial grid:
   mpiexec -n 20 python3 steady.py -prob range -newton -m 5 -refine 10 -rmethod alternate -opvd result_rangenewton.pvd
 
 I don't yet trust this kind of -data run, but it converges o.k.:
@@ -57,12 +56,6 @@ parser.add_argument(
     default=8,
     metavar="P",
     help="number of Picard frozen-tilt iterations [default=8]",
-)
-parser.add_argument(
-    "-jaccard",
-    action="store_true",
-    default=False,
-    help="use jaccard() to evaluate glaciated area convergence",
 )
 parser.add_argument(
     "-m",
@@ -107,10 +100,10 @@ parser.add_argument(
     help="theta to use in 'total' fixed-rate marking strategy in inactive set [default=0.3]",
 )
 parser.add_argument(
-    "-udo",
+    "-vcd",
     action="store_true",
     default=False,
-    help="apply n=1 UDO free-boundary marking instead of default VCD",
+    help="apply VCD free-boundary marking (instead of UDO)",
 )
 args, passthroughoptions = parser.parse_known_args()
 
@@ -206,13 +199,13 @@ amr = VIAMR(debug=True)
 for i in range(args.refine + 1):
     # mark and refine based on constraint u >= 0
     if i > 0:
-        print(f"refining free boundary ({'UDO' if args.udo else 'VCD'})", end="")
-        if args.udo:
-            fbmark = amr.udomark(u, lb, n=1)
-        else:
+        print(f"refining free boundary ({'VCD' if args.vcd else 'UDO'})", end="")
+        if args.vcd:
             # change bracket vs default [0.2, 0.8], to provide more high-res
             #   for ice near margin (0.2 -> 0.1), i.e. on inactive side
             fbmark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
+        else:
+            fbmark = amr.udomark(u, lb, n=1)
         print(" and by gradient recovery in inactive ...")
         imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
         mark = amr.unionmarks(fbmark, imark)
@@ -301,16 +294,15 @@ for i in range(args.refine + 1):
         print("  |s-s_exact|_2 = %.3f m,  |s-s_exact|_av = %.3f m" % (err_l2, err_av))
 
     # report glaciated area and inactive set agreement using Jaccard index
-    if args.jaccard:
-        ei = amr._eleminactive(u, lb)
-        area = assemble(ei * dx)
-        print(
-            f"  glaciated area {area / 1000.0**2:.2e} km^2", end="" if i > 0 else "\n"
-        )
-        if i > 0:
-            jac = amr.jaccard(ei, oldei, submesh=True)
-            print(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
-        oldei = ei
+    ei = amr._eleminactive(u, lb)
+    area = assemble(ei * dx)
+    print(
+        f"  glaciated area {area / 1000.0**2:.2e} km^2", end="" if i > 0 else "\n"
+    )
+    if i > 0:
+        jac = amr.jaccard(ei, oldei, submesh=True)
+        print(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
+    oldei = ei
 
 # save results from final mesh
 if args.opvd:

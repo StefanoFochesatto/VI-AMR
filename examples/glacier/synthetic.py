@@ -1,3 +1,5 @@
+# Formulas for synthetic glacier examples.
+
 import firedrake as fd
 
 # constants (same for all problems)
