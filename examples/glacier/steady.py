@@ -102,6 +102,13 @@ parser.add_argument(
     help="theta to use in 'total' fixed-rate marking strategy in inactive set [default=0.3]",
 )
 parser.add_argument(
+    "-uniform",
+    type=int,
+    default=0,
+    metavar="R",
+    help="refine uniformly R times, and skip jaccard measure for those [default 0]",
+)
+parser.add_argument(
     "-vcd",
     action="store_true",
     default=False,
@@ -132,7 +139,7 @@ if args.data:
     from datanetcdf import DataNetCDF
 
     topg_nc = DataNetCDF(args.data, "topg")
-    topg_nc.preview()
+    #topg_nc.preview()
     topg_nc.describe_grid(print=PETSc.Sys.Print, indent=4)
     print(f"putting topg onto matching Firedrake structured data mesh ...")
     topg, nearb = topg_nc.function(delnear=100.0e3)
@@ -169,6 +176,7 @@ sp = {
     "snes_linesearch_type": "bt",
     "snes_linesearch_order": "1",
     "snes_max_it": 1000,
+    #"snes_max_funcs": 10000,
     "ksp_type": "preonly",
     "pc_type": "lu",
     "pc_factor_mat_solver_type": "mumps",
@@ -200,17 +208,24 @@ amr = VIAMR(debug=True)
 for i in range(args.refine + 1):
     # mark and refine based on constraint u >= 0
     if i > 0:
-        print(f"refining free boundary ({'VCD' if args.vcd else 'UDO'})", end="")
-        if args.vcd:
-            # change bracket vs default [0.2, 0.8], to provide more high-res
-            #   for ice near margin (0.2 -> 0.1), i.e. on inactive side
-            fbmark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
+        if i < args.uniform + 1:
+            print(f"refining uniformly ...")
+            # FIXME uniform refinement should be easier
+            _, DG0 = amr.spaces(mesh)
+            mark = Function(DG0).interpolate(Constant(1.0))
+            mesh = amr.refinemarkedelements(mesh, mark, isUniform=True)
         else:
-            fbmark = amr.udomark(u, lb, n=1)
-        print(" and by gradient recovery in inactive ...")
-        imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
-        mark = amr.unionmarks(fbmark, imark)
-        mesh = amr.refinemarkedelements(mesh, mark)
+            print(f"refining free boundary ({'VCD' if args.vcd else 'UDO'})", end="")
+            if args.vcd:
+                # change bracket vs default [0.2, 0.8], to provide more high-res
+                #   for ice near margin (0.2 -> 0.1), i.e. on inactive side
+                fbmark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
+            else:
+                fbmark = amr.udomark(u, lb, n=1)
+            print(" and by gradient recovery in inactive ...")
+            imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
+            mark = amr.unionmarks(fbmark, imark)
+            mesh = amr.refinemarkedelements(mesh, mark)
 
     # describe current mesh
     nv, ne, hmin, hmax = amr.meshsizes(mesh)
@@ -306,12 +321,12 @@ for i in range(args.refine + 1):
     # report glaciated area and inactive set agreement using Jaccard index
     ei = amr._eleminactive(u, lb)
     area = assemble(ei * dx)
-    print(
-        f"  glaciated area {area / 1000.0**2:.2e} km^2", end="" if i > 0 else "\n"
-    )
-    if i > 0:
+    print(f"  glaciated area {area / 1000.0**2:.2e} km^2", end="")
+    if i > 0 and i >= args.uniform:
         jac = amr.jaccard(ei, oldei, submesh=True)
         print(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
+    else:
+        print("")
     oldei = ei
 
 # save results from final mesh
