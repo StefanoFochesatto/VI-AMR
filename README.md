@@ -112,7 +112,6 @@ Note that Netgen meshes, created with e.g. `SplineGeometry().GenerateMesh()`, ha
 ## Testing
 
 Serial software tests use [pytest](https://docs.pytest.org/en/stable/index.html). In the main directory `VI-AMR/` do
-
 ```
 pytest .
 ```
@@ -123,3 +122,10 @@ cd tests/
 mpiexec -n 3 python3 test_parallel.py
 ```
 Success is completion without any error messages.
+
+For an HTML coverage report:
+```
+pip install pytest-cov
+pytest --cov-report html --cov=viamr tests/
+firefox htmlcov/index.html
+```
