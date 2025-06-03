@@ -14,7 +14,7 @@ from animate import adapt
 vcesHybridVertexCounts = [413,623,2417,3221,12737,15837, 113]
 vcesAdaptVertexCounts = [194,436,842,1644,3216,6302, 113]
 
-methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif', 'udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
+methodlist = ['vcd', 'udo', 'metricIso', 'vcdUnif', 'udoUnif', 'metricIsoHess', 'vcdBR', 'udoBR', 'uniform']
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     exactV = FunctionSpace(exactMesh, "CG", 1)
 
     exactPsi = problem_instance.getObstacle(exactV)
-    exactElementIndicator = amr_instance.elemactive(exactU, exactPsi)
+    exactElementIndicator = amr_instance._elemactive(exactU, exactPsi)
     _, exactFreeBoundaryEdges = amr_instance.freeboundarygraph(
         exactU, exactPsi)
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         nv, ne, hmin, hmax = amr_instance.meshsizes(mesh)
 
         # Compute Jaccard index
-        solElementIndicator = amr_instance.elemactive(u, lb)
+        solElementIndicator = amr_instance._elemactive(u, lb)
         JError = amr_instance.jaccard(
             solElementIndicator, exactElementIndicator)
 
@@ -85,9 +85,9 @@ if __name__ == "__main__":
         
         
         # Big switch style statement for methods
-        if method == methodlist[0]:  # vces
+        if method == methodlist[0]:  # vcd
             mtic = time.perf_counter()
-            mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
+            mark = amr_instance.vcdmark(u, lb, bracket=[.2, .8])
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
             mesh = amr_instance.refinemarkedelements(mesh, mark)
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
         elif method == methodlist[1]:  # udo
             mtic = time.perf_counter()
-            mark = amr_instance.udomark(mesh, u, lb, n=3)
+            mark = amr_instance.udomark(u, lb, n=3)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
             mesh = amr_instance.refinemarkedelements(mesh, mark)
@@ -104,13 +104,13 @@ if __name__ == "__main__":
         elif method == methodlist[2]:  # metric isotropic only
             mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesAdaptVertexCounts[i])# Corresponds to only freeboundary metric applied
-            VImetric = amr_instance.metricrefine(mesh, u, lb, weights=[0, 1], hessian = False)
+            VImetric = amr_instance.adaptaveragedmetric(mesh, u, lb, weights = [0, 1], hessian = False, metric = True)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
             mesh = adapt(mesh, VImetric)
             rtoc = time.perf_counter()
 
-        elif method == methodlist[3]:  # vces + uniform
+        elif method == methodlist[3]:  # vcd + uniform
             CG1, DG0 = amr_instance.spaces(mesh)
             mtic = time.perf_counter()
             h = max(mesh.cell_sizes.dat.data)
@@ -124,7 +124,7 @@ if __name__ == "__main__":
                 rtoc = time.perf_counter()
 
             else:  # adapt
-                mark = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
+                mark = amr_instance.vcdmark( u, lb, bracket=[.2, .8])
                 mtoc = time.perf_counter()
                 rtic = time.perf_counter()
                 mesh = amr_instance.refinemarkedelements(mesh, mark)
@@ -144,7 +144,7 @@ if __name__ == "__main__":
                 rtoc = time.perf_counter()
 
             else:  # adapt
-                mark = amr_instance.udomark(mesh, u, lb, n=3)
+                mark = amr_instance.udomark( u, lb, n=3)
                 mtoc = time.perf_counter()
                 rtic = time.perf_counter()
                 mesh = amr_instance.refinemarkedelements(mesh, mark)
@@ -153,19 +153,18 @@ if __name__ == "__main__":
         elif method == methodlist[5]:  # metric isotropic + hessian
             mtic = time.perf_counter()
             amr_instance.setmetricparameters(target_complexity=vcesHybridVertexCounts[i])# Corresponds to equal averaging of freeboundary and hessian based metrics.
-            VImetric = amr_instance.metricrefine(mesh, u, lb, weights=[.5, .5])
+            VImetric = amr_instance.adaptaveragedmetric(mesh, u, lb, weights = [.5, .5], hessian = True, metric = True)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
             mesh = adapt(mesh, VImetric)
             rtoc = time.perf_counter()
             
-        elif method == methodlist[6]:  # vces + br on inactive set
+        elif method == methodlist[6]:  # vcd + br on inactive set
             mtic = time.perf_counter()
-            markFB = amr_instance.vcesmark(mesh, u, lb, bracket=[.2, .8])
-            resUFL = Constant(0.0) + div(grad(u))
-            markBR = amr_instance.BRinactivemark(
-                mesh, u, lb, resUFL, .5, markFB)
-            mark = amr_instance.union(markFB, markBR)
+            markFB = amr_instance.vcdmark(u, lb, bracket=[.2, .8])
+            resUFL = -div(grad(u))
+            (markBR, _, _) = amr_instance.brinactivemark(u, lb, resUFL, theta=.5)
+            mark = amr_instance.unionmarks(markFB, markBR)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
             mesh = amr_instance.refinemarkedelements(mesh, mark)
@@ -173,11 +172,10 @@ if __name__ == "__main__":
 
         elif method == methodlist[7]:  # udo + br on inactive set
             mtic = time.perf_counter()
-            markFB = amr_instance.udomark(mesh, u, lb, n=3)
-            resUFL = Constant(0.0) + div(grad(u))
-            markBR = amr_instance.BRinactivemark(
-                mesh, u, lb, resUFL, .5, markFB)
-            mark = amr_instance.union(markFB, markBR)
+            markFB = amr_instance.udomark(u, lb, n=3)
+            resUFL = -div(grad(u))
+            (markBR, _, _) = amr_instance.brinactivemark(u, lb, resUFL, theta=.5)
+            mark = amr_instance.unionmarks(markFB, markBR)
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
             mesh = amr_instance.refinemarkedelements(mesh, mark)

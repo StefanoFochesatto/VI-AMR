@@ -23,15 +23,12 @@ for i in range(5):
         
     else:
         DG0 = FunctionSpace(ExactMesh, "DG", 0)
-    
-        resUFL = Constant(0.0) + div(grad(ExactU))
-        FBmark = amr.vcesmark(ExactMesh, ExactU, lb)
-        BRmark = amr.BRinactivemark(ExactMesh, ExactU, lb, resUFL=resUFL, theta = .50, markFB=FBmark)
-        mark = amr.union(FBmark, BRmark)
+        resUFL = -div(grad(ExactU))
+        FBmark = amr.vcdmark(ExactU, lb)
+        (BRmark, _, _) = amr.brinactivemark(ExactU, lb, resUFL, theta=.5)
+        mark = amr.unionmarks(FBmark, BRmark)
         ExactMesh = amr.refinemarkedelements(ExactMesh, mark)
         
-
-
 
 mh = MeshHierarchy(ExactMesh, 4)
 ExactMesh = mh[-1]
@@ -41,7 +38,6 @@ ExactU = Function(FunctionSpace(ExactMesh, "CG", 1)).interpolate(ExactU)
 ExactU, lb = problem.solveProblem(mesh=ExactMesh, u=ExactU, FASCD=True)
 ExactU.rename("ExactU")
 
-VTKFile("Test.pvd").write(ExactU)
 # Open issue won't run in parallel with netgen mesh: https://github.com/firedrakeproject/firedrake/issues/3783
 with CheckpointFile("ExactSolutionLShaped.h5", 'w') as afile:
     afile.save_mesh(ExactMesh)
