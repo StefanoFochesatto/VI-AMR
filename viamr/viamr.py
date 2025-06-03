@@ -483,7 +483,7 @@ class VIAMR(OptionsManager):
         self.metricparameters = {"dm_plex_metric": mp}
         return None
 
-    def adaptaveragedmetric(self, mesh, uh, lb, weights=[0.50, 0.50], hessian=True):
+    def adaptaveragedmetric(self, mesh, uh, lb, weights=[0.50, 0.50], hessian=True, metric = False):
         """From the solution uh, of an obstacle problem with obstacle lb, constructs both an anisotropic Hessian-based metric and an isotropic metric computed from the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged (linearly-combined) using the weights.  (This is anisotropic metric based refinement which is free-boundary aware.)  Then the mesh is adapted according to the metric parameters.  Implemented by calls to the animate mesh-adaptation library."""
 
         assert (
@@ -511,8 +511,11 @@ class VIAMR(OptionsManager):
             hessmetric.normalise()
             VIMetric.average(hessmetric, weights=weights)
 
-        # normalize and adapt
-        return animate.adapt(mesh, VIMetric)
+        if metric:
+            return VIMetric
+        else:
+            # normalize and adapt
+            return animate.adapt(mesh, VIMetric)
 
     def jaccard(self, active1, active2, submesh=False):
         """Compute the Jaccard metric from two element-wise active set
