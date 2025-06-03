@@ -29,6 +29,7 @@ Examples:
 
 Excellent -prob dome convergence:
   mpiexec -n 4 python3 steady.py -refine 8 -newton
+  mpiexec -n 12 python3 steady.py -m 5 -refine 13 -newton   # 31 m margin resolution
 
 High-resolution example; achieved 30 m resolution along ice sheet margin:
 FIXME: redo now that "total" fixed-rate and diagonal="crossed" are the defaults
@@ -226,6 +227,11 @@ for i in range(args.refine + 1):
             imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
             mark = amr.unionmarks(fbmark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
+            # report percentages of elements marked
+            inactive = amr._eleminactive(u, lb)
+            perfb = 100.0 * amr.countmark(fbmark) / ne
+            perin = 100.0 * amr.countmark(imark) / amr.countmark(inactive)
+            print(f"  {perfb:.2f}% all elements free-boundary marked, {perin:.2f}% inactive elements marked")
 
     # describe current mesh
     nv, ne, hmin, hmax = amr.meshsizes(mesh)
@@ -314,14 +320,16 @@ for i in range(args.refine + 1):
     if args.prob == "dome":
         sdiff = Function(V).interpolate(s - dome_exact(x))
         sdiff.rename("sdiff = s - s_exact")
+        with sdiff.dat.vec_ro as v:
+            err_inf = abs(v).max()[1]
         err_l2 = norm(sdiff / L)
         err_av = norm(sdiff, "l1") / L ** 2
-        print("  |s-s_exact|_2 = %.3f m,  |s-s_exact|_av = %.3f m" % (err_l2, err_av))
+        print("  |s-s_exact|_inf = %.3f m,  |..|_2 = %.3f m,  |..|_av = %.3f m" % (err_inf, err_l2, err_av))
 
     # report glaciated area and inactive set agreement using Jaccard index
     ei = amr._eleminactive(u, lb)
     area = assemble(ei * dx)
-    print(f"  glaciated area {area / 1000.0**2:.2e} km^2", end="")
+    print(f"  glaciated area {area / 1000.0**4:.4f} million km^2", end="")
     if i > 0 and i >= args.uniform:
         jac = amr.jaccard(ei, oldei, submesh=True)
         print(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
