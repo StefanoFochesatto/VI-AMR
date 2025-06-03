@@ -5,7 +5,9 @@ parser = ArgumentParser(
 Solves a 2D steady, isothermal shallow ice approximation glacier obstacle problem.
 
 The default set-up is a synthetic problem over a square domain [0,L]^2 with
-L = 1800.0 km.  A data-based problem (-data DATA.nc) is a WIP.
+L = 1800.0 km.
+
+A data-based problem (-data DATA.nc) is a WIP.
 
 By default (-prob dome) we solve a flat bed case where the exact solution is
 known.  Option -prob cap generates a random, but smooth, bed topography, but
@@ -122,7 +124,7 @@ from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps
 assert args.m >= 1, "at least one cell in mesh"
 assert args.refine >= 0, "cannot refine a negative number of times"
 
-# read data for bed topography into numpy array
+# read data for bed topography
 if args.data:
     print("ignoring -prob choice ...")
     args.prob = None
@@ -216,13 +218,12 @@ for i in range(args.refine + 1):
     print(f"solving problem {args.prob} on mesh level {i}:")
     amr.meshreport(mesh)
 
-    # space for transformed thickness u
+    # space for most functions
     V = FunctionSpace(mesh, "CG", 1)
-
-    # bedrock and accumulation
     x = SpatialCoordinate(mesh)
+
+    # surface mass balance function on current mesh
     if args.data:
-        b = Function(V).project(topg)  # cross-mesh projection from data mesh
         # SMB from linear model based on lapse rate; from linearizing dome case
         c0 = -3.4e-8
         c1 = (6.3e-8 - c0) / 3.6e3
@@ -231,15 +232,25 @@ for i in range(args.refine + 1):
             conditional(nearb > 0.0, -1.0e-6, a_lapse)
         )  # also cross-mesh re nearb
     else:
+        a = Function(V).interpolate(accumulation(x, problem=args.prob))
+    a.rename("a = accumulation")
+
+    # bedrock on current mesh
+    if args.data:
+        b = Function(V).project(topg)  # cross-mesh projection from data mesh
+    else:
         if args.prob == "dome":
             b = Function(V).interpolate(Constant(0.0))
             sexact = Function(V).interpolate(dome_exact(x))
             sexact.rename("s_exact")
         else:
             b = Function(V).interpolate(bumps(x, problem=args.prob))
-        a = Function(V).interpolate(accumulation(x, problem=args.prob))
     b.rename("b = bedrock topography")
-    a.rename("a = accumulation")
+
+    # exact solution on current mesh if available
+    if not args.data and args.prob == "dome":
+        sexact = Function(V).interpolate(dome_exact(x))
+        sexact.rename("s_exact")
 
     # initialize transformed thickness variable
     if i == 0:
