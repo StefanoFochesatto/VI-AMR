@@ -86,7 +86,7 @@ def create_multiindex_dataframe(result_dir, methodlist):
 
 if __name__ == "__main__":
     #os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
-    methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif', 'udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
+    methodlist = ['vcd', 'udo', 'metricIso', 'vcdUnif', 'udoUnif', 'metricIsoHess', 'vcdBR', 'udoBR', 'uniform']
 
 
     # flag for running convergence script
@@ -98,7 +98,7 @@ if __name__ == "__main__":
                         help='Run convergence script for all amr_methods and refinements.')
     args = parser.parse_args()
 
-    methodlist = ['vces', 'udo', 'metricIso', 'vcesUnif','udoUnif', 'metricIsoHess', 'vcesBR', 'udoBR', 'uniform']
+    methodlist = ['vcd', 'udo', 'metricIso', 'vcdUnif','udoUnif', 'metricIsoHess', 'vcdBR', 'udoBR', 'uniform']
     
     if args.lshaped:
         script_path = "ConvergenceLShaped.py"
@@ -143,10 +143,10 @@ if __name__ == "__main__":
         'metricIso': '#317256',     
         'metricIsoHess': '#52bf90', 
         
-        # Group 2: vces* methods (blues)
-        'vces': '#0021f3',          
-        'vcesBR': '#0006b1',        
-        'vcesUnif': '#05014a',      
+        # Group 2: vcd* methods (blues)
+        'vcd': '#0021f3',          
+        'vcdBR': '#0006b1',        
+        'vcdUnif': '#05014a',      
         
         # Group 3: udo* methods (reds)
         'udo': '#440909',           
@@ -167,26 +167,26 @@ if __name__ == "__main__":
     plt, file_title = getPlot(Convdf, ['udo', 'udoBR', 'uniform'] , 'Elements', 'H1', 'UDO', plottype='loglog', methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
 
-    plt, file_title = getPlot(Convdf, ['vces', 'vcesBR', 'uniform'] , 'Elements', 'H1', 'VCES', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt, file_title = getPlot(Convdf, ['vcd', 'vcdBR', 'uniform'] , 'Elements', 'H1', 'VCD', plottype='loglog', methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
     plt, file_title = getPlot(Convdf, ['metricIso', 'metricIsoHess', 'uniform'] , 'Elements', 'H1', 'Metric', plottype='loglog', methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
     plt, file_title = getPlot(Convdf, ['udo', 'udoBR', 'uniform'] , 'Elements', 'Jaccard', 'UDO', plottype='loglog', methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
-    plt, file_title = getPlot(Convdf, ['vces', 'vcesBR', 'uniform'] , 'Elements', 'Jaccard', 'VCES', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt, file_title = getPlot(Convdf, ['vcd', 'vcdBR', 'uniform'] , 'Elements', 'Jaccard', 'VCD', plottype='loglog', methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
     plt, file_title = getPlot(Convdf, ['metricIso', 'metricIsoHess', 'uniform'] , 'Elements', 'Jaccard', 'Metric', plottype='loglog', methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
-    plt, file_title = getPlot(Convdf.iloc[1:], ['udo', 'vces', 'metricIso'] , 'Elements', 'Jaccard', 'Comparison of Best Methods WRT Jaccard', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt, file_title = getPlot(Convdf.iloc[1:], ['udo', 'vcd', 'metricIso'] , 'Elements', 'Jaccard', 'Comparison of Best Methods WRT Jaccard', plottype='loglog', methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
-    plt, file_title = getPlot(Convdf.iloc[0:], ['udo', 'vces', 'metricIso'] , 'Elements', 'Hausdorff', 'Comparison of Best Methods WRT Hausdorff', plottype='loglog', methodcolors=methodcolors, legend = True)
+    plt, file_title = getPlot(Convdf.iloc[0:], ['udo', 'vcd', 'metricIso'] , 'Elements', 'Hausdorff', 'Comparison of Best Methods WRT Hausdorff', plottype='loglog', methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
-    plt, file_title = getPlot(Convdf, ['vcesBR', 'udoBR', 'metricIsoHess'] , 'PreMeshCompTime/Elements', 'L2', 'L2 Time Effeciency of Inactive Set Methods', plottype='loglog',methodcolors=methodcolors, legend = True)
+    plt, file_title = getPlot(Convdf, ['vcdBR', 'udoBR', 'metricIsoHess'] , 'PreMeshCompTime/Elements', 'L2', 'L2 Time Effeciency of Inactive Set Methods', plottype='loglog',methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
-    plt, file_title = getPlot(Convdf.iloc[0:], ['vces','udo' ,'metricIso'] , 'PreMeshCompTime/Elements', 'Hausdorff', 'Hausdorff Time Effeciency of Inactive Set Methods', plottype='loglog',methodcolors=methodcolors, legend = True)
+    plt, file_title = getPlot(Convdf.iloc[0:], ['vcd','udo' ,'metricIso'] , 'PreMeshCompTime/Elements', 'Hausdorff', 'Hausdorff Time Effeciency of Inactive Set Methods', plottype='loglog',methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
-    plt, file_title = getPlot(Convdf.iloc[0:], ['vces','udo' ,'metricIso'] , 'PreMeshCompTime/Elements', 'Jaccard', 'Jaccard Time Effeciency of Inactive Set Methods', plottype='loglog',methodcolors=methodcolors, legend = True)
+    plt, file_title = getPlot(Convdf.iloc[0:], ['vcd','udo' ,'metricIso'] , 'PreMeshCompTime/Elements', 'Jaccard', 'Jaccard Time Effeciency of Inactive Set Methods', plottype='loglog',methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
-    plt, file_title = getPlot(Convdf.iloc[0:], ['vces' ,'metricIso'] , 'Elements', 'SolveTime/Elements', 'L Shaped Domain Solve Time Comparison', plottype='loglog',methodcolors=methodcolors, legend = True)
+    plt, file_title = getPlot(Convdf.iloc[0:], ['vcd' ,'metricIso'] , 'Elements', 'SolveTime/Elements', 'L Shaped Domain Solve Time Comparison', plottype='loglog',methodcolors=methodcolors, legend = True)
     plt.savefig(os.path.join(plot_dir, file_title))
     # Grid sequencing should make the solve time better for tag and refine methods?? Likely an issue with cross mesh interpolation?
