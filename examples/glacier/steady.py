@@ -147,9 +147,8 @@ dp = {
     "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
 }
 if args.data:
-    # generate netgen mesh compatible with data mesh, but unstructured
-    # and at user (-m) resolution, typically lower
-    mesh = topg_nc.ngmesh(args.m, distribution_parameters=dp)
+    # generate mesh compatible with data mesh, but at user (-m) resolution, typically lower
+    mesh = topg_nc.rectmesh(args.m)
 else:
     # generate [0,L]^2 mesh via Firedrake
     mesh = RectangleMesh(

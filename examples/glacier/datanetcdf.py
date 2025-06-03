@@ -18,7 +18,7 @@ class DataNetCDF():   # FIXME should it subclass something?
         assert self.my == len(self.y)
         self.ll = (min(self.x), min(self.y))  # lower left
         self.ur = (max(self.x), max(self.y))  # upper right
-        self.Lx, self.Ly = self.ur[0] - self.ll[0], self.ur[1] - self.ll[1]
+        self.Wx, self.Wy = self.ur[0] - self.ll[0], self.ur[1] - self.ll[1]  # width, height
         self.hx, self.hy = self.x[1] - self.x[0],   self.y[1] - self.y[0]
 
 
@@ -38,21 +38,14 @@ class DataNetCDF():   # FIXME should it subclass something?
         plt.show()
 
 
-    def ngmesh(self, m):
-        '''generate a Firedrake/NetGen mesh for the rectangle, with
-        approximately m elements in the shorter dimension.'''
-        try:
-            import netgen
-        except ImportError:
-            printpar("ImportError.  Unable to import NetGen.  Exiting.")
-            import sys
-            sys.exit(0)
-        from netgen.geom2d import SplineGeometry
-        geo = SplineGeometry()
-        geo.AddRectangle(p1=self.ll, p2=self.ur, bc="rectangle")
-        trih = max(self.Lx, self.Ly) / m
-        ngmsh = geo.GenerateMesh(maxh=trih)
-        mesh = fd.Mesh(ngmsh)
+    def rectmesh(self, m):
+        '''generate a Firedrake rectangular mesh matching data mesh domain
+        but with m elements in the x dimension.'''
+        dp = {
+            "partition": True,
+            "overlap_type": (fd.DistributedMeshOverlapType.VERTEX, 1),
+        }
+        mesh = fd.RectangleMesh(m, int((self.Wy / self.Wx) * m), self.ur[0], self.ur[1], originX=self.ll[0], originY=self.ll[1], distribution_parameters=dp)
         return mesh
 
 
@@ -61,9 +54,11 @@ class DataNetCDF():   # FIXME should it subclass something?
         Firedrake data mesh matching the vertices read from NetCDF file;
         also returns a Firedrake CG1 function which is 1 near the boundary
         and zero otherwise; recover the mesh itself by VAR.function_space().mesh()'''
-        dmesh = fd.RectangleMesh(len(self.x) - 1, len(self.y) - 1, self.Lx, self.Ly)
-        dmesh.coordinates.dat.data[:,0] += self.ll[0]
-        dmesh.coordinates.dat.data[:,1] += self.ll[1]
+        dp = {
+            "partition": True,
+            "overlap_type": (fd.DistributedMeshOverlapType.VERTEX, 1),
+        }
+        dmesh = fd.RectangleMesh(self.mx - 1, self.my - 1, self.ur[0], self.ur[1], originX=self.ll[0], originY=self.ll[1], distribution_parameters=dp)
         dCG1 = fd.FunctionSpace(dmesh, "CG", 1)
         fCG1 = fd.Function(dCG1)
         nearCG1 = fd.Function(dCG1)  # set to zero here
