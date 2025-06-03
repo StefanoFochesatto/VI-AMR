@@ -45,7 +45,7 @@ class DataNetCDF():   # FIXME should it subclass something?
             "partition": True,
             "overlap_type": (fd.DistributedMeshOverlapType.VERTEX, 1),
         }
-        mesh = fd.RectangleMesh(m, int((self.Wy / self.Wx) * m), self.ur[0], self.ur[1], originX=self.ll[0], originY=self.ll[1], distribution_parameters=dp)
+        mesh = fd.RectangleMesh(m, int((self.Wy / self.Wx) * m), self.ur[0], self.ur[1], originX=self.ll[0], originY=self.ll[1], distribution_parameters=dp, diagonal="crossed")
         return mesh
 
 
