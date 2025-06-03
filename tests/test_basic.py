@@ -86,15 +86,14 @@ def test_refine_udo():
     psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
     unorm0 = norm(u)
-    # VTKFile(f"result_refine_0.pvd").write(u)
     mark = amr.udomark(u, psi)
+    assert amr.countmark(mark) == 24
     rmesh = mesh.refine_marked_elements(mark)  # netgen's refine method
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 61
     rV = FunctionSpace(rmesh, "CG", 1)
     ru = Function(rV).interpolate(u)  # cross-mesh interpolation
     assert abs(norm(ru) - unorm0) < 1.0e-10  # ... should be conservative
-    # VTKFile(f"result_refine_1.pvd").write(ru)
 
 
 def test_refine_vcd():
