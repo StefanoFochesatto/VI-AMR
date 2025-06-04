@@ -34,7 +34,7 @@ class VIAMR(OptionsManager):
 
     Regarding the arguments: uh is a computed VI solution, lb=psi is the lower bound (obstacle), res_ufl is a UFL expression for the residual (applicable in the inactive set), mark is an element marking in DG0 (Definition 4.2 in paper), and rmesh is a refined or adapted mesh.
 
-    There are also some public utility methods: spaces(), meshsizes(), meshreport(), and checkadmissible().  Other methods starting with an underscore are (roughly) intended to be private to the VIAMR class.
+    There are also some public utility methods: spaces(), meshsizes(), meshreport(), checkadmissible(), and countmark().  Other methods starting with an underscore are (roughly) intended to be private to the VIAMR class.
 
     Certain functions do not work in parallel: 1. jaccard() with submesh=False, and 2. hausdorff().
 
@@ -137,6 +137,12 @@ class VIAMR(OptionsManager):
             )
         )
         return z
+
+    def countmark(self, mark):
+        """Return count of number of elements marked."""
+        j = np.count_nonzero(mark.dat.data_ro)
+        comm = mark.function_space().mesh().comm
+        return int(comm.allreduce(j, op=MPI.SUM))
 
     def unionmarks(self, mark1, mark2):
         """Computes the mark which is 1.0 where either mark1==1.0
