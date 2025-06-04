@@ -407,27 +407,25 @@ class VIAMR(OptionsManager):
         return (mark, eta, total_error_est)
 
     def refinemarkedelements(self, mesh, indicator, isUniform=False):
-        """petsc4py implementation of Netgen's .refine_marked_elements().
-        Usually is skeleton-based refinement (SBR; Plaza & Carey, 2000).
-        This version works in parallel, but only in 2D when using SBR;
-        see TODO in
+        """Call PETSc DMPlex routines to do skeleton-based refinement
+        (SBR; Plaza & Carey, 2000).  This version works in parallel,
+        but only in 2D; see TODO in
           https://petsc.org/release/src/dm/impls/plex/transform/impls/refine/sbr/plexrefsbr.c.html.
-        See also
-          https://petsc.org/release/overview/plex_transform_table/
-        and associated links."""
-        # Create Section for DG0 indicator
+        See https://petsc.org/release/overview/plex_transform_table/
+        and associated links.  Compare this method to Netgen's
+        refine_marked_elements() which also does SBR, in 2D or 3D.
+        Optionally does uniform refinement."""
+
+        # section for DG0 indicator
         tdim = mesh.topological_dimension()
         entity_dofs = np.zeros(tdim + 1, dtype=IntType)
-        entity_dofs[:] = 0
         entity_dofs[-1] = 1
         indicatorSect, _ = dmcommon.create_section(mesh, entity_dofs)
 
-        # Pull Plex from mesh
+        # create a DMPlex adaptation label to mark cells for refinement
         dm = mesh.topology_dm
-
-        # Create an adaptation label to mark cells for refinement
-        dm.createLabel("refinesbr")
-        adaptLabel = dm.getLabel("refinesbr")
+        dm.createLabel("markviamr")
+        adaptLabel = dm.getLabel("markviamr")
         adaptLabel.setDefaultValue(0)
 
         # dmcommon provides a python binding for this operation of setting
@@ -436,44 +434,38 @@ class VIAMR(OptionsManager):
             dm, indicatorSect, 0, indicator.dat.data_with_halos, adaptLabel, 1
         )
 
-        # augment or override options database to indicate type of refinement
-        # For now the only way to set the active label with petsc4py is
-        # with PETSc.Options() because DMPlexTransformSetActive() has no binding.
+        # augment/override options database to indicate type of refinement
+        # (For now the only way to set the active label with petsc4py uses
+        # PETSc.Options() because DMPlexTransformSetActive() has no binding.)
         opts = PETSc.Options()
         if isUniform:
             opts["dm_plex_transform_type"] = "refine_regular"
         else:
-            opts["dm_plex_transform_active"] = "refinesbr"
-            opts[
-                "dm_plex_transform_type"
-            ] = "refine_sbr"  # <- skeleton based refinement is what netgen does.
+            opts["dm_plex_transform_active"] = "markviamr"
+            opts["dm_plex_transform_type"] = "refine_sbr"
 
-        # Create a DMPlexTransform object to apply the refinement
+        # create a DMPlexTransform object to apply the refinement
         dmTransform = PETSc.DMPlexTransform().create(comm=mesh.comm)
         dmTransform.setDM(dm)
         dmTransform.setFromOptions()
         dmTransform.setUp()
         dmAdapt = dmTransform.apply(dm)
 
-        # Labels are no longer needed, not sure if we need to call destroy on them.
-        dmAdapt.removeLabel("refinesbr")
-        dm.removeLabel("refinesbr")
-        dmTransform.destroy()
+        # labels are no longer needed
+        dmAdapt.removeLabel("markviamr")
+        dm.removeLabel("markviamr")
+        dmTransform.destroy()  # do we need this?
 
-        # Remove labels to stop further distribution in mesh()
-        # dm.distributeSetDefault(False) <- Matt's suggestion
+        # remove other labels to stop further distribution in mesh()
+        # (Koki's suggestion)
         dmAdapt.removeLabel("pyop2_core")
         dmAdapt.removeLabel("pyop2_owned")
         dmAdapt.removeLabel("pyop2_ghost")
-        # ^ Koki's suggestion
 
-        # Pull distribution parameters from original dm
-        distParams = mesh._distribution_parameters
-
-        # Create a new mesh from the adapted dm
-        refinedmesh = Mesh(dmAdapt, distribution_parameters=distParams, comm=mesh.comm)
-        opts["dm_plex_transform_type"] = "refine_regular"
-
+        # create a new mesh from the adapted dm
+        dp = mesh._distribution_parameters  # original parameters
+        refinedmesh = Mesh(dmAdapt, distribution_parameters=dp, comm=mesh.comm)
+        opts["dm_plex_transform_type"] = "refine_regular"  # reset
         return refinedmesh
 
     def setmetricparameters(self, **kwargs):
