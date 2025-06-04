@@ -481,7 +481,7 @@ class VIAMR(OptionsManager):
         self.metricparameters = {"dm_plex_metric": mp}
         return None
 
-    def adaptaveragedmetric(self, mesh, uh, lb, gamma=0.50, intersect=False, metric=False):
+    def adaptaveragedmetric(self, mesh, uh, lb, gamma=.50, intersect=False, metric=False):
         """From the solution uh, of an obstacle problem with obstacle lb, constructs both an anisotropic Hessian-based metric and an isotropic metric computed from the magnitude of the gradient of the smoothed VCD indicator.  These metrics are averaged (linearly-combined) using gamma:
           M(x) = gamma (isotropic) + (1-gamma) (anisotropic)
         The result M(x) is an anisotropic metric which is free-boundary aware.
@@ -493,35 +493,67 @@ class VIAMR(OptionsManager):
             self.metricparameters is not None
         ), "call setmetricparameters() before calling adaptaveragedmetric()"
 
-        # Construct free-boundary isotropic metric from abs(grad(s)) where s is the
-        # (smooth) output of vcdmark().  Compare "L2" option in
-        # animate.compute_isotropic_metric(); here we already have a P1 indicator.)
+        # Get the function spaces
         CG1, _ = self.spaces(mesh)
         P1tensor = TensorFunctionSpace(mesh, "CG", 1)
-        s = self.vcdmark(uh, lb, returnSmooth=True)
-        maggrads = Function(CG1).interpolate(sqrt(dot(grad(s), grad(s))))
-        VIMetric = animate.RiemannianMetric(P1tensor)
-        VIMetric.set_parameters(self.metricparameters)
-        VIMetric.interpolate(maggrads * ufl.Identity(mesh.topological_dimension()))
-        VIMetric.normalise()  # normalize *before* averaging
-
-        # Build hessian based metric for interpolation error
-        hessmetric = animate.RiemannianMetric(P1tensor)
-        hessmetric.set_parameters(self.metricparameters)
-        # re method: default "mixed_L2" is more expensive
-        hessmetric.compute_hessian(uh, method="L2")
-        hessmetric.normalise()  # normalize *before* averaging
-
-        # average or intersect
-        if intersect:
-            VIMetric.intersect(hessmetric)
+        
+        # Branch on gamma to avoid unecesarry computation of both metrics
+        
+        if gamma == 1: # isotropic metric only case
+            # Construct free-boundary isotropic metric from abs(grad(s)) where s is the
+            # (smooth) output of vcdmark().  Compare "L2" option in
+            # animate.compute_isotropic_metric(); here we already have a P1 indicator.)
+        
+            s = self.vcdmark(uh, lb, returnSmooth=True)
+            maggrads = Function(CG1).interpolate(sqrt(dot(grad(s), grad(s))))
+            VIMetric = animate.RiemannianMetric(P1tensor)
+            VIMetric.set_parameters(self.metricparameters)
+            VIMetric.interpolate(maggrads * ufl.Identity(mesh.topological_dimension()))
+            VIMetric.normalise()  # normalize *before* averaging
+            
+            if metric:
+                return VIMetric
+            return animate.adapt(mesh, VIMetric)
+        
+        elif gamma == 0: # hessian only case
+            # Build hessian based metric for interpolation error
+            hessmetric = animate.RiemannianMetric(P1tensor)
+            hessmetric.set_parameters(self.metricparameters)
+            # re method: default "mixed_L2" is more expensive
+            hessmetric.compute_hessian(uh, method="L2")
+            hessmetric.normalise()  # normalize *before* averaging
+            
+            if metric:
+                return hessmetric
+            return animate.adapt(mesh, hessmetric)
+        
         else:
-            VIMetric.average(hessmetric, weights=[gamma, 1.0 - gamma])
-        if metric:
-            return VIMetric
+            # Default case where both metrics are computed
+            s = self.vcdmark(uh, lb, returnSmooth=True)
+            maggrads = Function(CG1).interpolate(sqrt(dot(grad(s), grad(s))))
+            VIMetric = animate.RiemannianMetric(P1tensor)
+            VIMetric.set_parameters(self.metricparameters)
+            VIMetric.interpolate(maggrads * ufl.Identity(mesh.topological_dimension()))
+            VIMetric.normalise()  # normalize *before* averaging
+            
+            # Build hessian based metric for interpolation error
+            hessmetric = animate.RiemannianMetric(P1tensor)
+            hessmetric.set_parameters(self.metricparameters)
+            # re method: default "mixed_L2" is more expensive
+            hessmetric.compute_hessian(uh, method="L2")
+            hessmetric.normalise()  # normalize *before* averaging
+            
 
-        # return adapted mesh
-        return animate.adapt(mesh, VIMetric)
+            # average or intersect
+            if intersect:
+                VIMetric.intersect(hessmetric)
+            else:
+                VIMetric.average(hessmetric, weights=[gamma, 1.0 - gamma])
+            if metric:
+                return VIMetric
+
+            # return adapted mesh
+            return animate.adapt(mesh, VIMetric)
 
     def jaccard(self, active1, active2, submesh=False):
         """Compute the Jaccard metric from two element-wise active set
