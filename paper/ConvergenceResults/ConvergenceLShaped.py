@@ -126,7 +126,7 @@ if __name__ == "__main__":
                 target_complexity=vcdAdaptVertexCounts[i]
             )  # Corresponds to only freeboundary metric applied
             VImetric = amr_instance.adaptaveragedmetric(
-                mesh, u, lb, gamma = 1, hessian=False, metric=True
+                mesh, u, lb, gamma = 1, metric=True
             )
             mtoc = time.perf_counter()
             rtic = time.perf_counter()

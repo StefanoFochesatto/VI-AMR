@@ -121,7 +121,7 @@ if __name__ == "__main__":
                 target_complexity=vcesAdaptVertexCounts[i]
             )  # Corresponds to only freeboundary metric applied
             VImetric = amr_instance.adaptaveragedmetric(
-                mesh, u, lb, gamma = 1, hessian=False, metric=True
+                mesh, u, lb, gamma = 1, metric=True
             )
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
@@ -174,7 +174,7 @@ if __name__ == "__main__":
                 target_complexity=vcesHybridVertexCounts[i]
             )  # Corresponds to equal averaging of freeboundary and hessian based metrics.
             VImetric = amr_instance.adaptaveragedmetric(
-                mesh, u, lb, gamma = .5, hessian=True, metric=True
+                mesh, u, lb, gamma = .5, metric=True
             )
             mtoc = time.perf_counter()
             rtic = time.perf_counter()
