@@ -137,7 +137,6 @@ def test_adapt_avm_separated():
     r = sqrt(x ** 2 + y ** 2)
     u_ufl = conditional(r < 1, 1.0 + cos(pi * r), 0.0)
     uh = Function(CG1).interpolate(u_ufl)
-    VTKFile("tmp.pvd").write(uh)
     amr.setmetricparameters(target_complexity=100, h_min=1.0e-4, h_max=1.0)
     # only isotropic free-boundary metric
     fbmesh = amr.adaptaveragedmetric(mesh, uh, psi, gamma=1.0)
