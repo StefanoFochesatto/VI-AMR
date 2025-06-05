@@ -73,7 +73,6 @@ def test_unionmarks():
     rightmark = Function(DG0).interpolate(conditional(x > 0.0, 1.0, 0.0))
     discmark = Function(DG0).interpolate(_get_ball_obstacle(x, y) > 0.0)
     mark = amr.unionmarks(rightmark, discmark)
-    # VTKFile(f"result_unionmarks.pvd").write(rightmark, discmark, mark)
     assert abs(assemble(mark * dx) - 9.92) < 1.0e-10  # union of marked area
 
 
@@ -104,11 +103,9 @@ def test_refine_vcd():
     (x, y) = SpatialCoordinate(mesh)
     psi = Function(CG1).interpolate(_get_ball_obstacle(x, y))
     u = Function(CG1).interpolate(conditional(psi > 0.0, psi, 0.0))
-    #VTKFile(f"result_refine_vcd_0.pvd").write(u, psi, Function(CG1).interpolate(u - psi))
     unorm0 = norm(u)
     mark = amr.vcdmark(u, psi)
     rmesh = mesh.refine_marked_elements(mark)  # netgen's refine method
-    #VTKFile(f"result_refine_vcd.pvd").write(rmesh)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 49
     rV = FunctionSpace(rmesh, "CG", 1)
@@ -128,6 +125,28 @@ def test_adapt_avm():
     rmesh = amr.adaptaveragedmetric(mesh, u, psi)
     rCG1, _ = amr.spaces(rmesh)
     assert rCG1.dim() == 152
+
+
+def test_adapt_avm_separated():
+    mesh = RectangleMesh(7, 7, 2.0, 2.0, originX=-2.0, originY=-2.0)
+    amr = VIAMR(debug=True)
+    CG1, _ = amr.spaces(mesh)
+    assert CG1.dim() == 64
+    psi = Function(CG1).interpolate(Constant(0.0))
+    (x, y) = SpatialCoordinate(mesh)
+    r = sqrt(x ** 2 + y ** 2)
+    u_ufl = conditional(r < 1, 1.0 + cos(pi * r), 0.0)
+    uh = Function(CG1).interpolate(u_ufl)
+    VTKFile("tmp.pvd").write(uh)
+    amr.setmetricparameters(target_complexity=100, h_min=1.0e-4, h_max=1.0)
+    # only isotropic free-boundary metric
+    fbmesh = amr.adaptaveragedmetric(mesh, uh, psi, gamma=1.0)
+    fbCG1, _ = amr.spaces(fbmesh)
+    assert fbCG1.dim() == 129
+    # only hessian metric
+    hmesh = amr.adaptaveragedmetric(mesh, uh, psi, gamma=0.0)
+    hCG1, _ = amr.spaces(hmesh)
+    assert hCG1.dim() == 150
 
 
 def test_adapt_avm_intersect():
@@ -302,6 +321,7 @@ if __name__ == "__main__":
     test_refine_udo()
     test_refine_vcd()
     test_adapt_avm()
+    test_adapt_avm_separated()
     test_adapt_avm_intersect()
     test_brinactivemark()
     test_brinactivemark_total()
