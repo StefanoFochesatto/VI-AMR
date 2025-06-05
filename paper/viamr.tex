@@ -557,9 +557,9 @@ Here $\Gamma>0$ is a physical constant, essentially the ice softness, and $\bm{\
 
 While uniqueness for \eqref{eq:siavi} is generally open, existence always holds \cite{JouvetBueler2012}, and when $\grad b=0$ the problem is well-posed.  Note that the thickness $H$ and the conserved flux $\bq = - \Gamma |\grad u + \bm{\beta}(u)|^2 (\grad u + \bm{\beta}(u))$ go to zero at the margin.  However, observations of glaciers confirm that the gradient of the surface has large magnitude as one approaches the margin from the icy side, a property which emerges from a solution to \eqref{eq:siavi} when one computes the associated surface elevation $s=H+b = u^{3/8} + b$.
 
-To this highly-nonlinear problem we apply a $u_h\in\CG_1(\cT_h)$ FE method, the UDO and VCD tag-and-refine methods, and a gradient-recovery error indicator in the inactive set.  (See Example \ref{example:gradrecovery}; note that the linear derivation of the BR error indicator in Example \ref{example:br} does not apply.)
+For this highly-nonlinear problem we apply FE with $u_h\in\CG_1(\cT_h)$.  The problem is solved either by the same VI-adapted Newton solver as in Section \ref{sec:results}, or adding an outer Picard-type iteration over the tilt $\bm{\beta}(u)$ \cite{JouvetBueler2012}, with similar results; the latter solver is more robust when $|\grad b|$ is large.  We consider two particular problems over a square domain $\Omega=(0,L)^2$, $L=1800$ kilometers: \emph{i)} ``dome'' problem with a flat bed and known solution \cite{Bueler2016} and \emph{ii)} ``cap'' problem with a bumpy bed \cite[Example 8.4]{BuelerFarrell2024}.
 
-; Figure \ref{fig:glacier}
+Our goals are to generate meshes with high resolution along an accurately-estimated glacier margin.  The UDO and VCD tag-and-refine methods are compared, with a gradient-recovery error indicator in the inactive set.  (See Example \ref{example:gradrecovery}; note that the linear derivation of the BR error indicator in Example \ref{example:br} does not apply.)  Figure \ref{fig:glacier} shows sample results for the cap problem, including the mesh after three levels of AMR starting from a coarse, uniform mesh (left), and a detail of the jump in the surface gradient at a highly-refined margin with element size around $h_{\min} = 100$ meters (right).
 
 % $ cd examples/glacier
 %LEFT:
@@ -571,9 +571,11 @@ To this highly-nonlinear problem we apply a $u_h\in\CG_1(\cT_h)$ FE method, the 
 \begin{figure}[ht]
 \centering
 \mbox{\includegraphics[width=0.46\textwidth]{static/glacierthickness.png} \qquad \includegraphics[width=0.46\textwidth]{static/glacierdetail.png}}
-\caption{Left:  The glaciated region (grayscale thickness in meters) with a mesh (red) found by applying UDO and a gradient-recovery indicator in the inactive set.  Right:  Detail of glacier margin, at higher refinement.  The surface elevation gradient (grayscale magnitude) changes by $O(1)$ at the margin.}
+\caption{Left:  The glaciated region (grayscale thickness in meters) with a mesh (red) found by applying UDO and a gradient-recovery indicator in the inactive set.  Right:  A detail of the glacier margin at higher refinement.  The surface elevation gradient $|\grad s|$ (grayscale magnitude) is discontinuous at the margin, while $|\grad u|$ is continuous.}
 \label{fig:glacier}
 \end{figure}
+
+The dome problem was solved with 13 levels of refinement from an initial mesh uniform with $h_0=360$ kilometers, giving a final margin resolution of $h_{13}=31$ meters.  Figure FIXME compares the solution error norm $\|u-u_h\|_{\cX}$ and the maximum $\|H-H_h\|_\infty$ and average $L^{-2} \|H-H_h\|_1$ thickness error norms versus number of elements.
 
 
 \section{Discussion and conclusion} \label{sec:conclusion}
