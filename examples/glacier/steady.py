@@ -347,14 +347,17 @@ if args.opvd:
     q = Function(FunctionSpace(mesh, "BDM", 1))
     q.interpolate(U * H)
     q.rename("q = UH = *post-computed* ice flux")
+    Gs = Function(VectorFunctionSpace(mesh, "DG", degree=0))
+    Gs.interpolate(grad(s))
+    Gs.rename("Gs = grad(s)")
     rank = Function(FunctionSpace(mesh, "DG", 0))
     rank.dat.data[:] = mesh.comm.rank
     rank.rename("rank")
     print("writing to %s ..." % args.opvd)
     if args.prob == "dome":
-        VTKFile(args.opvd).write(a, u, s, H, U, q, sexact, sdiff, rank)
+        VTKFile(args.opvd).write(a, u, s, H, U, q, Gs, sexact, sdiff, rank)
     else:
         Gb = Function(VectorFunctionSpace(mesh, "DG", degree=0))
         Gb.interpolate(grad(b))
         Gb.rename("Gb = grad(b)")
-        VTKFile(args.opvd).write(a, u, s, H, U, q, b, Gb, rank)
+        VTKFile(args.opvd).write(a, u, s, H, U, q, b, Gb, Gs, rank)
