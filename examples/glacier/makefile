@@ -3,4 +3,4 @@
 clean:
 	@rm -f *.pvd *.pvtu *.vtu
 	@rm -rf __pycache__/
-	@rm -rf result*
+	@rm -rf result*.pvd *.csv

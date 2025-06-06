@@ -105,9 +105,9 @@ parser.add_argument(
 parser.add_argument(
     "-theta",
     type=float,
-    default=0.3,
+    default=0.5,
     metavar="X",
-    help="theta to use in 'total' fixed-rate marking strategy in inactive set [default=0.3]",
+    help="theta to use in fixed-rate marking strategy in inactive set [default=0.3]",
 )
 parser.add_argument(
     "-uniform",
@@ -238,7 +238,9 @@ for i in range(args.refine + 1):
             else:
                 fbmark = amr.udomark(u, lb, n=1)
             pprint(" and by gradient recovery in inactive ...")
-            imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
+            # FIXME: sporadic parallel bug with method="total" apparently ...
+            #imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
+            imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="max")
             mark = amr.unionmarks(fbmark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
             # report percentages of elements marked
