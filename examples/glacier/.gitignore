@@ -2,4 +2,5 @@
 /dome*
 /range*
 /result*
+/*.csv
 /__pycache__/

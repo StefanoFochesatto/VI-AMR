@@ -47,6 +47,13 @@ I don't yet trust this kind of -data run, but it converges o.k.:
     formatter_class=RawTextHelpFormatter,
 )
 parser.add_argument(
+    "-csv",
+    metavar="FILE",
+    type=str,
+    default="",
+    help="output file name for dome error report (.csv)",
+)
+parser.add_argument(
     "-data",
     metavar="FILE",
     type=str,
@@ -124,28 +131,35 @@ petsc4py.init(passthroughoptions)
 from firedrake import *
 from firedrake.petsc import PETSc
 
-print = PETSc.Sys.Print
+pprint = PETSc.Sys.Print  # parallel print
 from viamr import VIAMR
 
-from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps
+from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps, domeH0
 
 assert args.m >= 1, "at least one cell in mesh"
 assert args.refine >= 0, "cannot refine a negative number of times"
 
+# set up .csv if generating numerical error data
+if args.csv:
+    if not args.prob == "dome":
+        raise ValueError("option -csv only valid for -prob dome")
+    csvfile = open(args.csv, 'w')
+    print("REFINE,NE,HMIN,UERRH1,HERRINF", file=csvfile)
+
 # read data for bed topography
 if args.data:
-    print("ignoring -prob choice ...")
+    pprint("ignoring -prob choice ...")
     args.prob = None
-    print(f"reading topg from NetCDF file {args.data} with native data grid:")
+    pprint(f"reading topg from NetCDF file {args.data} with native data grid:")
     from datanetcdf import DataNetCDF
 
     topg_nc = DataNetCDF(args.data, "topg")
     #topg_nc.preview()
     topg_nc.describe_grid(print=PETSc.Sys.Print, indent=4)
-    print(f"putting topg onto matching Firedrake structured data mesh ...")
+    pprint(f"putting topg onto matching Firedrake structured data mesh ...")
     topg, nearb = topg_nc.function(delnear=100.0e3)
 else:
-    print(
+    pprint(
         f"generating synthetic {args.m} x {args.m} initial mesh for problem {args.prob} ..."
     )
 
@@ -210,20 +224,20 @@ for i in range(args.refine + 1):
     # mark and refine based on constraint u >= 0
     if i > 0:
         if i < args.uniform + 1:
-            print(f"refining uniformly ...")
+            pprint(f"refining uniformly ...")
             # FIXME uniform refinement should be easier
             _, DG0 = amr.spaces(mesh)
             mark = Function(DG0).interpolate(Constant(1.0))
             mesh = amr.refinemarkedelements(mesh, mark, isUniform=True)
         else:
-            print(f"refining free boundary ({'VCD' if args.vcd else 'UDO'})", end="")
+            pprint(f"refining free boundary ({'VCD' if args.vcd else 'UDO'})", end="")
             if args.vcd:
                 # change bracket vs default [0.2, 0.8], to provide more high-res
                 #   for ice near margin (0.2 -> 0.1), i.e. on inactive side
                 fbmark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
             else:
                 fbmark = amr.udomark(u, lb, n=1)
-            print(" and by gradient recovery in inactive ...")
+            pprint(" and by gradient recovery in inactive ...")
             imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
             mark = amr.unionmarks(fbmark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
@@ -231,11 +245,11 @@ for i in range(args.refine + 1):
             inactive = amr._eleminactive(u, lb)
             perfb = 100.0 * amr.countmark(fbmark) / ne
             perin = 100.0 * amr.countmark(imark) / amr.countmark(inactive)
-            print(f"  {perfb:.2f}% all elements free-boundary marked, {perin:.2f}% inactive elements marked")
+            pprint(f"  {perfb:.2f}% all elements free-boundary marked, {perin:.2f}% inactive elements marked")
 
     # describe current mesh
     nv, ne, hmin, hmax = amr.meshsizes(mesh)
-    print(f"solving problem {args.prob} on mesh level {i}:")
+    pprint(f"solving problem {args.prob} on mesh level {i}:")
     amr.meshreport(mesh)
 
     # space for most functions
@@ -261,16 +275,9 @@ for i in range(args.refine + 1):
     else:
         if args.prob == "dome":
             b = Function(V).interpolate(Constant(0.0))
-            sexact = Function(V).interpolate(dome_exact(x))
-            sexact.rename("s_exact")
         else:
             b = Function(V).interpolate(bumps(x, problem=args.prob))
     b.rename("b = bedrock topography")
-
-    # exact solution on current mesh if available
-    if not args.data and args.prob == "dome":
-        sexact = Function(V).interpolate(dome_exact(x))
-        sexact.rename("s_exact")
 
     # initialize transformed thickness variable
     if i == 0:
@@ -302,7 +309,7 @@ for i in range(args.refine + 1):
     else:
         # outer loop for freeze iteration
         for k in range(args.freezecount):
-            # print(f'  freeze tilt iteration {k+1} ...')
+            # pprint(f'  freeze tilt iteration {k+1} ...')
             Ztilt = Phi(uold, b)
             F = weakform(u, a, b, Z=Ztilt)
             problem = NonlinearVariationalProblem(F, u, bcs=bcs)
@@ -317,35 +324,44 @@ for i in range(args.refine + 1):
     s = Function(V, name="s = surface elevation").interpolate(b + H)
 
     # report numerical errors if exact solution known
-    if args.prob == "dome":
-        sdiff = Function(V).interpolate(s - dome_exact(x))
-        sdiff.rename("sdiff = s - s_exact")
-        with sdiff.dat.vec_ro as v:
-            err_inf = abs(v).max()[1]
-        err_l2 = norm(sdiff / L)
-        err_av = norm(sdiff, "l1") / L ** 2
-        print("  |s-s_exact|_inf = %.3f m,  |..|_2 = %.3f m,  |..|_av = %.3f m" % (err_inf, err_l2, err_av))
+    if not args.data and args.prob == "dome":
+        Hdiff = Function(V).interpolate(H - dome_exact(x))
+        Hdiff.rename("Hdiff = H - Hexact")
+        with Hdiff.dat.vec_ro as v:
+            Herr_inf = abs(v).max()[1]
+        Herr_inf /= domeH0
+        # generate uexact in better space from UFL returned by dome_exact()
+        CG2 = FunctionSpace(mesh, "CG", 2)
+        uexact = Function(CG2).interpolate(dome_exact(x)**(1.0/omega))
+        uexact.rename("uexact")
+        uerr_H1 = errornorm(uexact, u, norm_type="H1") / norm(uexact, norm_type="H1")
+        pprint(f"  |u-uexact|_H1 = {uerr_H1:.3e} relative, |H-Hexact|_inf = {Herr_inf:.3e} relative")
+        if args.csv:
+            print(f"{i:d},{ne:d},{hmin:.2f},{uerr_H1:.3e},{Herr_inf:.3e}", file=csvfile)
 
     # report glaciated area and inactive set agreement using Jaccard index
     ei = amr._eleminactive(u, lb)
     area = assemble(ei * dx)
-    print(f"  glaciated area {area / 1000.0**4:.4f} million km^2", end="")
+    pprint(f"  glaciated area {area / 1000.0**4:.4f} million km^2", end="")
     if i > 0 and i >= args.uniform:
         jac = amr.jaccard(ei, oldei, submesh=True)
-        print(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
+        pprint(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
     else:
-        print("")
+        pprint("")
     oldei = ei
+
+if args.csv:
+    csvfile.close()
 
 # save results from final mesh
 if args.opvd:
     CU = ((n + 2) / (n + 1)) * Gamma
-    U_ufl = CU * H ** p * inner(grad(s), grad(s)) ** ((p - 2) / 2) * grad(s)
-    U = Function(VectorFunctionSpace(mesh, "CG", degree=2))
-    U.project(secpera * U_ufl)  # smoother than .interpolate()
-    U.rename("U = surface velocity (m/a)")
+    Us_ufl = CU * H ** p * inner(grad(s), grad(s)) ** ((p - 2) / 2) * grad(s)
+    Us = Function(VectorFunctionSpace(mesh, "CG", degree=2))
+    Us.project(secpera * Us_ufl)  # smoother than .interpolate()
+    Us.rename("Us = surface velocity (m/a)")
     q = Function(FunctionSpace(mesh, "BDM", 1))
-    q.interpolate(U * H)
+    q.interpolate(Us * H)
     q.rename("q = UH = *post-computed* ice flux")
     Gs = Function(VectorFunctionSpace(mesh, "DG", degree=0))
     Gs.interpolate(grad(s))
@@ -353,11 +369,11 @@ if args.opvd:
     rank = Function(FunctionSpace(mesh, "DG", 0))
     rank.dat.data[:] = mesh.comm.rank
     rank.rename("rank")
-    print("writing to %s ..." % args.opvd)
+    pprint("writing to %s ..." % args.opvd)
     if args.prob == "dome":
-        VTKFile(args.opvd).write(a, u, s, H, U, q, Gs, sexact, sdiff, rank)
+        VTKFile(args.opvd).write(u, H, Us, q, a, Gs, Hdiff, rank)
     else:
         Gb = Function(VectorFunctionSpace(mesh, "DG", degree=0))
         Gb.interpolate(grad(b))
         Gb.rename("Gb = grad(b)")
-        VTKFile(args.opvd).write(a, u, s, H, U, q, b, Gb, Gs, rank)
+        VTKFile(args.opvd).write(u, H, s, Us, q, a, b, Gb, Gs, rank)
