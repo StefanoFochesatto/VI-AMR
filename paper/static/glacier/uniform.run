@@ -1,59 +1,59 @@
-(firedrake) ~/repos/VI-AMR/examples/glacier[main*]$ tmpg -n 12 python3 steady.py -newton -m 5 -refine 8 -uniform 8 -csv uniform.csv
+(firedrake) ~/repos/VI-AMR/examples/glacier[main]$ tmpg -n 12 python3 steady.py -newton -m 5 -refine 8 -uniform 8 -csv uniform.csv
 generating synthetic 5 x 5 initial mesh for problem dome ...
 solving problem dome on mesh level 0:
-  current mesh: 61 vertices, 100 elements, h in [359999.99577,360000.00379]
+  current mesh: 61 vertices, 100 elements, h in [360.000,360.000] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 68
-  |u-uexact|_H1 = 1.175e-01 relative, |H-Hexact|_inf = 2.305e-01 relative
+  |u-uexact|_H1 = 1.175e-01 rel, |H-Hexact|_inf = 2.305e-01 rel, |dr|_inf = 167.824 km
   glaciated area 2.0736 million km^2
 refining uniformly ...
 solving problem dome on mesh level 1:
-  current mesh: 221 vertices, 400 elements, h in [179999.99576,180000.00586]
+  current mesh: 221 vertices, 400 elements, h in [180.000,180.000] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 18
-  |u-uexact|_H1 = 4.395e-02 relative, |H-Hexact|_inf = 2.305e-01 relative
+  |u-uexact|_H1 = 4.395e-02 rel, |H-Hexact|_inf = 2.305e-01 rel, |dr|_inf = 103.815 km
   glaciated area 1.9440 million km^2
 refining uniformly ...
 solving problem dome on mesh level 2:
-  current mesh: 841 vertices, 1600 elements, h in [89999.99521,90000.00652]
+  current mesh: 841 vertices, 1600 elements, h in [90.000,90.000] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 14
-  |u-uexact|_H1 = 1.304e-02 relative, |H-Hexact|_inf = 1.186e-01 relative
+  |u-uexact|_H1 = 1.304e-02 rel, |H-Hexact|_inf = 1.186e-01 rel, |dr|_inf = 64.985 km
   glaciated area 1.8711 million km^2
 refining uniformly ...
 solving problem dome on mesh level 3:
-  current mesh: 3281 vertices, 6400 elements, h in [44999.99808,45000.00326]
+  current mesh: 3281 vertices, 6400 elements, h in [45.000,45.000] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 10
-  |u-uexact|_H1 = 5.605e-03 relative, |H-Hexact|_inf = 1.186e-01 relative
+  |u-uexact|_H1 = 5.605e-03 rel, |H-Hexact|_inf = 1.186e-01 rel, |dr|_inf = 32.664 km
   glaciated area 1.8083 million km^2
 refining uniformly ...
 solving problem dome on mesh level 4:
-  current mesh: 12961 vertices, 25600 elements, h in [22499.99657,22500.00404]
+  current mesh: 12961 vertices, 25600 elements, h in [22.500,22.500] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 9
-  |u-uexact|_H1 = 1.230e-03 relative, |H-Hexact|_inf = 8.759e-02 relative
+  |u-uexact|_H1 = 1.230e-03 rel, |H-Hexact|_inf = 8.759e-02 rel, |dr|_inf = 17.972 km
   glaciated area 1.7906 million km^2
 refining uniformly ...
 solving problem dome on mesh level 5:
-  current mesh: 51521 vertices, 102400 elements, h in [11249.99916,11250.00097]
+  current mesh: 51521 vertices, 102400 elements, h in [11.250,11.250] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 8
-  |u-uexact|_H1 = 4.383e-04 relative, |H-Hexact|_inf = 6.344e-02 relative
+  |u-uexact|_H1 = 4.383e-04 rel, |H-Hexact|_inf = 6.344e-02 rel, |dr|_inf = 8.771 km
   glaciated area 1.7773 million km^2
 refining uniformly ...
 solving problem dome on mesh level 6:
-  current mesh: 205441 vertices, 409600 elements, h in [5624.99842,5625.00225]
+  current mesh: 205441 vertices, 409600 elements, h in [5.625,5.625] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 7
-  |u-uexact|_H1 = 1.239e-04 relative, |H-Hexact|_inf = 4.608e-02 relative
+  |u-uexact|_H1 = 1.239e-04 rel, |H-Hexact|_inf = 4.608e-02 rel, |dr|_inf = 4.505 km
   glaciated area 1.7734 million km^2
 refining uniformly ...
 solving problem dome on mesh level 7:
-  current mesh: 820481 vertices, 1638400 elements, h in [2812.49509,2812.50774]
+  current mesh: 820481 vertices, 1638400 elements, h in [2.812,2.813] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 7
-  |u-uexact|_H1 = 2.302e-05 relative, |H-Hexact|_inf = 3.245e-02 relative
+  |u-uexact|_H1 = 2.302e-05 rel, |H-Hexact|_inf = 3.245e-02 rel, |dr|_inf = 2.285 km
   glaciated area 1.7700 million km^2
 refining uniformly ...
 solving problem dome on mesh level 8:
-  current mesh: 3279361 vertices, 6553600 elements, h in [1406.24757,1406.25409]
+  current mesh: 3279361 vertices, 6553600 elements, h in [1.406,1.406] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 6
-  |u-uexact|_H1 = 7.285e-06 relative, |H-Hexact|_inf = 2.278e-02 relative
+  |u-uexact|_H1 = 7.285e-06 rel, |H-Hexact|_inf = 2.278e-02 rel, |dr|_inf = 1.130 km
   glaciated area 1.7686 million km^2; levels 7,8 Jaccard agreement 99.88%
 
-real	5m1.846s
-user	58m45.440s
-sys	1m29.945s
+real	5m6.439s
+user	59m38.057s
+sys	1m32.420s

@@ -1,102 +1,102 @@
 (firedrake) ~/repos/VI-AMR/examples/glacier[main*]$ tmpg -n 12 python3 steady.py -newton -m 5 -refine 13 -vcd -csv vcd.csv
 generating synthetic 5 x 5 initial mesh for problem dome ...
 solving problem dome on mesh level 0:
-  current mesh: 61 vertices, 100 elements, h in [359999.99577,360000.00379]
+  current mesh: 61 vertices, 100 elements, h in [360.000,360.000] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 68
-  |u-uexact|_H1 = 1.175e-01 relative, |H-Hexact|_inf = 2.305e-01 relative
+  |u-uexact|_H1 = 1.175e-01 rel, |H-Hexact|_inf = 2.305e-01 rel, |dr|_inf = 167.824 km
   glaciated area 2.0736 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   92.00% all elements free-boundary marked, 50.00% inactive elements marked
 solving problem dome on mesh level 1:
-  current mesh: 217 vertices, 392 elements, h in [165520.54196,292536.94358]
+  current mesh: 217 vertices, 392 elements, h in [165.521,292.537] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 18
-  |u-uexact|_H1 = 4.395e-02 relative, |H-Hexact|_inf = 2.305e-01 relative
-  glaciated area 1.9440 million km^2; levels 0,1 Jaccard agreement 93.75%
+  |u-uexact|_H1 = 4.395e-02 rel, |H-Hexact|_inf = 2.305e-01 rel, |dr|_inf = 103.815 km
+  glaciated area 1.9440 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   52.04% all elements free-boundary marked, 20.00% inactive elements marked
 solving problem dome on mesh level 2:
-  current mesh: 629 vertices, 1200 elements, h in [73776.39962,293513.69078]
+  current mesh: 629 vertices, 1200 elements, h in [73.776,293.514] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 13
-  |u-uexact|_H1 = 1.751e-02 relative, |H-Hexact|_inf = 1.186e-01 relative
-  glaciated area 1.8711 million km^2; levels 1,2 Jaccard agreement 95.44%
+  |u-uexact|_H1 = 1.751e-02 rel, |H-Hexact|_inf = 1.186e-01 rel, |dr|_inf = 64.985 km
+  glaciated area 1.8711 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   32.67% all elements free-boundary marked, 15.08% inactive elements marked
 solving problem dome on mesh level 3:
-  current mesh: 1485 vertices, 2912 elements, h in [36960.79359,293295.18474]
+  current mesh: 1485 vertices, 2912 elements, h in [36.961,293.295] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 9
-  |u-uexact|_H1 = 1.034e-02 relative, |H-Hexact|_inf = 1.186e-01 relative
-  glaciated area 1.8083 million km^2; levels 2,3 Jaccard agreement 96.65%
+  |u-uexact|_H1 = 1.034e-02 rel, |H-Hexact|_inf = 1.186e-01 rel, |dr|_inf = 32.664 km
+  glaciated area 1.8083 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   28.57% all elements free-boundary marked, 16.84% inactive elements marked
 solving problem dome on mesh level 4:
-  current mesh: 3313 vertices, 6568 elements, h in [16652.30635,293303.39059]
+  current mesh: 3313 vertices, 6568 elements, h in [16.652,293.303] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 9
-  |u-uexact|_H1 = 4.990e-03 relative, |H-Hexact|_inf = 8.931e-02 relative
-  glaciated area 1.7866 million km^2; levels 3,4 Jaccard agreement 97.74%
+  |u-uexact|_H1 = 4.990e-03 rel, |H-Hexact|_inf = 8.931e-02 rel, |dr|_inf = 16.322 km
+  glaciated area 1.7866 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   25.21% all elements free-boundary marked, 17.58% inactive elements marked
 solving problem dome on mesh level 5:
-  current mesh: 7589 vertices, 15120 elements, h in [8094.90497,293303.27791]
+  current mesh: 7589 vertices, 15120 elements, h in [8.095,293.303] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 7
-  |u-uexact|_H1 = 1.946e-03 relative, |H-Hexact|_inf = 6.344e-02 relative
-  glaciated area 1.7763 million km^2; levels 4,5 Jaccard agreement 99.14%
+  |u-uexact|_H1 = 1.946e-03 rel, |H-Hexact|_inf = 6.344e-02 rel, |dr|_inf = 8.061 km
+  glaciated area 1.7763 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   22.31% all elements free-boundary marked, 9.13% inactive elements marked
 solving problem dome on mesh level 6:
-  current mesh: 15630 vertices, 31202 elements, h in [4076.05581,293303.27901]
+  current mesh: 15630 vertices, 31202 elements, h in [4.076,293.303] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 6
-  |u-uexact|_H1 = 1.098e-03 relative, |H-Hexact|_inf = 5.299e-02 relative
-  glaciated area 1.7722 million km^2; levels 5,6 Jaccard agreement 99.48%
+  |u-uexact|_H1 = 1.098e-03 rel, |H-Hexact|_inf = 5.299e-02 rel, |dr|_inf = 4.222 km
+  glaciated area 1.7722 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   21.39% all elements free-boundary marked, 12.28% inactive elements marked
 solving problem dome on mesh level 7:
-  current mesh: 33566 vertices, 67074 elements, h in [1932.62510,293303.23604]
+  current mesh: 33566 vertices, 67074 elements, h in [1.933,293.303] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 8
-  |u-uexact|_H1 = 4.284e-04 relative, |H-Hexact|_inf = 3.310e-02 relative
-  glaciated area 1.7697 million km^2; levels 6,7 Jaccard agreement 99.74%
+  |u-uexact|_H1 = 4.284e-04 rel, |H-Hexact|_inf = 3.310e-02 rel, |dr|_inf = 2.158 km
+  glaciated area 1.7697 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   20.06% all elements free-boundary marked, 7.59% inactive elements marked
 solving problem dome on mesh level 8:
-  current mesh: 68298 vertices, 136538 elements, h in [970.71193,293299.48614]
+  current mesh: 68298 vertices, 136538 elements, h in [0.971,293.299] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 6
-  |u-uexact|_H1 = 2.396e-04 relative, |H-Hexact|_inf = 2.466e-02 relative
-  glaciated area 1.7684 million km^2; levels 7,8 Jaccard agreement 99.88%
+  |u-uexact|_H1 = 2.396e-04 rel, |H-Hexact|_inf = 2.466e-02 rel, |dr|_inf = 1.099 km
+  glaciated area 1.7684 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   19.79% all elements free-boundary marked, 9.53% inactive elements marked
 solving problem dome on mesh level 9:
-  current mesh: 140629 vertices, 281200 elements, h in [465.35568,293299.48753]
+  current mesh: 140629 vertices, 281200 elements, h in [0.465,293.299] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 9
-  |u-uexact|_H1 = 1.060e-04 relative, |H-Hexact|_inf = 2.107e-02 relative
-  glaciated area 1.7677 million km^2; levels 8,9 Jaccard agreement 99.94%
+  |u-uexact|_H1 = 1.060e-04 rel, |H-Hexact|_inf = 2.107e-02 rel, |dr|_inf = 0.542 km
+  glaciated area 1.7677 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   19.26% all elements free-boundary marked, 9.00% inactive elements marked
 solving problem dome on mesh level 10:
-  current mesh: 285292 vertices, 570526 elements, h in [239.19957,293299.49853]
+  current mesh: 285292 vertices, 570526 elements, h in [0.239,293.299] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 9
-  |u-uexact|_H1 = 5.614e-05 relative, |H-Hexact|_inf = 1.392e-02 relative
-  glaciated area 1.7675 million km^2; levels 9,10 Jaccard agreement 99.97%
+  |u-uexact|_H1 = 5.614e-05 rel, |H-Hexact|_inf = 1.392e-02 rel, |dr|_inf = 0.277 km
+  glaciated area 1.7675 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   18.94% all elements free-boundary marked, 9.99% inactive elements marked
 solving problem dome on mesh level 11:
-  current mesh: 579262 vertices, 1158466 elements, h in [116.98709,293299.49905]
+  current mesh: 579262 vertices, 1158466 elements, h in [0.117,293.299] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 13
-  |u-uexact|_H1 = 2.443e-05 relative, |H-Hexact|_inf = 1.002e-02 relative
-  glaciated area 1.7673 million km^2; levels 10,11 Jaccard agreement 99.98%
+  |u-uexact|_H1 = 2.443e-05 rel, |H-Hexact|_inf = 1.002e-02 rel, |dr|_inf = 0.136 km
+  glaciated area 1.7673 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   18.68% all elements free-boundary marked, 8.60% inactive elements marked
 solving problem dome on mesh level 12:
-  current mesh: 1151789 vertices, 2303520 elements, h in [58.40282,293299.49839]
+  current mesh: 1151789 vertices, 2303520 elements, h in [0.058,293.299] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 10
-  |u-uexact|_H1 = 1.365e-05 relative, |H-Hexact|_inf = 7.550e-03 relative
-  glaciated area 1.7672 million km^2; levels 11,12 Jaccard agreement 99.99%
+  |u-uexact|_H1 = 1.365e-05 rel, |H-Hexact|_inf = 7.550e-03 rel, |dr|_inf = 0.070 km
+  glaciated area 1.7672 million km^2
 refining free boundary (VCD) and by gradient recovery in inactive ...
   18.80% all elements free-boundary marked, 10.22% inactive elements marked
 solving problem dome on mesh level 13:
-  current mesh: 2327540 vertices, 4655022 elements, h in [29.67193,293299.49872]
+  current mesh: 2327540 vertices, 4655022 elements, h in [0.030,293.299] km
   Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 11
-  |u-uexact|_H1 = 6.104e-06 relative, |H-Hexact|_inf = 5.446e-03 relative
-  glaciated area 1.7672 million km^2; levels 12,13 Jaccard agreement 100.00%
+  |u-uexact|_H1 = 6.104e-06 rel, |H-Hexact|_inf = 5.446e-03 rel, |dr|_inf = 0.034 km
+  glaciated area 1.7672 million km^2
 
-real	12m15.482s
-user	144m57.092s
-sys	2m1.223s
+real	10m22.454s
+user	123m3.633s
+sys	1m15.178s
