@@ -130,11 +130,12 @@ import petsc4py
 petsc4py.init(passthroughoptions)
 from firedrake import *
 from firedrake.petsc import PETSc
+from pyop2.mpi import MPI
 
 pprint = PETSc.Sys.Print  # parallel print
 from viamr import VIAMR
 
-from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps, domeH0
+from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps, domeL, domeH0
 
 assert args.m >= 1, "at least one cell in mesh"
 assert args.refine >= 0, "cannot refine a negative number of times"
@@ -144,7 +145,7 @@ if args.csv:
     if not args.prob == "dome":
         raise ValueError("option -csv only valid for -prob dome")
     csvfile = open(args.csv, 'w')
-    print("REFINE,NE,HMIN,UERRH1,HERRINF", file=csvfile)
+    print("REFINE,NE,HMIN,UERRH1,HERRINF,DRMAX", file=csvfile)
 
 # read data for bed topography
 if args.data:
@@ -218,6 +219,35 @@ def weakform(u, a, b, Z=None):
     return Gamma * omega ** (p - 1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
 
 
+def glaciermeshreport(amr, mesh, indent=2):
+    nv, ne, hmin, hmax = amr.meshsizes(mesh)
+    hmin /= 1000.0
+    hmax /= 1000.0
+    indentstr = indent * " "
+    PETSc.Sys.Print(
+        f"{indentstr}current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}] km"
+    )
+    return None
+
+def radiuserrorsdome(amr, uh, psih):
+    """For -prob "dome", compute the range of free-boundary radius
+    errors from a solution uh, psih; FIXME the later is actually zero.
+    The exact free boundary is a circle of radius domeL with center
+    (L/2,L/2).  Returns the the minimum and maximum radius errors."""
+    mesh = uh.function_space().mesh()
+    mymin, mymax = PETSc.INFINITY, PETSc.NINFINITY
+    vfb, _ = amr.freeboundarygraph(uh, psih)  # get vertex coordinates
+    vfb = np.array(vfb)
+    if len(vfb) > 0:
+        x, y = vfb[:,0], vfb[:,1]
+        drfb = np.abs(np.sqrt((x - L/2)**2 + (y - L/2)**2) - domeL)
+        mymin = np.min(drfb)
+        mymax = np.max(drfb)
+    drmin = float(mesh.comm.allreduce(mymin, op=MPI.MIN))
+    drmax = float(mesh.comm.allreduce(mymax, op=MPI.MAX))
+    return drmin, drmax
+
+
 # outer mesh refinement loop
 amr = VIAMR(debug=True)
 for i in range(args.refine + 1):
@@ -252,7 +282,7 @@ for i in range(args.refine + 1):
     # describe current mesh
     nv, ne, hmin, hmax = amr.meshsizes(mesh)
     pprint(f"solving problem {args.prob} on mesh level {i}:")
-    amr.meshreport(mesh)
+    glaciermeshreport(amr, mesh)
 
     # space for most functions
     V = FunctionSpace(mesh, "CG", 1)
@@ -337,9 +367,10 @@ for i in range(args.refine + 1):
         uexact = Function(CG2).interpolate(dome_exact(x)**(1.0/omega))
         uexact.rename("uexact")
         uerr_H1 = errornorm(uexact, u, norm_type="H1") / norm(uexact, norm_type="H1")
-        pprint(f"  |u-uexact|_H1 = {uerr_H1:.3e} relative, |H-Hexact|_inf = {Herr_inf:.3e} relative")
+        _, drmax = radiuserrorsdome(amr, u, lb)
+        pprint(f"  |u-uexact|_H1 = {uerr_H1:.3e} rel, |H-Hexact|_inf = {Herr_inf:.3e} rel, |dr|_inf = {drmax/1000.0:.3f} km")
         if args.csv:
-            print(f"{i:d},{ne:d},{hmin:.2f},{uerr_H1:.3e},{Herr_inf:.3e}", file=csvfile)
+            print(f"{i:d},{ne:d},{hmin:.2f},{uerr_H1:.3e},{Herr_inf:.3e},{drmax:.3f}", file=csvfile)
 
     # report glaciated area and inactive set agreement using Jaccard index
     ei = amr._eleminactive(u, lb)
