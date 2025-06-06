@@ -570,12 +570,12 @@ Our goals are to generate meshes with high resolution along an accurately-estima
 % $ paraview result_cap_11.pvd
 \begin{figure}[ht]
 \centering
-\mbox{\includegraphics[width=0.46\textwidth]{static/glacierthickness.png} \qquad \includegraphics[width=0.46\textwidth]{static/glacierdetail.png}}
+\mbox{\includegraphics[width=0.46\textwidth]{static/glacier/thickness.png} \qquad \includegraphics[width=0.46\textwidth]{static/glacier/detail.png}}
 \caption{Left:  The glaciated region (grayscale thickness in meters) with a mesh (red) found by applying UDO and a gradient-recovery indicator in the inactive set.  Right:  A detail of the glacier margin at higher refinement.  The surface elevation gradient $|\grad s|$ (grayscale magnitude) is discontinuous at the margin, while $|\grad u|$ is continuous.}
 \label{fig:glacier}
 \end{figure}
 
-The dome problem was solved with 13 levels of refinement from an initial uniform mesh with $h_0=360$ kilometer elements, to a refined mesh with a final margin resolution of $h_{13}=31$ meters.  Figure \ref{fig:domeresults} shows error norms $\|u-u_h\|_{\cX}/\|u\|_{\cX}$ and $\|H-H_h\|_{L^\infty}/\|H\|_{L^\infty}$, versus number of elements.
+The dome problem was solved with 13 levels of refinement from an initial uniform mesh with $h_0=360$ kilometer elements, to a refined mesh with a final margin resolution of $h_{13}\approx 30$ meters.  Figure \ref{fig:domeresults} shows error norms $\|u-u_h\|_{\cX}/\|u\|_{\cX}$ and $\|H-H_h\|_{L^\infty}/\|H\|_{L^\infty}$, versus number of elements.
 %, for UDO$+$GR, VCD$+$GR, and uniform refinements.
 
 % UNIFORM
