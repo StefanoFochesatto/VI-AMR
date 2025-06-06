@@ -68,6 +68,12 @@ parser.add_argument(
     help="number of Picard frozen-tilt iterations [default=8]",
 )
 parser.add_argument(
+    "-jaccard",
+    action="store_true",
+    default=False,
+    help="compare successive active sets by Jaccard agreement",
+)
+parser.add_argument(
     "-m",
     type=int,
     default=10,
@@ -376,7 +382,7 @@ for i in range(args.refine + 1):
     ei = amr._eleminactive(u, lb)
     area = assemble(ei * dx)
     pprint(f"  glaciated area {area / 1000.0**4:.4f} million km^2", end="")
-    if i > 0 and i >= args.uniform:
+    if args.jaccard and i > 0:
         jac = amr.jaccard(ei, oldei, submesh=True)
         pprint(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
     else:
