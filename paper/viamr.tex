@@ -76,7 +76,7 @@
 \maketitle
 
 \begin{abstract}
-Free-boundary problems posed as variational inequalities, including obstacle problems, appear in many scientific and engineering applications.  In the finite element solution of these problems, the geometrical error in locating the unknown free boundary often dominates the overall numerical error.  In this paper we propose, and implement using the Firedrake finite element library, parallel adaptive mesh refinement strategies which enhance mesh resolution around the free boundary.  These methods mark elements for refinement based on a computed solution.  We consider three methods: (i) an unstructured dilation operator which computes discrete adjacency to the computed free-boundary; (ii) a variable-coefficient diffusion method which thresholds a diffused indicator function for the computed active set; and (iii) a metric-based method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the same diffused indicator as in method (ii).  Hybrid strategies, which add classical \emph{a posteriori} error estimators within the computed inactive sets, are then used to  attain convergence.  These methods are evaluated by norm error, or free-boundary localization error (Jaccard or Hausdorff distances), versus mesh complexity and run-time.  Applications include classical Laplacian obstacle problems and a shallow ice flow problem for predicting the glaciated region in a mountain range.
+Free-boundary problems posed as variational inequalities, including obstacle problems, appear in many scientific and engineering applications.  In the finite element solution of these problems, the geometrical error in locating the unknown free boundary often dominates the overall numerical error.  In this paper we propose, and implement using the Firedrake finite element library, parallel adaptive mesh refinement strategies which enhance mesh resolution around the free boundary.  These methods mark elements for refinement based on a computed solution.  We consider three methods: (i) an unstructured dilation operator which computes discrete adjacency to the computed free-boundary; (ii) a variable-coefficient diffusion method which thresholds a diffused indicator function for the computed active set; and (iii) a metric-based method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the same diffused indicator as in method (ii).  The addition of classical \emph{a posteriori} error estimators within the computed inactive sets is necessary to attain convergence.  These methods are evaluated by norm error and free-boundary localization error, versus mesh complexity and run-time.  Applications include classical Laplacian obstacle problems and a shallow ice flow problem for predicting glaciation of a land surface.
 \end{abstract}
 
 %\begin{keywords}
@@ -221,6 +221,7 @@ DWR       & dual-weighted residual
 {\small
 \begin{tabular}{ll} \\
 FE        & finite element \\
+GR        & gradient recovery \\
 PDE       & partial differential equation \\
 SBR       & skeleton-based refinement \\
 UDO$^*$   & unstructured dilation operator \\
@@ -360,9 +361,11 @@ This is unrelated to the FE solution $u_h$.  If $v_h < \psi$ is locally possible
 
 \section{\emph{A posteriori} error estimation in inactive and active sets} \label{sec:aposteriori}
 
-For $u\in\cX$ solving VI \eqref{eq:vi}, a PDE holds in the inactive set $I_u$, the so-called \emph{interior condition} \cite{KinderlehrerStampacchia1980}.  In Section \ref{sec:results} we will demonstrate strategies which primarily do (\emph{a posteriori}) refinement in the geometric vicinity of the free boundary, but we also exploit \emph{a posteriori} error indicators for the interior condition PDE.  We consider two indicators, the first of which is well-defined independent of that PDE.  It is based on \emph{gradient recovery} \cite[Chapter 4]{AinsworthOden2000}, and it is used in Section \ref{sec:app}.
+For $u\in\cX$ solving VI \eqref{eq:vi}, a PDE holds in the inactive set $I_u$, the so-called \emph{interior condition} \cite{KinderlehrerStampacchia1980}.  In Section \ref{sec:results} we will demonstrate strategies which primarily do (\emph{a posteriori}) refinement in the geometric vicinity of the free boundary, but we also exploit \emph{a posteriori} error indicators for the interior condition PDE.
 
-\begin{example}  \label{example:gradrecovery}  Suppose $\cX_h$ is a continuous, piecewise-polynomial FE space, of degree $p$, and suppose $u_h\in\cX_h$.  Generally $\grad u_h$ is discontinuous, but it is well-defined on each element.  Let $\cY_h$ be the (scalar) discontinous space with polynomial degree $p-1$, so $\grad u_h \in \cY_h^d$.  Suppose there is a linear operator $G : \cY_h^d \to \cX_h^d$, which we call \emph{gradient recovery}, which is designed so that $G(u_h)\approx \grad u$ in $\cX^d$ in some sense, assuming of course that $u_h\approx u$ in $\cX$.  Then the error indicator $\eta_K\ge 0$ for this gradient recovery method, over an element $K \in\cT_h$, is
+We consider two indicators, the first of which is well-defined independent of that PDE.  It is based on \emph{gradient recovery} (GR) \cite[Chapter 4]{AinsworthOden2000}, and it is used in Section \ref{sec:app}.
+
+\begin{example}  \label{example:gradrecovery}  Suppose $\cX_h$ is a continuous, piecewise-polynomial FE space, of degree $p$, and suppose $u_h\in\cX_h$.  Generally $\grad u_h$ is discontinuous, but it is well-defined on each element.  Let $\cY_h$ be the (scalar) discontinous space with polynomial degree $p-1$, so $\grad u_h \in \cY_h^d$.  Suppose there is a linear operator $G : \cY_h^d \to \cX_h^d$, which we call \emph{gradient recovery}, which is designed so that $G(u_h)\approx \grad u$ in $\cX^d$ in some sense, assuming of course that $u_h\approx u$ in $\cX$.  Then the error indicator $\eta_K\ge 0$ for this GR method, over an element $K \in\cT_h$, is
 \begin{equation} \label{eq:gradrecoveryindicator}
 \eta_K^2 = \int_K \left|G(u_h) - \grad u_h\right|^2.
 \end{equation}
@@ -370,7 +373,7 @@ For $u\in\cX$ solving VI \eqref{eq:vi}, a PDE holds in the inactive set $I_u$, t
 
 Generally one applies the indicator to a solution $u_h \in \cK_h$ of \eqref{eq:fe:vi}, but observe that formula \eqref{eq:gradrecoveryindicator} is well-defined for any $u_h \in \cX_h$.  Let $\eta^2 = \sum_{K\in\cT_h} \eta_K^2$.  For certain gradient recovery methods $G$ it can be shown that, at least for the Poisson equation, $\eta \sim |u-u_h|_{H^1}$ (energy norm) asymptotically as $h\to 0$ \cite[Theorem 4.4]{AinsworthOden2000}.
 
-In Sections \ref{sec:results} and \ref{sec:app} our gradient recovery operation will simply be orthogonal projection in $L^2$.  That is, $w = G(u_h) \in \cX_h^d$ is the minimizer of
+In Sections \ref{sec:results} and \ref{sec:app} our GR operation will simply use orthogonal projection in $L^2$.  That is, $w = G(u_h) \in \cX_h^d$ is the minimizer of
 \begin{equation} \label{eq:gradrecoveryprojection}
 J(w) = \int_\Omega |w - \grad u_h|^2\,dx.
 \end{equation}
@@ -571,21 +574,30 @@ Our goals are to generate meshes with high resolution along an accurately-estima
 \begin{figure}[ht]
 \centering
 \mbox{\includegraphics[width=0.46\textwidth]{static/glacier/thickness.png} \qquad \includegraphics[width=0.46\textwidth]{static/glacier/detail.png}}
-\caption{Left:  The glaciated region (grayscale thickness in meters) with a mesh (red) found by applying UDO and a gradient-recovery indicator in the inactive set.  Right:  A detail of the glacier margin at higher refinement.  The surface elevation gradient $|\grad s|$ (grayscale magnitude) is discontinuous at the margin, while $|\grad u|$ is continuous.}
+\caption{Left:  Ice thickness (grayscale; meters) with a mesh (red) found by applying UDO and a gradient-recovery indicator in the inactive set.  Right:  A detail of the glacier margin at higher refinement.  Though $|\grad u|$ is continuous, the surface elevation gradient $|\grad s|$ (grayscale magnitude) is discontinuous at the margin.}
 \label{fig:glacier}
 \end{figure}
 
-The dome problem was solved with 13 levels of refinement from an initial uniform mesh with $h_0=360$ kilometer elements, to a refined mesh with a final margin resolution of $h_{13}\approx 30$ meters.  Figure \ref{fig:domeresults} shows error norms $\|u-u_h\|_{\cX}/\|u\|_{\cX}$ and $\|H-H_h\|_{L^\infty}/\|H\|_{L^\infty}$, versus number of elements.
-%, for UDO$+$GR, VCD$+$GR, and uniform refinements.
+% FIXME consider showing $\|H-H_h\|_{L^\infty}$ in meters instead of relative
+
+The dome problem was solved with 13 levels of refinement from an initial, uniform $h_0=360$ kilometer mesh to a final mesh with margin resolution of $h_{13}\approx 30$ meters.  Figure \ref{fig:domenormresults} shows $\cX=H^1$ errors in the solution ($\|u-u_h\|_{H^1}/\|u\|_{H^1}$) and $L^\infty$ errors in the corresponding ice thickness ($\|H-H_h\|_{L^\infty}/\|H\|_{L^\infty}$), versus number of elements.  Note that in these runs solver time was observed to closely track number of elements, so showing run-times would add no information.
 
 % UNIFORM:  tmpg -n 12 python3 steady.py -newton -m 5 -refine 8 -uniform 8 -csv uniform.csv
 % UDO+GR:   tmpg -n 12 python3 steady.py -newton -m 5 -refine 13 -csv udo.csv
 % VCD+GR:   tmpg -n 12 python3 steady.py -newton -m 5 -refine 13 -vcd -csv vcd.csv
 \begin{figure}[ht]
+\noindent\mbox{\includegraphics[width=0.49\textwidth]{genfigs/uerrh1.png} \, \includegraphics[width=0.49\textwidth]{genfigs/herrinf.png}}
+\caption{Left: Per element, $H^1$ norm errors in $u$ are comparable for AMR methods and uniform refinement.  Right: Because of low regularity at the ice margin, maximum ice thickness error is large, but AMR is effective in reducing it.}
+\label{fig:domenormresults}
+\end{figure}
+
+Figure \ref{fig:domeradiusresults} addresses free-boundary localization.  We compute the maximum distance between free-boundary nodes and the exact, circular margin, which reveals that the AMR methods locate the free boundary much more efficiently than uniform refinement.  Given the large ice thickness gradients at the free boundary, this also explains why $\|H\|_{L^\infty}$ errors are more responsive to AMR than $\|u\|_{H^1}$ errors (Figure \ref{fig:domenormresults}).
+
+\begin{figure}[ht]
 \centering
-\mbox{FIXME}
-\caption{Left:  FIXME  Right:  FIXME}
-\label{fig:domeresults}
+\includegraphics[width=0.51\textwidth]{genfigs/drmax.png}
+\caption{AMR generates accurate free boundary locations.  At $10^7$ elements the glacier margin is located within tens of meters, versus a kilometer for uniform refinement.}
+\label{fig:domeradiusresults}
 \end{figure}
 
 
