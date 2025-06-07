@@ -49,18 +49,19 @@ for i in MeshSizes:
     u_exact_ufl = conditional(
         le(x, a), leftline, conditional(ge(x, b), rightline, psi_ufl)
     )
-    uexact = Function(V).interpolate(u_exact_ufl)
+    CG3 = FunctionSpace(mesh, "CG", 3)
+    uexact = Function(CG3).interpolate(u_exact_ufl)
 
     gap = np.min(np.abs(mesh.topology_dm.getCoordinates().array - b))
     errors["gap"].append(gap)
-    errors["H1"].append(errornorm(u, uexact, norm_type="H1"))
-    errors["L2"].append(errornorm(u, uexact, norm_type="L2"))
+    errors["H1"].append(errornorm(uexact, u, norm_type="H1"))
+    errors["L2"].append(errornorm(uexact, u, norm_type="L2"))
 
 h1label = "$=\|u-u_h\|_{H^1}$"
 l2label = "$=\|u-u_h\|_{L^2}$"
-plt.loglog(h, errors["gap"], "^", ms=10.0, color="r", mfc="w", label="$=\Delta_h$")
 plt.loglog(h, errors["H1"], "o", ms=10.0, color="k", mfc="w", label=h1label)
 plt.loglog(h, errors["L2"], "s", ms=10.0, color="k", mfc="w", label=l2label)
+plt.loglog(h, errors["gap"], "^", ms=10.0, color="r", mfc="w", label="$=\Delta_h$")
 
 # p_H1 = np.polyfit(np.log(h), np.log(errors["H1"]), 1)
 # h1label = "$=\|u-u_h\|_{H^1} = O(h^{%.2f})$" % p_H1[0]
