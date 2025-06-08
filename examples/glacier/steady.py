@@ -235,23 +235,40 @@ def glaciermeshreport(amr, mesh, indent=2):
     )
     return None
 
-def radiuserrorsdome(amr, uh, psih):
-    """For -prob "dome", compute the range of free-boundary radius
-    errors from a solution uh, psih; FIXME the later is actually zero.
-    The exact free boundary is a circle of radius domeL with center
-    (L/2,L/2).  Returns the the minimum and maximum radius errors."""
-    mesh = uh.function_space().mesh()
-    mymin, mymax = PETSc.INFINITY, PETSc.NINFINITY
-    vfb, _ = amr.freeboundarygraph(uh, psih)  # get vertex coordinates
+
+def normerrorsdome(uh, Hh):
+    """Return relative H^1 norm error in u and L^infty norm error in H.
+    For the first, generate uexact in better space (and UFL from
+    dome_exact()).  For L^infty error in H we merely want the max nodal
+    error, so using V=CG1 is fine."""
+    V = uh.function_space()
+    x = SpatialCoordinate(V.mesh())
+    Hdiff = Function(V).interpolate(Hh - dome_exact(x))
+    Hdiff.rename("Hdiff = H - Hexact")
+    with Hdiff.dat.vec_ro as v:
+        Herr = abs(v).max()[1]
+    CG2 = FunctionSpace(V.mesh(), "CG", 2)
+    uexact = Function(CG2).interpolate(dome_exact(x)**(1.0/omega))
+    uexact.rename("uexact")
+    uerr = errornorm(uexact, u, norm_type="H1") / norm(uexact, norm_type="H1")
+    return uerr, Herr
+
+
+def radiuserrordome(amr, uh):
+    """For -prob "dome", compute the maximum of free-boundary radius
+    errors from a solution uh.  The exact free boundary is a circle
+    of radius domeL with center (L/2,L/2).  Returns the maximum
+    radius error."""
+    V = uh.function_space()
+    vfb, _ = amr.freeboundarygraph(uh, Function(V).interpolate(0.0))
     vfb = np.array(vfb)
+    mymax = PETSc.NINFINITY
     if len(vfb) > 0:
         x, y = vfb[:,0], vfb[:,1]
         drfb = np.abs(np.sqrt((x - L/2)**2 + (y - L/2)**2) - domeL)
-        mymin = np.min(drfb)
         mymax = np.max(drfb)
-    drmin = float(mesh.comm.allreduce(mymin, op=MPI.MIN))
-    drmax = float(mesh.comm.allreduce(mymax, op=MPI.MAX))
-    return drmin, drmax
+    drmax = float(V.mesh().comm.allreduce(mymax, op=MPI.MAX))
+    return drmax
 
 
 # outer mesh refinement loop
@@ -363,20 +380,11 @@ for i in range(args.refine + 1):
 
     # report numerical errors if exact solution known
     if not args.data and args.prob == "dome":
-        Hdiff = Function(V).interpolate(H - dome_exact(x))
-        Hdiff.rename("Hdiff = H - Hexact")
-        with Hdiff.dat.vec_ro as v:
-            Herr_inf = abs(v).max()[1]
-        Herr_inf /= domeH0
-        # generate uexact in better space from UFL returned by dome_exact()
-        CG2 = FunctionSpace(mesh, "CG", 2)
-        uexact = Function(CG2).interpolate(dome_exact(x)**(1.0/omega))
-        uexact.rename("uexact")
-        uerr_H1 = errornorm(uexact, u, norm_type="H1") / norm(uexact, norm_type="H1")
-        _, drmax = radiuserrorsdome(amr, u, lb)
-        pprint(f"  |u-uexact|_H1 = {uerr_H1:.3e} rel, |H-Hexact|_inf = {Herr_inf:.3e} rel, |dr|_inf = {drmax/1000.0:.3f} km")
+        uerr_H1, Herr_inf = normerrorsdome(u, H)
+        drmax = radiuserrordome(amr, u)
+        pprint(f"  |u-uexact|_H1 = {uerr_H1:.3e} rel, |H-Hexact|_inf = {Herr_inf:.3f} m, |dr|_inf = {drmax/1000.0:.3f} km")
         if args.csv:
-            print(f"{i:d},{ne:d},{hmin:.2f},{uerr_H1:.3e},{Herr_inf:.3e},{drmax:.3f}", file=csvfile)
+            print(f"{i:d},{ne:d},{hmin:.2f},{uerr_H1:.3e},{Herr_inf:.3f},{drmax:.3f}", file=csvfile)
 
     # report glaciated area and inactive set agreement using Jaccard index
     ei = amr._eleminactive(u, lb)
