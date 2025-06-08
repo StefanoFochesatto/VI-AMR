@@ -18,7 +18,7 @@ def intvals(method, field):
 
 enorm = ["UERRH1", "HERRINF", "DRMAX"]
 ytitle = [r"$H^1$ error in $u$",
-          r"$L^\infty$ error in $H$",
+          r"$L^\infty$ error in $H$ (meters)",
           "margin location error (meters)"]
 ms0 = 10.0
 fs0 = 14.0
@@ -33,7 +33,7 @@ for j in range(3):
     plt.legend(fontsize=fs0)
     plt.xlim(7.0e1,1.0e7)
     if enorm[j] == "HERRINF":
-        plt.ylim(1.0e-3, 1.0)
+        plt.ylim(10.0, 1000.0)
     elif enorm[j] == "DRMAX":
         plt.ylim(1.0e1, 3.0e5)
     #plt.show()
