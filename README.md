@@ -1,8 +1,10 @@
 # VIAMR
 
-This repository contains algorithms for adaptive mesh refinement for variational inequalities (VIs).  The methods require the constraint set to be defined by a lower-bound inequality, that is, they are for unilateral obstacle problems.  A primary goal is to have targeted refinement near a computed free boundary, and to be able to measure location errors in the free boundary.  Refinement in the inactive set using PDE-type error estimators is also supported.
+This repository contains algorithms for adaptive mesh refinement (AMR) for variational inequalities (VIs).  The methods require the constraint set to be defined by a lower- and upper-bound inequalities.  Primary goals are to have targeted refinement near computed free boundaries, and to be able to measure location errors in free boundaries.  Refinement in the inactive set using a couple of classical PDE-type error estimators is supported.
 
-We define the class `VIAMR` in `viamr/viamr.py`.  It provides two element-marking methods, Unstructured Dilation Operator (UDO) and Varable Coefficient Diffusion (VCD), for use with tag-and-refine adaptive mesh refinement (AMR).  The class also provides a method to refine in the inactive set using the Babuška-Rheinboldt (BR) residual error indicator, a method for anisotropic metric-based refinement which also prefers refinement near the free boundary, and geometric methods for measuring active set convergence.
+We define the class `VIAMR` in `viamr/viamr.py`.  It provides two element-marking methods based on adjacency to the computed free boundary, namely Unstructured Dilation Operator (UDO) and Varable Coefficient Diffusion (VCD).  The class also provides two methods to refine in the inactive set, namely gradient recovery and the Babuška-Rheinboldt (BR) residual error indicator.  These are all for use with tag-and-refine mesh refinement.
+
+A metric-based refinement method is also implemented, which combines anisotropic Hessian-based information with adjaceny to the free boundary.
 
 These codes support S. Fochesatto (2024). _Adaptive mesh refinement for variational inequalities_, Master of Science project, UAF, and a paper in progress.
 
@@ -97,17 +99,21 @@ The sphere problem has a known exact solution while the spiral problem does not.
 
 View the output fields in `result_*.pvd` using [Paraview](https://www.paraview.org/).  These files contain the obstacle `psi`, the solution `u`, and the gap `u - psi`. The `result_sphere.pvd` file also contains the numerical error `|u - uexact|`.
 
+## Generating meshes
+
+Meshes can be created using the [Firedrake utility mesh generators](https://www.firedrakeproject.org/_modules/firedrake/utility_meshes.html).  Alternatively, one can create Netgen meshes with e.g. `SplineGeometry().GenerateMesh()`.  The resulting meshes have different refinement capabilities.  Future bug fixes and feature improvements in Netgen, ngsPETSc, and PETSc DMPlex might change this situation, but for now see the known limitations below.
+
 ## Known limitations
 
-Note that Netgen meshes, created with e.g. `SplineGeometry().GenerateMesh()`, have different refinement capabilities from Firedrake/DMPlex meshes, e.g. those created with the [Firedrake utility mesh generators](https://www.firedrakeproject.org/_modules/firedrake/utility_meshes.html).  Future bug fixes and feature improvements in Netgen, ngsPETSc, and PETSc DMPlex might change this.
-
   1. [PETSc's DMPlex mesh transformations](https://petsc.org/release/overview/plex_transform_table/) include skeleton based refinement (SBR) in 2D, but [currently SBR is not available in 3D](https://petsc.org/release/src/dm/impls/plex/transform/impls/refine/sbr/plexrefsbr.c.html).  This limits `VIAMR.refinemarkedelements()` to applications in 2D.
-  2. Parallel application of `VIAMR.udomark()` to all meshes requires that their distribution parameters be explicitly set.  For example, when using a utility mesh:
-  ```UnitSquareMesh(m0, m0, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})```
-  3. For the reason given on [this issue](https://github.com/firedrakeproject/mpi-pytest/issues/13), use of [pytest](https://docs.pytest.org/en/stable/) cannot easily be extended to parallel using the [mpi-pytest](https://github.com/firedrakeproject/mpi-pytest) plugin.  Thus parallel regression testing is manual; see the bottom of this page.  Future bug fixes by the mpi-pytest developers could fix this.
-  4. `VIAMR.jaccard()` only works in parallel if one mesh is a submesh of the other.  See the doc string for that method.
-  5. `VIAMR.hausdorff()` does not work in parallel.  Also, it is the only part of VIAMR which depends on the [shapely](https://pypi.org/project/shapely/) library.
-  6. `VIAMR.adaptaveragedmetric()` and `VIAMR.vcdmark()` are known to generate different results in serial and parallel.  See [issue #37](https://github.com/StefanoFochesatto/VI-AMR/issues/37) and [issue #38](https://github.com/StefanoFochesatto/VI-AMR/issues/38), respectively.
+  1. Parallel application of `VIAMR.udomark()` requires that mesh distribution parameters be explicitly set.  For example, when using a utility mesh:
+      ```
+      UnitSquareMesh(m0, m0, distribution_parameters={"partition": True, "overlap_type": (DistributedMeshOverlapType.VERTEX, 1)})
+      ```
+  1. `VIAMR.adaptaveragedmetric()` and `VIAMR.vcdmark()` are known to generate different results in serial and parallel.  See [issue #37](https://github.com/StefanoFochesatto/VI-AMR/issues/37) and [issue #38](https://github.com/StefanoFochesatto/VI-AMR/issues/38), respectively.
+  1. For the reason given on [this issue](https://github.com/firedrakeproject/mpi-pytest/issues/13), use of [pytest](https://docs.pytest.org/en/stable/) cannot easily be extended to parallel using the [mpi-pytest](https://github.com/firedrakeproject/mpi-pytest) plugin.  Thus parallel regression testing is manual; see the bottom of this page.  Future bug fixes by the mpi-pytest developers could fix this.
+  1. `VIAMR.jaccard()` only works in parallel if one mesh is a submesh of the other.  See the doc string.
+  1. `VIAMR.hausdorff()` does not work in parallel.  Also, it is the only part of VIAMR which depends on the [shapely](https://pypi.org/project/shapely/) library.
 
 ## Testing
 
@@ -116,16 +122,16 @@ Serial software tests use [pytest](https://docs.pytest.org/en/stable/index.html)
 pytest .
 ```
 
+For an HTML coverage report from these serial tests do:
+```
+pip install pytest-cov
+pytest --cov-report html --cov=viamr tests/
+firefox htmlcov/index.html
+```
+
 For parallel tests do the following or similar:
 ```
 cd tests/
 mpiexec -n 3 python3 test_parallel.py
 ```
 Success is completion without any error messages.
-
-For an HTML coverage report:
-```
-pip install pytest-cov
-pytest --cov-report html --cov=viamr tests/
-firefox htmlcov/index.html
-```

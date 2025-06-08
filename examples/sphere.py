@@ -11,18 +11,16 @@ from firedrake.petsc import PETSc
 from viamr import VIAMR
 from viamr.utility import SphereObstacleProblem
 
+try:
+    import netgen
+except ImportError:
+    raise ImportError("Unable to import NetGen.  Exiting.")
+from netgen.geom2d import SplineGeometry
+
 levels = 3  # number of AMR refinements
 m0 = 20  # for UDO and VCD, initial mesh is m0 x m0
-includeAVM = True
 initialhAVM = 4.0 / m0  # for apples-to-apples
 targetAVM = 2000  # adjust to make apples-to-apples ish
-
-if includeAVM:
-    try:
-        import netgen
-    except ImportError:
-        raise ImportError("Unable to import NetGen.  Exiting.")
-    from netgen.geom2d import SplineGeometry
 
 # set-up for boundary conditions and exact solution
 afree = 0.697965148223374
@@ -49,8 +47,7 @@ sp = {
     "snes_converged_reason": None,
 }
 
-thetypes = ("udo", "vcd", "avm") if includeAVM else ("udo", "vcd")
-for amrtype in thetypes:
+for amrtype in ["udo", "vcd", "avm"]:
     print(f"solving by VIAMR using {amrtype.upper()} method ...")
     amr = VIAMR()
 
