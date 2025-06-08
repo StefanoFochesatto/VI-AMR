@@ -86,7 +86,7 @@ Free-boundary problems posed as variational inequalities, including obstacle pro
 
 \section{Introduction} \label{sec:intro}
 
-The classical Laplacian obstacle problem \cite{KinderlehrerStampacchia1980} finds the equilibrium position (vertical displacement) $u$ of an elastic membrane over some domain $\Omega \subset \RR^d$.  The membrane, attached with displacement $g$ at the fixed boundary $\partial\Omega$ and subjected to an applied force $f$, is constrained to be above a given obstacle $\psi$.  The strong formulation of this problem is this complementarity problem over $\Omega$:
+The classical Laplacian obstacle problem \cite{KinderlehrerStampacchia1980} finds the equilibrium vertical displacement $u$ of an elastic membrane over some domain $\Omega \subset \RR^d$.  The membrane, attached with displacement $g$ at the fixed boundary $\partial\Omega$, is subjected to an applied force $f$, but it is constrained to be above a given obstacle $\psi$.  The strong formulation here is a complementarity problem over $\Omega$:
 \begin{subequations} \label{eq:classical:ncp}
 \begin{align}
   -\nabla^2 u - f \geq 0 \label{eq:classical:ncp:a} \\
@@ -94,17 +94,12 @@ The classical Laplacian obstacle problem \cite{KinderlehrerStampacchia1980} find
   (-\nabla^2u - f)(u - \psi) = 0 \label{eq:classical:ncp:c}
 \end{align}
 \end{subequations}
-From a solution to \eqref{eq:classical:ncp}, or rather from solving its weak form (given momentarily), we may identify the inactive and active sets,
+From a solution of \eqref{eq:classical:ncp}, or rather of its weak form below, we may identify the inactive and active sets, and the free boundary:
 \begin{equation}
-  I_u = \{x \in \Omega \,:\, u(x) > \psi(x)\}, \quad A_u = \Omega \setminus I_u, \label{eq:classical:sets}
+  I_u = \{x \in \Omega \,:\, u(x) > \psi(x)\}, \quad A_u = \Omega \setminus I_u, \quad \Gamma_u = \Omega \cap \partial I_u. \label{eq:classical:sets}
 \end{equation}
-and the free boundary
-\begin{equation}
-\Gamma_u = \Omega \cap \partial I_u. \label{eq:classical:freeboundary}
-\end{equation}
-Note that $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$, the interior condition of the free-boundary problem.  Both Dirichlet ($u=\psi$) and Neumann ($\partial u/\partial n = \partial \psi/\partial n$) conditions apply along the unknown set $\Gamma_u$, but only Dirichlet conditions hold on $\partial\Omega$.
 
-For the example shown in Figure \ref{fig:ball}, the obstacle $\psi$ is an upper hemisphere, the active set $A_u$ is a disc (white mesh), and the free boundary $\Gamma_u=\partial A_u$ is a circle.
+For the example shown in Figure \ref{fig:ball}, the obstacle $\psi$ is an upper hemisphere, the active set $A_u$ (white mesh) is a disc, and the free boundary $\Gamma_u$ is a circle.  Note that $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$; this ``interior condition'' of the problem is the black mesh in the Figure.  While both Dirichlet ($u=\psi$) and Neumann ($\partial u/\partial n = \partial \psi/\partial n$) conditions apply along the unknown free boundary $\Gamma_u$, only Dirichlet conditions hold on $\partial\Omega$.  Another physical interpretation of problem \eqref{eq:classical:ncp} is that $u$ models the pressure, which cannot go below zero ($\psi=0$), in a porous dam \cite[for example]{AinsworthOdenLee1993}.
 
 \begin{figure}[H]
 \centering
@@ -113,40 +108,21 @@ For the example shown in Figure \ref{fig:ball}, the obstacle $\psi$ is an upper 
 \label{fig:ball}
 \end{figure}
 
-Another physical interpretation of problem \eqref{eq:classical:ncp} is where $u$ models the pressure in a porous dam, which cannot go below zero ($\psi=0$); see examples in \cite{AinsworthOdenLee1993} and \cite{Bueler2021}.
-
-As is well-known, problem \eqref{eq:classical:ncp} has a weak formulation which is a variational inequality (VI) over a Sobolev space.  Let $\cX=H^1(\Omega)$ \cite{ElmanSilvesterWathen2014} and suppose $\psi \in \cX \cap C(\bar\Omega)$.  (If it were a faithful visualization, Figure \ref{fig:ball} would show $\psi$ as an upper hemisphere extended continuously to $\partial\Omega$.)  Let $g:\partial \Omega\to \RR$ be continuous, with $g\ge\psi|_{\partial \Omega}$.  Let
+As is well-known \cite{KinderlehrerStampacchia1980}, problem \eqref{eq:classical:ncp} has a weak formulation which is a variational inequality (VI) over a Sobolev space.  Let $\cX=H^1(\Omega)$ \cite{ElmanSilvesterWathen2014} and suppose $\psi \in \cX \cap C(\bar\Omega)$.  Let $g:\partial \Omega\to \RR$ be continuous, with $g\ge\psi|_{\partial \Omega}$, and define
 \begin{equation} \label{eq:classical:admissible}
 \cK = \{u \in \cX \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
 \end{equation}
-be the admissible subset, closed and convex in $\cX$.  For $f\in L^2(\Omega)$, the VI formulation of the obstacle problem \cite{KinderlehrerStampacchia1980} finds $u\in \cK$ so that
+as the admissible subset, which is closed and convex in $\cX$.  For $f\in L^2(\Omega)$, the VI formulation of \eqref{eq:classical:ncp} finds $u\in \cK$ so that
 \begin{equation} \label{eq:classical:vi}
 \int_\Omega \nabla u \cdot \nabla(v - u) \ge \int_\Omega f(v - u) \quad \text{ for all } v \in \cK.
 \end{equation}
 
-In Section \ref{sec:vifem} we will recall some of the theory of such VIs, and their finite element (FE) approximation.  However, we will generalize from elliptic bilinear forms like \eqref{eq:classical:vi} to coercive nonlinear operators over Banach spaces.  A conforming FE approximation $u_h$ of the VI solves the same weak form, but now over a finite-dimensional admissible set constructed on a mesh $\cT_h$.  Similarly to Cea's lemma for PDEs \cite{ElmanSilvesterWathen2014}, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori} by extending the Falk \cite{Falk1974} technique to nonlinear operators.  In fact, Theorem \ref{thm:genfalk} will show how norm errors are controlled by the approximation properties of the FE space, but also subject to VI-specific concerns regarding admissibility and the construction of the FE obstacle.
+In Section \ref{sec:vifem} we will recall and extend some of the theory of such VIs, and their finite element (FE) approximation.  We will generalize from elliptic bilinear forms like \eqref{eq:classical:vi} to coercive nonlinear operators over Banach spaces.  A conforming FE approximation $u_h$ of the VI will solve the same weak form, but over a finite-dimensional admissible set constructed on a mesh $\cT_h$.  Similarly to Cea's lemma for PDEs \cite{ElmanSilvesterWathen2014}, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori} by extending the Falk \cite{Falk1974} technique to nonlinear operators.  Theorem \ref{thm:genfalk} and Corollary \ref{cor:falkconforming} will show how norm errors are controlled by the approximation properties of the FE space, but also subject to VI-specific concerns regarding admissibility.  We will consider the construction of the FE obstacle and the separation of active and inactive set errors.
 
-Adaptive mesh refinement (AMR) uses \emph{a posteriori} information from the numerical solution over a given mesh to strategically add elements to the mesh to reduce the  numerical error.  However, for VI problems the geometrical error in locating the free-boundary $\Gamma_u$ on a mesh can, by itself, influence the global error $\|u-u_h\|$.  This fact, somewhat acknowledged in the FE literature for VIs \cite{Suttmeier2008}, is clearly seen in the following 1D example.
+Adaptive mesh refinement (AMR) uses \emph{a posteriori} information from the numerical solution over a given mesh to strategically add elements to increase the mesh resolution to reduce the numerical error.  For VI problems the simulation goal may be the accurate approximation of the sets in \eqref{eq:classical:sets}.  However, the reasonableness of this goal is problem-dependent.
 
-\begin{example} \label{example:oned} Suppose $\Omega = (-1,1)$, $\psi(x)=0.5 - x^2$, $f=0$, and $g=0$.  The exact solution $u$ of \eqref{eq:classical:vi} for this data is easily calculated.  Free boundaries are at $x_*=\pm(1-2^{-1/2})$ (Figure \ref{fig:parabola}).  For an FE approximation using piecewise-linear elements and a uniform mesh, let $\Delta_h$ be the minimum distance between a node and $x_*$.  Noting that $x_*$ are irrational, under uniform refinements $\Delta_h = O(h)$ is an irregular function of $h$.  Figure \ref{fig:parabola} (right) compares $H^1$ and $L^2$ norm errors to $\Delta_h$.  The erratic behavior of the norm errors closely follows the purely-geometrical free-boundary location error $\Delta_h$. \end{example}
-
-\begin{figure}[ht]
-\noindent \mbox{
-\begin{minipage}[t]{0.45\textwidth}
-\input{tikz/parabola.tex}
-\end{minipage}
-\,
-\begin{minipage}[t]{0.53\textwidth}
-\includegraphics[width=\textwidth]{static/VIConvergence.png}
-\end{minipage}
-}
-\caption{A one-dimensional obstacle problem (left), for which the geometrical free-boundary location error $\Delta_h$ predicts norm error $\|u-u_h\|$ behavior (right).}
-\label{fig:parabola}
-\end{figure}
-
-A small modification of Example \ref{example:oned} illustrates another aspect of obstacle problems, namely that the sets $A_u,I_u,\Gamma_u$ are generally \emph{not} continuous functions of the data.
-
-\begin{example} \label{example:notcontinuous} Suppose we change Example \ref{example:oned} by setting $g=-0.5$, so that $g=\psi$ on $\partial\Omega$.  For $\eps\in\RR$ we define a new source term $f_\eps(x)=2+\eps$.  An easy calculation shows that for $\eps\le 0$ the solution is $u_\eps=\psi$, thus $A_{u_\eps}=\Omega$ and $I_{u_\eps}=\emptyset$.  However, for $\eps>0$, so that $f_\eps$ represents sufficient upward force on the membrane to lift it off the obstacle, we find the solution satisfies $u_\eps(x)=\psi(x) + 0.5\, \eps\, (1-x^2) > \psi(x)$ for all $x\in\Omega$.  Thus $A_{u_\eps}=\emptyset$ and $I_{u_\eps}=\Omega$ for $\eps>0$, so these sets are discontinuous functions at $\eps=0$. \end{example}
+\begin{example} \label{example:notcontinuous}  Suppose $\Omega = (-1,1)$, $\psi(x)=1 - x^2$, $f=\alpha$, and $g=0$.  The exact solution $u$ of \eqref{eq:classical:vi} for this data is easily calculated: FIXME
+\end{example}
 
 By definition, the $\eps=0$ case of Example \ref{example:notcontinuous} is \emph{degenerate} \cite{KinderlehrerStampacchia1980}, that is, the unconstrained solution happens to match the obstacle.  This example shows that any predictable convergence results for FE approximations of the solution-dependent sets $A_u,I_u,\Gamma_u$ will depend upon nondegeneracy assumptions of some kind.
 
