@@ -339,7 +339,7 @@ for i in range(args.refine + 1):
         # build pile of ice from accumulation
         pileage = 400.0  # years
         Hinit = pileage * secpera * conditional(a > 0.0, a, 0.0)
-        uold = Function(V).interpolate(Hinit ** omega)
+        uold = Function(V).interpolate(Hinit ** (1.0 / omega))
     else:
         # cross-mesh interpolation of previous solution
         uold = Function(V).interpolate(u)
