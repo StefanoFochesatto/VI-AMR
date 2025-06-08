@@ -1,17 +1,12 @@
 all: viamr.pdf
 
-figures = drmax.png  herrinf.png  uerrh1.png
+_figures := drmax herrinf uerrh1
+figures := $(addprefix genfigs/, $(addsuffix .png, $(_figures)))
 
-viamr.pdf: viamr.aux viamr.bbl
-	while grep 'Rerun to get ' viamr.log ; do pdflatex -shell-escape viamr.tex ; done
+viamr.pdf: viamr.tex viamr.bib $(figures)
+	while ! [ -f viamr.log ] || grep 'Rerun to get ' viamr.log ; do pdflatex -shell-escape viamr ; bibtex viamr ; done
 
-viamr.aux: viamr.tex drmax.png
-	pdflatex -shell-escape $<
-
-viamr.bbl: viamr.aux
-	bibtex $<
-
-drmax.png: genfigs/glacierconv.py
+$(figures): genfigs/glacierconv.py
 	(cd genfigs/ && python3 glacierconv.py && mogrify -trim *.png)
 
 .PHONY: clean
