@@ -535,13 +535,9 @@ Our goals are to generate meshes with high resolution along an accurately-estima
 \label{fig:glacier}
 \end{figure}
 
-% FIXME consider showing $\|H-H_h\|_{L^\infty}$ in meters instead of relative
-
 The dome problem was solved with 13 levels of refinement from an initial, uniform $h_0=360$ kilometer mesh to a final mesh with margin resolution of $h_{13}\approx 30$ meters.  Figure \ref{fig:domenormresults} shows relative $H^1$ errors in the solution ($\|u-u_h\|_{H^1}/\|u\|_{H^1}$) and absolute $L^\infty$ errors in the corresponding ice thickness ($\|H-H_h\|_{L^\infty}$), versus number of elements.  Note that solver time was observed to be a function of the number of elements, so showing run-times would add no information in distinguishing AMR schemes from uniform refinement.
 
-% UNIFORM:  tmpg -n 12 python3 steady.py -newton -m 5 -refine 8 -uniform 8 -csv uniform.csv
-% UDO+GR:   tmpg -n 12 python3 steady.py -newton -m 5 -refine 13 -csv udo.csv
-% VCD+GR:   tmpg -n 12 python3 steady.py -newton -m 5 -refine 13 -vcd -csv vcd.csv
+% see examples/glacier/README.md for these runs
 \begin{figure}[ht]
 \noindent\mbox{\includegraphics[width=0.49\textwidth]{genfigs/uerrh1.png} \, \includegraphics[width=0.49\textwidth]{genfigs/herrinf.png}}
 \caption{Left: Per element, $H^1$ norm errors in $u$ are comparable for AMR methods and uniform refinement.  Right: Because of the low regularity of the ice thickness at the free boundary, AMR is effective in reducing the maximum thickness error.}

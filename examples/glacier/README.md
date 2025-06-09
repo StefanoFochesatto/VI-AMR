@@ -1,17 +1,29 @@
 # VI-AMR/examples/glacier/
 
+Remember to activate the Firedrake virtual environment.
+
 ## synthetic examples
 
-Remember to activate the Firedrake virtual environment.
+### illustrations
 
 To run a default steady-state glacier simulation for a synthetic glacier do
 ```
 python3 steady.py
 ```
-or for a more interesting case with Paraview-readable output,
+or for an interesting case with Paraview-readable output,
 ```
-python3 steady.py -refine 4 -prob range -opvd result_range.pvd
+python3 steady.py -prob cap -elevdepend -sELA 900 -m 20 -refine 4 -uniform 1 -opvd result_cap.pvd
 ```
+
+### convergence and AMR efficiency
+
+In the paper there is an example showing norm and geometrical errors against mesh complexity (number of elements).  Uniform, UDO+GR, and VCD+GR mesh refinement methods are shown.  Here are these runs:
+```
+mpiexec -n 12 python3 steady.py -newton -m 5 -refine 8 -uniform 8 -csv uniform.csv
+mpiexec -n 12 python3 steady.py -newton -m 5 -refine 13 -csv udo.csv
+mpiexec -n 12 python3 steady.py -newton -m 5 -refine 13 -vcd -csv vcd.csv
+```
+
 
 ## an example which uses data for bed topography
 
