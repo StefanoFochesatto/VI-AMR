@@ -3,13 +3,8 @@ import matplotlib.pyplot as plt
 from firedrake import *
 
 MeshSizes = [10, 20, 40, 100, 200, 400, 1000]
-
 h = [2.0 / i for i in MeshSizes]
 errors = {"gap": [], "H1": [], "L2": []}
-
-# exact free boundaries
-b = (2 - (2) ** 0.5) * 0.5
-a = -b
 
 for i in MeshSizes:
     mesh = IntervalMesh(i, -1, 1)
@@ -44,6 +39,9 @@ for i in MeshSizes:
     ub = Function(V).interpolate(Constant(PETSc.INFINITY))
     solver.solve(bounds=(lb, ub))
 
+    # key ideas: interpolate exact solution into higher-order space
+    b = (2 - (2) ** 0.5) * 0.5  # exact free boundaries
+    a = -b
     leftline = ((0.5 - a ** 2) / (a + 1)) * (x + 1)
     rightline = -((0.5 - b ** 2) / (1 - b)) * (x - 1)
     u_exact_ufl = conditional(
@@ -51,30 +49,25 @@ for i in MeshSizes:
     )
     CG3 = FunctionSpace(mesh, "CG", 3)
     uexact = Function(CG3).interpolate(u_exact_ufl)
-
     gap = np.min(np.abs(mesh.topology_dm.getCoordinates().array - b))
     errors["gap"].append(gap)
-    errors["H1"].append(errornorm(uexact, u, norm_type="H1"))
+    errors["H1"].append(errornorm(uexact, u, norm_type="H1")) # first arg is exact
     errors["L2"].append(errornorm(uexact, u, norm_type="L2"))
 
-h1label = "$=\|u-u_h\|_{H^1}$"
-l2label = "$=\|u-u_h\|_{L^2}$"
+# generate figure showing H1 and L2 convergence rates
+p_H1 = np.polyfit(np.log(h), np.log(errors["H1"]), 1)
+h1label = r"$=\|u-u_h\|_{H^1} = O(h^{%.2f})$" % p_H1[0]
+p_L2 = np.polyfit(np.log(h), np.log(errors["L2"]), 1)
+l2label = r"$=\|u-u_h\|_{L^2} = O(h^{%.2f})$" % p_L2[0]
 plt.loglog(h, errors["H1"], "o", ms=10.0, color="k", mfc="w", label=h1label)
 plt.loglog(h, errors["L2"], "s", ms=10.0, color="k", mfc="w", label=l2label)
-plt.loglog(h, errors["gap"], "^", ms=10.0, color="r", mfc="w", label="$=\Delta_h$")
-
-# p_H1 = np.polyfit(np.log(h), np.log(errors["H1"]), 1)
-# h1label = "$=\|u-u_h\|_{H^1} = O(h^{%.2f})$" % p_H1[0]
-# p_L2 = np.polyfit(np.log(h), np.log(errors["L2"]), 1)
-# l2label = "$=\|u-u_h\|_{L^2} = O(h^{%.2f})$" % p_L2[0]
-# plt.loglog(h, np.exp(p_H1[0] * np.log(h) + p_H1[1]), "--", lw=0.5, color="k")
-# plt.loglog(h, np.exp(p_L2[0] * np.log(h) + p_L2[1]), "--", lw=0.5, color="k")
-
+plt.loglog(h, errors["gap"], "^", ms=10.0, color="r", mfc="w", label=r"$=$ gap $\Delta_h$")
+plt.loglog(h, np.exp(p_H1[0] * np.log(h) + p_H1[1]), "--", lw=0.5, color="k")
+plt.loglog(h, np.exp(p_L2[0] * np.log(h) + p_L2[1]), "--", lw=0.5, color="k")
 plt.axis([0.001, 0.35, 2.5e-7, 1.0])
 plt.xlabel("h", fontsize=12.0)
 plt.ylabel("error", fontsize=12.0)
 plt.legend(fontsize=14.0, loc="upper left", labelcolor="linecolor")
-
 outname = "parabola1d.png"
 print(f"saving figure in {outname} ...")
 plt.savefig(outname, bbox_inches="tight")
