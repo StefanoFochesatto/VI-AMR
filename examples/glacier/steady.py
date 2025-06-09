@@ -14,6 +14,10 @@ known.  Option -prob cap generates a random, but smooth, bed topography, but
 keeps the dome SMB.  Option -prob range generates a different SMB and a
 disconnected glacier.
 
+An elevation-dependent surface mass balance model is also available, with
+options -elevdepend (to turn on) and -sELA (equilibrium line altitude).
+This case does not allow -newton.
+
 We apply the UDO or VCD methods for free-boundary refinement.  The default mode
 does n=1 UDO at the free boundary plus gradient-recovery refinement in the
 inactive set.  The default marking strategy in the inactive set uses the "total"
@@ -31,18 +35,15 @@ Excellent -prob dome convergence:
   mpiexec -n 4 python3 steady.py -refine 8 -newton
   mpiexec -n 12 python3 steady.py -m 5 -refine 13 -newton   # 31 m margin resolution
 
-High-resolution example; achieved 30 m resolution along ice sheet margin:
-FIXME: redo now that "total" fixed-rate and diagonal="crossed" are the defaults
-  mpiexec -n 20 python3 steady.py -prob range -m 50 -refine 10 -opvd result_range.pvd
-(Large memory needed ...)  Note L=1800 km so h_min / L ~ 1e-5.  However,
-such runs reveal less than perfect refinement right along the free boundary
-at very high resolution.
-
 The -newton solve works well but needs a coarser initial grid:
   mpiexec -n 20 python3 steady.py -prob range -newton -m 5 -refine 10 -rmethod alternate -opvd result_rangenewton.pvd
 
-I don't yet trust this kind of -data run, but it converges o.k.:
-  python3 steady.py -data eastgr.nc -opvd result_data.pvd -refine 5 -rmethod alternate -freezecount 24
+Elevation-dependent surface mass balance example:
+  mpiexec -n 4 python3 steady.py -prob cap -elevdepend -sELA 1000.0 -m 20 -uniform 1 -udo_n 2 -theta 0.2 -pcount 20 -refine 6 -opvd result_cap_ed.pvd
+Vary -sELA 900.0|800.0|700.0 to see rapid increase in inactive set area (glaciation).
+
+FIXME: OLD -data run:
+  python3 steady.py -data eastgr.nc -opvd result_data.pvd -refine 5 -pcount 24
 """,
     formatter_class=RawTextHelpFormatter,
 )
@@ -61,11 +62,10 @@ parser.add_argument(
     help='read "topg" variable from NetCDF file (.nc)',
 )
 parser.add_argument(
-    "-freezecount",
-    type=int,
-    default=8,
-    metavar="P",
-    help="number of Picard frozen-tilt iterations [default=8]",
+    "-elevdepend",
+    action="store_true",
+    default=False,
+    help="compute surface mass balance from an elevation-dependent model",
 )
 parser.add_argument(
     "-jaccard",
@@ -84,7 +84,7 @@ parser.add_argument(
     "-newton",
     action="store_true",
     default=False,
-    help="use straight Newton instead of Picard+Newton; not robust",
+    help="use straight Newton instead of Picard+Newton",
 )
 parser.add_argument(
     "-opvd",
@@ -92,6 +92,13 @@ parser.add_argument(
     type=str,
     default="",
     help="output file name for Paraview format (.pvd)",
+)
+parser.add_argument(
+    "-pcount",
+    type=int,
+    default=10,
+    metavar="P",
+    help="number of Picard frozen-tilt (and a(s) if -elevdepend) iterations [default=10]",
 )
 parser.add_argument(
     "-prob",
@@ -109,18 +116,32 @@ parser.add_argument(
     help="number of AMR refinements [default 3]",
 )
 parser.add_argument(
+    "-sELA",
+    type=float,
+    default=1000.0,
+    metavar="X",
+    help="equilibrium line altitude to use if -elevdepend [default=1000.0]",
+)
+parser.add_argument(
     "-theta",
     type=float,
     default=0.5,
     metavar="X",
-    help="theta to use in fixed-rate marking strategy in inactive set [default=0.3]",
+    help="theta to use in fixed-rate marking strategy in inactive set [default=0.5]",
+)
+parser.add_argument(
+    "-udo_n",
+    type=int,
+    default=1,
+    metavar="N",
+    help="use udomark(.., n=N) [default 1]",
 )
 parser.add_argument(
     "-uniform",
     type=int,
     default=0,
     metavar="R",
-    help="refine uniformly R times, and skip jaccard measure for those [default 0]",
+    help="initial R refinements are uniform [default 0]",
 )
 parser.add_argument(
     "-vcd",
@@ -129,6 +150,14 @@ parser.add_argument(
     help="apply VCD free-boundary marking (instead of UDO)",
 )
 args, passthroughoptions = parser.parse_known_args()
+
+assert args.m >= 1, "at least one cell in mesh"
+assert args.refine >= 0, "cannot refine a negative number of times"
+assert args.pcount >= 1, "at least one Picard iteration required"
+assert args.udo_n >= 0, "cannot use UDO with negative levels"
+assert not args.elevdepend or args.prob != "dome", "combination invalid: -elevdepend & -prob dome"
+assert not args.elevdepend or not args.data, "combination invalid: -elevdepend & -data file.nc"
+assert not args.elevdepend or not args.newton, "combination invalid: -elevdepend & -newton"  # FIXME
 
 import numpy as np
 import petsc4py
@@ -142,9 +171,6 @@ pprint = PETSc.Sys.Print  # parallel print
 from viamr import VIAMR
 
 from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps, domeL, domeH0
-
-assert args.m >= 1, "at least one cell in mesh"
-assert args.refine >= 0, "cannot refine a negative number of times"
 
 # set up .csv if generating numerical error data
 if args.csv:
@@ -215,6 +241,14 @@ def Phi(u, b):
     return -(1.0 / omega) * (u + 1.0) ** phi * grad(b)  # eps=1 regularization is small
 
 
+def amodel(s, sELA=1000.0, dsNEXT=100.0, alpha=0.001 / secpera, alpharat=0.01):
+    """Model of surface mass balance a(s) where alpha is lapse rate below sELA
+    and above sELA there is a lower-slope (by alpharat) logarithmic function."""
+    tau = dsNEXT - sELA
+    beta = alpharat * alpha * dsNEXT
+    return conditional(s < sELA, alpha * (s - sELA), beta * (ln(s + tau) - ln(dsNEXT)))
+
+
 def weakform(u, a, b, Z=None):
     v = TestFunction(u.function_space())
     if Z is not None:
@@ -283,14 +317,14 @@ for i in range(args.refine + 1):
             mark = Function(DG0).interpolate(Constant(1.0))
             mesh = amr.refinemarkedelements(mesh, mark, isUniform=True)
         else:
-            pprint(f"refining free boundary ({'VCD' if args.vcd else 'UDO'})", end="")
+            pprint(f"refining free boundary by {'VCD' if args.vcd else 'UDO'}", end="")
             if args.vcd:
                 # change bracket vs default [0.2, 0.8], to provide more high-res
                 #   for ice near margin (0.2 -> 0.1), i.e. on inactive side
                 fbmark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
             else:
-                fbmark = amr.udomark(u, lb, n=1)
-            pprint(" and by gradient recovery in inactive ...")
+                fbmark = amr.udomark(u, lb, n=args.udo_n)
+            pprint(", and by gradient recovery in inactive ...")
             # FIXME: sporadic parallel bug with method="total" apparently ...
             #imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
             imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="max")
@@ -311,19 +345,6 @@ for i in range(args.refine + 1):
     V = FunctionSpace(mesh, "CG", 1)
     x = SpatialCoordinate(mesh)
 
-    # surface mass balance function on current mesh
-    if args.data:
-        # SMB from linear model based on lapse rate; from linearizing dome case
-        c0 = -3.4e-8
-        c1 = (6.3e-8 - c0) / 3.6e3
-        a_lapse = c0 + c1 * topg
-        a = Function(V).interpolate(
-            conditional(nearb > 0.0, -1.0e-6, a_lapse)
-        )  # also cross-mesh re nearb
-    else:
-        a = Function(V).interpolate(accumulation(x, problem=args.prob))
-    a.rename("a = accumulation")
-
     # bedrock on current mesh
     if args.data:
         b = Function(V).project(topg)  # cross-mesh projection from data mesh
@@ -334,7 +355,23 @@ for i in range(args.refine + 1):
             b = Function(V).interpolate(bumps(x, problem=args.prob))
     b.rename("b = bedrock topography")
 
-    # initialize transformed thickness variable
+    # surface mass balance function on current mesh; depends on b in one case
+    if args.data:
+        # SMB from linear model based on lapse rate; from linearizing dome case
+        c0 = -3.4e-8
+        c1 = (6.3e-8 - c0) / 3.6e3
+        a_lapse = c0 + c1 * topg
+        a = Function(V).interpolate(
+            conditional(nearb > 0.0, -1.0e-6, a_lapse)
+        )  # also cross-mesh re nearb
+    elif args.elevdepend:
+        # initialize from s = b assumption
+        a = Function(V).interpolate(amodel(b, sELA=args.sELA))
+    else:
+        a = Function(V).interpolate(accumulation(x, problem=args.prob))
+    a.rename("a = accumulation")
+
+    # initialize transformed thickness variable; depends on b and a
     if i == 0:
         # build pile of ice from accumulation
         pileage = 400.0  # years
@@ -346,6 +383,7 @@ for i in range(args.refine + 1):
         # remove sign flaws from cross-mesh interpolation
         #   note: u = H^(8/3) < 1 is *very* little ice in an initial iterate
         uold = Function(V).interpolate(conditional(uold < 1.0, 0.0, uold))
+    assert assemble(uold * dx) > 0, "initialization failure; u must correspond to positive ice"
 
     # solve on current mesh
     u = Function(V, name="u = transformed thickness").interpolate(uold)
@@ -362,9 +400,13 @@ for i in range(args.refine + 1):
         )
         solver.solve(bounds=(lb, ub))
     else:
-        # outer loop for freeze iteration
-        for k in range(args.freezecount):
-            # pprint(f'  freeze tilt iteration {k+1} ...')
+        # outer loop for Picard (freeze-tilt) iteration, and a(s) if -elevdepend
+        for k in range(args.pcount):
+            # pprint(f'  Picard iteration {k+1} ...')
+            if args.elevdepend:
+                sold = b + uold ** omega
+                a = Function(V).interpolate(amodel(sold, sELA=args.sELA))
+                a.rename("a = accumulation")
             Ztilt = Phi(uold, b)
             F = weakform(u, a, b, Z=Ztilt)
             problem = NonlinearVariationalProblem(F, u, bcs=bcs)
@@ -418,7 +460,7 @@ if args.opvd:
     rank.rename("rank")
     pprint("writing to %s ..." % args.opvd)
     if args.prob == "dome":
-        VTKFile(args.opvd).write(u, H, Us, q, a, Gs, Hdiff, rank)
+        VTKFile(args.opvd).write(u, H, Us, q, a, Gs, rank)
     else:
         Gb = Function(VectorFunctionSpace(mesh, "DG", degree=0))
         Gb.interpolate(grad(b))
