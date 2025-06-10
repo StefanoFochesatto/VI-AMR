@@ -123,6 +123,13 @@ parser.add_argument(
     help="equilibrium line altitude to use if -elevdepend [default=1000.0]",
 )
 parser.add_argument(
+    "-softening",
+    type=float,
+    default=1.0,
+    metavar="X",
+    help="multiply Gamma by softening factor X; X>1 softens, 0<X<1 hardens [default=1.0]",
+)
+parser.add_argument(
     "-theta",
     type=float,
     default=0.5,
@@ -249,14 +256,14 @@ def amodel(s, sELA=1000.0, dsNEXT=100.0, alpha=0.001 / secpera, alpharat=0.01):
     return conditional(s < sELA, alpha * (s - sELA), beta * (ln(s + tau) - ln(dsNEXT)))
 
 
-def weakform(u, a, b, Z=None):
+def weakform(u, a, b, Z=None, softening=1.0):
     v = TestFunction(u.function_space())
     if Z is not None:
         du_tilt = grad(u) - Z
     else:
         du_tilt = grad(u) - Phi(u, b)
     Dp = inner(du_tilt, du_tilt) ** ((p - 2) / 2)
-    return Gamma * omega ** (p - 1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
+    return softening * Gamma * omega ** (p - 1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
 
 
 def glaciermeshreport(amr, mesh, indent=2):
@@ -393,7 +400,7 @@ for i in range(args.refine + 1):
         DirichletBC(V, Constant(0.0), "on_boundary"),
     ]
     if args.newton:
-        F = weakform(u, a, b)
+        F = weakform(u, a, b, softening=args.softening)
         problem = NonlinearVariationalProblem(F, u, bcs=bcs)
         solver = NonlinearVariationalSolver(
             problem, solver_parameters=sp, options_prefix="s"
@@ -408,7 +415,7 @@ for i in range(args.refine + 1):
                 a = Function(V).interpolate(amodel(sold, sELA=args.sELA))
                 a.rename("a = accumulation")
             Ztilt = Phi(uold, b)
-            F = weakform(u, a, b, Z=Ztilt)
+            F = weakform(u, a, b, Z=Ztilt, softening=args.softening)
             problem = NonlinearVariationalProblem(F, u, bcs=bcs)
             solver = NonlinearVariationalSolver(
                 problem, solver_parameters=sp, options_prefix="s"
