@@ -248,7 +248,7 @@ def Phi(u, b):
     return -(1.0 / omega) * (u + 1.0) ** phi * grad(b)  # eps=1 regularization is small
 
 
-def amodel(s, sELA=1000.0, dsNEXT=100.0, alpha=0.001 / secpera, alpharat=0.01):
+def amodel(s, sELA=1000.0, dsNEXT=100.0, alpha=0.0001 / secpera, alpharat=0.01):
     """Model of surface mass balance a(s) where alpha is lapse rate below sELA
     and above sELA there is a lower-slope (by alpharat) logarithmic function."""
     tau = dsNEXT - sELA
