@@ -319,7 +319,6 @@ for i in range(args.refine + 1):
     if i > 0:
         if i < args.uniform + 1:
             pprint(f"refining uniformly ...")
-            # FIXME uniform refinement should be easier
             _, DG0 = amr.spaces(mesh)
             mark = Function(DG0).interpolate(Constant(1.0))
             mesh = amr.refinemarkedelements(mesh, mark, isUniform=True)
