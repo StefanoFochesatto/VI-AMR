@@ -162,9 +162,15 @@ assert args.m >= 1, "at least one cell in mesh"
 assert args.refine >= 0, "cannot refine a negative number of times"
 assert args.pcount >= 1, "at least one Picard iteration required"
 assert args.udo_n >= 0, "cannot use UDO with negative levels"
-assert not args.elevdepend or args.prob != "dome", "combination invalid: -elevdepend & -prob dome"
-assert not args.elevdepend or not args.data, "combination invalid: -elevdepend & -data file.nc"
-assert not args.elevdepend or not args.newton, "combination invalid: -elevdepend & -newton"  # FIXME
+assert (
+    not args.elevdepend or args.prob != "dome"
+), "combination invalid: -elevdepend & -prob dome"
+assert (
+    not args.elevdepend or not args.data
+), "combination invalid: -elevdepend & -data file.nc"
+assert (
+    not args.elevdepend or not args.newton
+), "combination invalid: -elevdepend & -newton"  # FIXME
 
 import numpy as np
 import petsc4py
@@ -177,13 +183,25 @@ from pyop2.mpi import MPI
 pprint = PETSc.Sys.Print  # parallel print
 from viamr import VIAMR
 
-from synthetic import secpera, n, Gamma, L, dome_exact, accumulation, bumps, domeL, domeH0
+from synthetic import (
+    secpera,
+    n,
+    Gamma,
+    L,
+    dome_exact,
+    accumulation,
+    bumps,
+    domeL,
+    domeH0,
+    normerrorsdome,
+    radiuserrordome,
+)
 
 # set up .csv if generating numerical error data
 if args.csv:
     if not args.prob == "dome":
         raise ValueError("option -csv only valid for -prob dome")
-    csvfile = open(args.csv, 'w')
+    csvfile = open(args.csv, "w")
     print("REFINE,NE,HMIN,UERRH1,HERRINF,DRMAX", file=csvfile)
 
 # read data for bed topography
@@ -194,7 +212,7 @@ if args.data:
     from datanetcdf import DataNetCDF
 
     topg_nc = DataNetCDF(args.data, "topg")
-    #topg_nc.preview()
+    # topg_nc.preview()
     topg_nc.describe_grid(print=PETSc.Sys.Print, indent=4)
     pprint(f"putting topg onto matching Firedrake structured data mesh ...")
     topg, nearb = topg_nc.function(delnear=100.0e3)
@@ -231,7 +249,7 @@ sp = {
     "snes_linesearch_type": "bt",
     "snes_linesearch_order": "1",
     "snes_max_it": 1000,
-    #"snes_max_funcs": 10000,
+    # "snes_max_funcs": 10000,
     "ksp_type": "preonly",
     "pc_type": "lu",
     "pc_factor_mat_solver_type": "mumps",
@@ -263,7 +281,10 @@ def weakform(u, a, b, Z=None, softening=1.0):
     else:
         du_tilt = grad(u) - Phi(u, b)
     Dp = inner(du_tilt, du_tilt) ** ((p - 2) / 2)
-    return softening * Gamma * omega ** (p - 1) * Dp * inner(du_tilt, grad(v)) * dx - a * v * dx
+    return (
+        softening * Gamma * omega ** (p - 1) * Dp * inner(du_tilt, grad(v)) * dx
+        - a * v * dx
+    )
 
 
 def glaciermeshreport(amr, mesh, indent=2):
@@ -275,41 +296,6 @@ def glaciermeshreport(amr, mesh, indent=2):
         f"{indentstr}current mesh: {nv} vertices, {ne} elements, h in [{hmin:.3f},{hmax:.3f}] km"
     )
     return None
-
-
-def normerrorsdome(uh, Hh):
-    """Return relative H^1 norm error in u and L^infty norm error in H.
-    For the first, generate uexact in better space (and UFL from
-    dome_exact()).  For L^infty error in H we merely want the max nodal
-    error, so using V=CG1 is fine."""
-    V = uh.function_space()
-    x = SpatialCoordinate(V.mesh())
-    Hdiff = Function(V).interpolate(Hh - dome_exact(x))
-    Hdiff.rename("Hdiff = H - Hexact")
-    with Hdiff.dat.vec_ro as v:
-        Herr = abs(v).max()[1]
-    CG2 = FunctionSpace(V.mesh(), "CG", 2)
-    uexact = Function(CG2).interpolate(dome_exact(x)**(1.0/omega))
-    uexact.rename("uexact")
-    uerr = errornorm(uexact, u, norm_type="H1") / norm(uexact, norm_type="H1")
-    return uerr, Herr
-
-
-def radiuserrordome(amr, uh):
-    """For -prob "dome", compute the maximum of free-boundary radius
-    errors from a solution uh.  The exact free boundary is a circle
-    of radius domeL with center (L/2,L/2).  Returns the maximum
-    radius error."""
-    V = uh.function_space()
-    vfb, _ = amr.freeboundarygraph(uh, Function(V).interpolate(0.0))
-    vfb = np.array(vfb)
-    mymax = PETSc.NINFINITY
-    if len(vfb) > 0:
-        x, y = vfb[:,0], vfb[:,1]
-        drfb = np.abs(np.sqrt((x - L/2)**2 + (y - L/2)**2) - domeL)
-        mymax = np.max(drfb)
-    drmax = float(V.mesh().comm.allreduce(mymax, op=MPI.MAX))
-    return drmax
 
 
 # outer mesh refinement loop
@@ -332,7 +318,7 @@ for i in range(args.refine + 1):
                 fbmark = amr.udomark(u, lb, n=args.udo_n)
             pprint(", and by gradient recovery in inactive ...")
             # FIXME: sporadic parallel bug with method="total" apparently ...
-            #imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
+            # imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
             imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="max")
             mark = amr.unionmarks(fbmark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
@@ -340,7 +326,9 @@ for i in range(args.refine + 1):
             inactive = amr._eleminactive(u, lb)
             perfb = 100.0 * amr.countmark(fbmark) / ne
             perin = 100.0 * amr.countmark(imark) / amr.countmark(inactive)
-            pprint(f"  {perfb:.2f}% all elements free-boundary marked, {perin:.2f}% inactive elements marked")
+            pprint(
+                f"  {perfb:.2f}% all elements free-boundary marked, {perin:.2f}% inactive elements marked"
+            )
 
     # describe current mesh
     nv, ne, hmin, hmax = amr.meshsizes(mesh)
@@ -389,7 +377,9 @@ for i in range(args.refine + 1):
         # remove sign flaws from cross-mesh interpolation
         #   note: u = H^(8/3) < 1 is *very* little ice in an initial iterate
         uold = Function(V).interpolate(conditional(uold < 1.0, 0.0, uold))
-    assert assemble(uold * dx) > 0, "initialization failure; u must correspond to positive ice"
+    assert (
+        assemble(uold * dx) > 0
+    ), "initialization failure; u must correspond to positive ice"
 
     # solve on current mesh
     u = Function(V, name="u = transformed thickness").interpolate(uold)
@@ -410,7 +400,7 @@ for i in range(args.refine + 1):
         for k in range(args.pcount):
             # pprint(f'  Picard iteration {k+1} ...')
             if args.elevdepend:
-                sold = b + uold ** omega
+                sold = b + uold**omega
                 a = Function(V).interpolate(amodel(sold, sELA=args.sELA))
                 a.rename("a = accumulation")
             Ztilt = Phi(uold, b)
@@ -423,22 +413,31 @@ for i in range(args.refine + 1):
             uold = Function(V).interpolate(u)
 
     # update true geometry variables
-    H = Function(V, name="H = thickness").interpolate(u ** omega)
+    H = Function(V, name="H = thickness").interpolate(u**omega)
     s = Function(V, name="s = surface elevation").interpolate(b + H)
 
     # report numerical errors if exact solution known
     if not args.data and args.prob == "dome":
         uerr_H1, Herr_inf = normerrorsdome(u, H)
-        drmax = radiuserrordome(amr, u)
-        pprint(f"  |u-uexact|_H1 = {uerr_H1:.3e} rel, |H-Hexact|_inf = {Herr_inf:.3f} m, |dr|_inf = {drmax/1000.0:.3f} km")
+        vfb, _ = amr.freeboundarygraph(u, Function(V).interpolate(0.0))
+        drmax = radiuserrordome(mesh, vfb)
+        pprint(
+            f"  |u-uexact|_H1 = {uerr_H1:.3e} rel, |H-Hexact|_inf = {Herr_inf:.3f} m, |dr|_inf = {drmax/1000.0:.3f} km"
+        )
         if args.csv:
-            print(f"{i:d},{ne:d},{hmin:.2f},{uerr_H1:.3e},{Herr_inf:.3f},{drmax:.3f}", file=csvfile)
+            print(
+                f"{i:d},{ne:d},{hmin:.2f},{uerr_H1:.3e},{Herr_inf:.3f},{drmax:.3f}",
+                file=csvfile,
+            )
 
     # report glaciated area and inactive set agreement using Jaccard index
     vol = assemble(H * dx)
     ei = amr._eleminactive(u, lb)
     area = assemble(ei * dx)
-    pprint(f"  glaciated area {area / 1000.0**4:.4f} million km^2, ice volume = {vol / 1000.0**4:.2f} thousand km^3", end="")
+    pprint(
+        f"  glaciated area {area / 1000.0**4:.4f} million km^2, ice volume = {vol / 1000.0**4:.2f} thousand km^3",
+        end="",
+    )
     if args.jaccard and i > 0:
         jac = amr.jaccard(ei, oldei, submesh=True)
         pprint(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
@@ -452,7 +451,7 @@ if args.csv:
 # save results from final mesh
 if args.opvd:
     CU = ((n + 2) / (n + 1)) * Gamma
-    Us_ufl = CU * H ** p * inner(grad(s), grad(s)) ** ((p - 2) / 2) * grad(s)
+    Us_ufl = CU * H**p * inner(grad(s), grad(s)) ** ((p - 2) / 2) * grad(s)
     Us = Function(VectorFunctionSpace(mesh, "CG", degree=2))
     Us.project(secpera * Us_ufl)  # smoother than .interpolate()
     Us.rename("Us = surface velocity (m/a)")
