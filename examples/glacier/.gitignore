@@ -3,4 +3,5 @@
 /range*
 /result*
 /*.csv
+/*.png
 /__pycache__/

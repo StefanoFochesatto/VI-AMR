@@ -68,6 +68,21 @@ parser.add_argument(
     help="compute surface mass balance from an elevation-dependent model",
 )
 parser.add_argument(
+    "-extract",
+    metavar="FILE",
+    type=str,
+    default="",
+    help="mesh extract, with b/w active/inactive, to image file (.png)",
+)
+parser.add_argument(
+    "-extract_box",
+    metavar="X",
+    type=float,
+    nargs=4,
+    default=[0.0, 1800.0e3, 0.0, 1800.0e3],
+    help="bounding box for -extract",
+)
+parser.add_argument(
     "-jaccard",
     action="store_true",
     default=False,
@@ -448,7 +463,6 @@ for i in range(args.refine + 1):
 if args.csv:
     csvfile.close()
 
-# save results from final mesh
 if args.opvd:
     CU = ((n + 2) / (n + 1)) * Gamma
     Us_ufl = CU * H**p * inner(grad(s), grad(s)) ** ((p - 2) / 2) * grad(s)
@@ -472,3 +486,23 @@ if args.opvd:
         Gb.interpolate(grad(b))
         Gb.rename("Gb = grad(b)")
         VTKFile(args.opvd).write(u, H, s, Us, q, a, b, Gb, Gs, rank)
+
+if args.extract:
+    import matplotlib.pyplot as plt
+    from firedrake.pyplot import triplot, tripcolor
+
+    fig, axes = plt.subplots()
+    z = amr._eleminactive(u, Function(V).interpolate(0.0))
+    tripcolor(z, axes=axes, cmap="gray")
+    triplot(
+        mesh,
+        axes=axes,
+        interior_kw={"linewidths": 0.5, "edgecolors": "r"},
+        boundary_kw={"color": "w", "alpha": 0.0},
+    )
+    axes.set_aspect("equal")
+    plt.axis("off")
+    plt.axis(args.extract_box)
+    # plt.show()
+    pprint("writing to %s ..." % args.extract)
+    plt.savefig(args.extract, bbox_inches="tight")
