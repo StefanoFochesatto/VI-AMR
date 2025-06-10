@@ -436,9 +436,10 @@ for i in range(args.refine + 1):
             print(f"{i:d},{ne:d},{hmin:.2f},{uerr_H1:.3e},{Herr_inf:.3f},{drmax:.3f}", file=csvfile)
 
     # report glaciated area and inactive set agreement using Jaccard index
+    vol = assemble(H * dx)
     ei = amr._eleminactive(u, lb)
     area = assemble(ei * dx)
-    pprint(f"  glaciated area {area / 1000.0**4:.4f} million km^2", end="")
+    pprint(f"  glaciated area {area / 1000.0**4:.4f} million km^2, ice volume = {vol / 1000.0**4:.2f} thousand km^3", end="")
     if args.jaccard and i > 0:
         jac = amr.jaccard(ei, oldei, submesh=True)
         pprint(f"; levels {i-1},{i} Jaccard agreement {100*jac:.2f}%")
