@@ -1,18 +1,18 @@
 # VI-AMR/examples/glacier/
 
-Remember to activate the Firedrake virtual environment.
+This directory contains a shallow ice approximation model of glaciers on land, which exploits and illustrates the tag-and-refine UDO and VCD VIAMR methods, along with gradient refinement.  See `METHOD.md` for the mathematical content.
 
-## synthetic examples
+## synthetic steady-state glacier examples
 
 ### illustrations
 
-To run a default steady-state glacier simulation for a synthetic glacier do
+The main code is `steady.py`, with formulas in `synthetic.py` and visualization in `viz.py`.  To run a default steady-state glacier simulation for a synthetic "dome" glacier, with known exact solution, remember to activate the Firedrake virtual environment and then do
 ```
 python3 steady.py
 ```
-or for an interesting case with Paraview-readable output,
+To get help add `-h`.  Here is an interesting bumpy bed and elevation-dependent surface mass balance case with Paraview-readable output, run in parallel:
 ```
-python3 steady.py -prob cap -elevdepend -sELA 900 -m 20 -refine 4 -uniform 1 -opvd result_cap.pvd
+mpiexec -n 4 python3 steady.py -prob cap -elevdepend -sELA 800 -m 20 -refine 4 -uniform 1 -opvd result_cap.pvd
 ```
 
 ### convergence and AMR efficiency
