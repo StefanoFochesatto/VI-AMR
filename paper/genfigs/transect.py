@@ -50,11 +50,11 @@ fig, ax = plt.subplots(figsize=[20.0, 3.0])
 ykm = y / 1.0e3
 plt.plot(ykm, b, 'k')
 ydash = np.array([0.0, 1.6e3])
-for sELA = [800.0, 900.0, 1000.0]
+sELA = [600.0, 800.0, 1000.0]
 for j in range(3):
-    zdash = sELA * np.ones(np.shape(ydash))
+    zdash = sELA[j] * np.ones(np.shape(ydash))
     plt.plot(ydash, zdash, 'k--')
-    plt.text(1.65e3, sELA - 20.0, f"{sELA:.0f} m", fontsize=20.0)
+    plt.text(1.65e3, sELA[j] - 20.0, f"{sELA[j]:.0f} m", fontsize=18.0)
 plt.axis("off")
 plt.savefig("transect.png", bbox_inches="tight")
 #plt.show()
