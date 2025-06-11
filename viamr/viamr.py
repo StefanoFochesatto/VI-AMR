@@ -16,8 +16,9 @@ class VIAMR(OptionsManager):
       1. udomark(), vcdmark():  two marking methods which target the computed free boundary
       2. gradreinactivemark(), brinactivemark():  two classical a posterior error indicator marking methods applied in the computed inactive set
       3. unionmark():  a method for combining existing marks
-      4. refinemarkedelements():  a method which calls PETSc for skeleton-based-refinement (SBR); compare refine_marked_elements() from NetGen/ngspetsc
-      5  adaptaveragedmetric():  a method which does metric-based mesh adaptation by combining an anisotropic metric with a free-boundary targeted isotropic metric
+      4. lowerboundcelldiameter():  unmark elements with cell diameters below a minimum cell diameter
+      5. refinemarkedelements():  a method which calls PETSc for skeleton-based-refinement (SBR); compare refine_marked_elements() from NetGen/ngspetsc
+      6. adaptaveragedmetric():  a method which does metric-based mesh adaptation by combining an anisotropic metric with a free-boundary targeted isotropic metric
 
     The default calls are as follows:
 
@@ -29,6 +30,7 @@ class VIAMR(OptionsManager):
       mark = amr.gradrecinactivemark(uh, lb)         # classical gradient recovery in inactive set
       mark = amr.brinactivemark(uh, lb, res_ufl)     # classical Babuska & Rheinboldt in inactive set
       mark = amr.unionmarks(mark1, mark2)            # union existing marks
+      mark = amr.lowerboundcelldiameter(mark, hmin)  # stop further refinement below hmin
       rmesh = amr.refinemarkelements(mesh, mark)     # calls PETSc DMPlexTransform method for SBR
       rmesh = amr.adaptaveragedmetric(mesh, uh, lb)  # calls animate library for metric-based adaptation
 
@@ -150,6 +152,11 @@ class VIAMR(OptionsManager):
         return Function(mark1.function_space()).interpolate(
             (mark1 + mark2) - (mark1 * mark2)
         )
+
+    def lowerboundcelldiameter(self, mark, hmin):
+        DG0 = mark.function_space()
+        large = Function(DG0).interpolate(conditional(CellDiameter(DG0.mesh()) >= hmin, 1.0, 0.0))
+        return Function(DG0).interpolate(mark * large)
 
     def udomark(self, uh, lb, n=2):
         """Mark mesh using Unstructured Dilation Operator (UDO) algorithm.  The algorithm
