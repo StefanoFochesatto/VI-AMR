@@ -7,37 +7,39 @@ import argparse
 
 
 def getPlot(Convdf, methodslist, x, y, title, plottype=None, methodcolors = None, methodmarkers = None, methodlabels = None, legend = True):
-
+    ms0 = 10.0
+    fs0 = 14.0
     # plotting types
     if plottype == "loglog":
         plt.figure(figsize=(10, 6))
         for i, method in enumerate(methodslist):
             plt.loglog(Convdf[method][x].to_numpy(), 
-                       Convdf[method][y].to_numpy(), color = methodcolors[method], marker=methodmarkers[method], label = methodlabels[method])
+                       Convdf[method][y].to_numpy(), color = methodcolors[method], marker=methodmarkers[method],  ms=ms0 ,label = methodlabels[method])
 
     elif plottype == "semilogx":
         plt.figure(figsize=(10, 6))
         for i, method in enumerate(methodslist):
             plt.semilogx(Convdf[method][x].to_numpy(),
-                         Convdf[method][y].to_numpy(),color = methodcolors[method],  marker=methodmarkers[method], label = methodlabels[method])
+                         Convdf[method][y].to_numpy(),color = methodcolors[method],  marker=methodmarkers[method],  ms=ms0,label = methodlabels[method])
             
     elif plottype == "semilogy":
         plt.figure(figsize=(10, 6))
         for i, method in enumerate(methodslist):
             plt.semilogy(Convdf[method][x].to_numpy(),
-                         Convdf[method][y].to_numpy(),color = methodcolors[method],  marker=methodmarkers[method], label = methodlabels[method])
+                         Convdf[method][y].to_numpy(),color = methodcolors[method],  marker=methodmarkers[method],  ms=ms0,label = methodlabels[method])
 
     else:
         plt.figure(figsize=(10, 6))
         for i, method in enumerate(methodslist):
             plt.plot(Convdf[method][x].to_numpy(),
-                     Convdf[method][y].to_numpy(), color = methodcolors[method],  marker=methodmarkers[method], label = methodlabels[method])
+                     Convdf[method][y].to_numpy(), color = methodcolors[method],  marker=methodmarkers[method],  ms=ms0,label = methodlabels[method])
 
     plt.xlabel(x, fontsize=16)
     plt.ylabel(y, fontsize=16)
     plt.title(title)
     if legend:
-        plt.legend()
+        plt.legend(fontsize=fs0)
+    plt.xlim(7.0e1,1.0e7)
         
     plt.grid(True)
 
@@ -79,7 +81,7 @@ def create_multiindex_dataframe(result_dir, methodlist):
 
 if __name__ == "__main__":
     os.chdir("/home/stefano/Desktop/VI-AMR/paper/ConvergenceResults")
-    methodlist = ['vcd', 'udo', 'metricIso', 'vcdUnif', 'udoUnif', 'metricIsoHess', 'vcdBR', 'udoBR', 'uniform']
+    methodlist = ['vcd', 'udo', 'metricIso', 'metricIsoHess', 'vcdBR', 'udoBR', 'uniform']
 
 
     # flag for running convergence script
@@ -91,7 +93,7 @@ if __name__ == "__main__":
                         help='Run convergence script for all amr_methods and refinements.')
     args = parser.parse_args()
 
-    methodlist = ['vcd', 'udo', 'metricIso', 'vcdUnif','udoUnif', 'metricIsoHess', 'vcdBR', 'udoBR', 'uniform']
+    methodlist = ['vcd', 'udo', 'metricIso', 'metricIsoHess', 'vcdBR', 'udoBR', 'uniform']
     
     if args.lshaped:
         script_path = "ConvergenceLShaped.py"
@@ -157,17 +159,17 @@ if __name__ == "__main__":
         'metricIsoHess': 's',      
         
         # Group 2: vcd* methods (triangles/crosses)
-        'vcd': 'v',                
+        'vcd': 'o',                
         'vcdBR': 'x',              
         'vcdUnif': 'p',            
         
         # Group 3: udo* methods (diamonds/triangles)
-        'udo': '^',                
+        'udo': 'ko',                
         'udoBR': 'D',              
         'udoUnif': '>',            
         
         # Standalone method (hexagon)
-        'uniform': 'h',            
+        'uniform': 'p',            
     }
     
     
@@ -202,7 +204,7 @@ if __name__ == "__main__":
     # Individual Methods plotted compared to uniform
         
     plt, file_title = getPlot(Convdf, ['vcdBR', 'udoBR', 'metricIsoHess','uniform'] , 'Elements', 'H1', 'H1 Convergence', plottype='loglog', methodcolors=methodcolors, methodmarkers = methodmarkers, methodlabels = methodlabels ,legend = True)
-    plt.savefig(os.path.join(plot_dir, file_title))
+    plt.savefig(os.path.join(plot_dir, 'Test.png'), bbox_inches="tight")
     
     
     
