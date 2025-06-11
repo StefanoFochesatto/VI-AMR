@@ -24,6 +24,19 @@ mpiexec -n 12 python3 steady.py -newton -m 5 -refine 13 -csv udo.csv
 mpiexec -n 12 python3 steady.py -newton -m 5 -refine 13 -vcd -csv vcd.csv
 ```
 
+### bumpy bed examples
+
+```
+python3 steady.py -uniform 2 -refine 6 -prob cap -opvd result_cap.pvd
+python3 steady.py -uniform 2 -refine 6 -prob range -opvd result_range.pvd
+```
+
+### elevation-dependent surface mass balance examples
+
+```
+mpiexec -n 4 python3 steady.py -prob cap -elevdepend -sELA 1000.0 -m 20 -uniform 1 -udo_n 2 -pcount 20 -refine 6 -opvd result_cap_1000.pvd
+```
+Vary `-sELA`, say 1000.0 -> 800.0 -> 600.0, to see increase in glaciation (inactive set area).
 
 ## an example which uses data for bed topography
 
