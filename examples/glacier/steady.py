@@ -44,6 +44,12 @@ from synthetic import (
     radiuserrordome,
 )
 
+if args.extractpvd:
+    bx = args.box  # [x_left, x_right, y_lower, y_upper]
+    assert bx[0] < bx[1] and bx[2] < bx[3], "-extract_box not valid"
+    assert args.data or (0.0 <= bx[0] < bx[1] <= L), "x range not valid for [0,L]"
+    assert args.data or (0.0 <= bx[2] < bx[3] <= L), "y range not valid for [0,L]"
+
 # set up .csv if generating numerical error data
 if args.csv:
     if not args.prob == "dome":
@@ -300,6 +306,14 @@ for i in range(args.refine + 1):
 if args.csv:
     csvfile.close()
 
+if args.extractpvd:  # note boxind gets written into -opvd file
+    x, y = SpatialCoordinate(mesh)
+    bx = args.box  # [x_left, x_right, y_lower, y_upper]
+    ibx = conditional(x >= bx[0], conditional(x <= bx[1], 1.0, 0.0), 0.0)
+    iby = conditional(y >= bx[2], conditional(y <= bx[3], 1.0, 0.0), 0.0)
+    _, DG0 = amr.spaces(mesh)
+    boxind = Function(DG0, name="box indicator").interpolate(ibx * iby)
+
 if args.opvd:
     CU = ((n + 2) / (n + 1)) * Gamma
     Us_ufl = CU * H**p * inner(grad(s), grad(s)) ** ((p - 2) / 2) * grad(s)
@@ -309,6 +323,9 @@ if args.opvd:
     q = Function(FunctionSpace(mesh, "BDM", 1))
     q.interpolate(Us * H)
     q.rename("q = UH = *post-computed* ice flux")
+    Gb = Function(VectorFunctionSpace(mesh, "DG", degree=0))
+    Gb.interpolate(grad(b))
+    Gb.rename("Gb = grad(b)")
     Gs = Function(VectorFunctionSpace(mesh, "DG", degree=0))
     Gs.interpolate(grad(s))
     Gs.rename("Gs = grad(s)")
@@ -316,31 +333,20 @@ if args.opvd:
     rank.dat.data[:] = mesh.comm.rank
     rank.rename("rank")
     pprint("writing to %s ..." % args.opvd)
-    if args.prob == "dome":
-        VTKFile(args.opvd).write(u, H, Us, q, a, Gs, rank)
+    if args.extractpvd:
+        VTKFile(args.opvd).write(u, H, s, Us, q, a, b, Gb, Gs, rank, boxind)
     else:
-        Gb = Function(VectorFunctionSpace(mesh, "DG", degree=0))
-        Gb.interpolate(grad(b))
-        Gb.rename("Gb = grad(b)")
         VTKFile(args.opvd).write(u, H, s, Us, q, a, b, Gb, Gs, rank)
 
-if args.extract:
-    assert mesh.comm.size() == 1, "only works in serial"
-    import matplotlib.pyplot as plt
-    from firedrake.pyplot import triplot, tripcolor
-
-    fig, axes = plt.subplots()
-    z = amr._eleminactive(u, Function(V).interpolate(0.0))
-    tripcolor(z, axes=axes, cmap="gray")
-    triplot(
-        mesh,
-        axes=axes,
-        interior_kw={"linewidths": 0.5, "edgecolors": "r"},
-        boundary_kw={"color": "w", "alpha": 0.0},
-    )
-    axes.set_aspect("equal")
-    plt.axis("off")
-    plt.axis(args.extract_box)
-    # plt.show()
-    pprint("writing to %s ..." % args.extract)
-    plt.savefig(args.extract, bbox_inches="tight")
+if args.extractpvd:
+    mesh.mark_entities(boxind, 99)
+    mesh = RelabeledMesh(mesh, [boxind], [99])
+    subm = Submesh(mesh, mesh.topological_dimension(), 99)
+    subV = FunctionSpace(subm, "CG", 1)
+    subu = Function(subV, name="u = transformed thickness").interpolate(u)
+    subH = Function(subV, name="H = thickness").interpolate(H)
+    subs = Function(subV, name="s = surface elevation").interpolate(s)
+    suba = Function(subV, name="a = accumulation").interpolate(a)
+    subb = Function(subV, name="b = bedrock topography").interpolate(b)
+    pprint("writing box extract to %s ..." % args.extractpvd)
+    VTKFile(args.extractpvd).write(subu, subH, subs, suba, subb)

@@ -28,6 +28,14 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description=des, formatter_class=RawTextHelpFormatter)
 
 parser.add_argument(
+    "-box",
+    metavar="X",
+    type=float,
+    nargs=4,
+    default=[0.0, 1800.0e3, 0.0, 1800.0e3],
+    help="bounding box for -extractpvd; ignored if not -extractpvd",
+)
+parser.add_argument(
     "-csv",
     metavar="FILE",
     type=str,
@@ -48,19 +56,11 @@ parser.add_argument(
     help="compute surface mass balance from an elevation-dependent model",
 )
 parser.add_argument(
-    "-extract",
+    "-extractpvd",
     metavar="FILE",
     type=str,
     default="",
-    help="mesh extract, with b/w active/inactive, to image file (.png)",
-)
-parser.add_argument(
-    "-extract_box",
-    metavar="X",
-    type=float,
-    nargs=4,
-    default=[0.0, 1800.0e3, 0.0, 1800.0e3],
-    help="bounding box for -extract",
+    help="extract a submesh, defined by -box, into Paraview-format file (.pvd)",
 )
 parser.add_argument(
     "-jaccard",
@@ -86,7 +86,7 @@ parser.add_argument(
     metavar="FILE",
     type=str,
     default="",
-    help="output file name for Paraview format (.pvd)",
+    help="name for Paraview-format output file (.pvd)",
 )
 parser.add_argument(
     "-pcount",
