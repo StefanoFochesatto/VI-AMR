@@ -6,7 +6,7 @@ This directory contains a shallow ice approximation model of glaciers on land, w
 
 ### illustrations
 
-The main code is `steady.py`, with formulas in `synthetic.py`.  To run a default steady-state glacier simulation for a synthetic "dome" glacier, with known exact solution, remember to activate the Firedrake virtual environment and then do
+The main code is `steady.py`, with formulas in `synthetic.py` and command-line argument processing in `clargs.py`.  To run a default steady-state glacier simulation for a synthetic "dome" glacier, with known exact solution, remember to activate the Firedrake virtual environment and then do
 ```
 python3 steady.py
 ```
