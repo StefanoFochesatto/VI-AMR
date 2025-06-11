@@ -2,11 +2,11 @@
 
 This directory contains a shallow ice approximation model of glaciers on land, which exploits and illustrates the tag-and-refine UDO and VCD VIAMR methods, along with gradient refinement.  See `METHOD.md` for the mathematical content.
 
-## synthetic steady-state glacier examples
+## synthetic steady-state glaciers
 
 ### illustrations
 
-The main code is `steady.py`, with formulas in `synthetic.py`.  To run a default steady-state glacier simulation for a synthetic "dome" glacier, with known exact solution, remember to activate the Firedrake virtual environment and then do
+The main code is `steady.py`, with formulas in `synthetic.py` and command-line argument processing in `clargs.py`.  To run a default steady-state glacier simulation for a synthetic "dome" glacier, with known exact solution, remember to activate the Firedrake virtual environment and then do
 ```
 python3 steady.py
 ```
@@ -24,8 +24,24 @@ mpiexec -n 12 python3 steady.py -newton -m 5 -refine 13 -csv udo.csv
 mpiexec -n 12 python3 steady.py -newton -m 5 -refine 13 -vcd -csv vcd.csv
 ```
 
+### bumpy bed examples
 
-## an example which uses data for bed topography
+```
+python3 steady.py -uniform 2 -refine 6 -prob cap -opvd result_cap.pvd
+python3 steady.py -uniform 2 -refine 6 -prob range -opvd result_range.pvd
+```
+
+### elevation-dependent surface mass balance examples
+
+```
+mpiexec -n 4 python3 steady.py -prob cap -elevdepend -sELA 1000.0 -m 20 -uniform 1 -udo_n 2 -pcount 20 -refine 6 -opvd result_cap_1000.pvd
+```
+Vary `-sELA`, say 1000.0 -> 800.0 -> 600.0, to see increase in glaciation (inactive set area).
+
+
+## realistic example which uses data for bed topography
+
+FIXME: WIP
 
 The NetCDF file `eastgr.nc` is already present.  It contains the ice-free bed topography for a portion of eastern Greenland, on a relatively low-resolution 5 km quadrilateral mesh.
 
@@ -35,8 +51,9 @@ pip install netCDF4
 ```
 Then do
 ```
-python3 steady.py -data eastgr.nc
+python3 steady.py -data eastgr.nc -opvd result_data.pvd
 ```
+Perhaps add options `-uniform 2 -refine 6 -pcount 20` etc.
 
 ### re-generating the NetCDF file
 
