@@ -1,7 +1,5 @@
-/cap*
-/dome*
-/range*
 /result*
+/*.txt
 /*.csv
 /*.png
 /__pycache__/
