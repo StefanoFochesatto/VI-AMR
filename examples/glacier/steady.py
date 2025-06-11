@@ -122,16 +122,21 @@ def amodel(s, sELA=1000.0, dsNEXT=100.0, alpha=0.0001 / secpera, alpharat=0.01):
 
 
 def weakform(u, a, b, Z=None, softening=1.0):
+    """When Z=None this is the weak form corresponding to (3) in METHOD.md.
+    If Z is given then this is (4).  In either case a(x) is given, so elevation
+    -dependent surface mass balance *must* be handled by an outer iteration.
+    Even for steep beds, the quadrature degree in the weak form, for the first
+    "dx", can apparently be handled by Firedrake's automatic mechanism.  For
+    testing this, note that "dx(degree=Q)" with Q=4,5,6,7 seems to produce about
+    the same result as the automatic mechanism, while Q=2 is distinctly worse."""
     v = TestFunction(u.function_space())
     if Z is not None:
         du_tilt = grad(u) - Z
     else:
         du_tilt = grad(u) - Phi(u, b)
     Dp = inner(du_tilt, du_tilt) ** ((p - 2) / 2)
-    return (
-        softening * Gamma * omega ** (p - 1) * Dp * inner(du_tilt, grad(v)) * dx
-        - a * v * dx
-    )
+    C = softening * Gamma * omega ** (p - 1)
+    return C * Dp * inner(du_tilt, grad(v)) * dx(degree=args.qdegree) - a * v * dx
 
 
 def glaciermeshreport(amr, mesh, indent=2):
