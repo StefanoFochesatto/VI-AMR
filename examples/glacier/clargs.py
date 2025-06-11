@@ -1,6 +1,9 @@
 des="""
 Solves a 2D steady, isothermal shallow ice approximation glacier obstacle problem.
-The domain is a square [0,L]^2 with L = 1800.0 km.
+See README.md for examples and METHOD.md for documentation of the mathematics.
+
+The domain is a square [0,L]^2 with L = 1800.0 km, except that with -data
+the domain is read from the file.
 
 By default (-prob dome) we solve a flat bed case, with surface mass balance
 which only depends on horizontal location, where the exact solution is
@@ -17,17 +20,12 @@ inactive set.
 
 The default VI solver is Picard iteration on the tilt (Jouvet & Bueler, 2012),
 and vinewtonrsls (+ mumps) for each tilt.  A full Newton iteration, i.e. simply
-vinewtonrsls, is turned on with -newton, but it does not work in many of the
+vinewtonrsls, is turned on with -newton, but it does not converge in many
 harder cases.
-
-See the README.md for examples.
-
-FIXME: A data-based problem (-data DATA.nc) is a WIP.  old run:
-  python3 steady.py -data eastgr.nc -opvd result_data.pvd -refine 5 -pcount 24
 """
 
 from argparse import ArgumentParser, RawTextHelpFormatter
-parser = ArgumentParser(des, formatter_class=RawTextHelpFormatter)
+parser = ArgumentParser(description=des, formatter_class=RawTextHelpFormatter)
 
 parser.add_argument(
     "-csv",

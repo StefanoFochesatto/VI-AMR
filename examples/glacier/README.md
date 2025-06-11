@@ -2,7 +2,7 @@
 
 This directory contains a shallow ice approximation model of glaciers on land, which exploits and illustrates the tag-and-refine UDO and VCD VIAMR methods, along with gradient refinement.  See `METHOD.md` for the mathematical content.
 
-## synthetic steady-state glacier examples
+## synthetic steady-state glaciers
 
 ### illustrations
 
@@ -38,7 +38,10 @@ mpiexec -n 4 python3 steady.py -prob cap -elevdepend -sELA 1000.0 -m 20 -uniform
 ```
 Vary `-sELA`, say 1000.0 -> 800.0 -> 600.0, to see increase in glaciation (inactive set area).
 
-## an example which uses data for bed topography
+
+## realistic example which uses data for bed topography
+
+FIXME: WIP
 
 The NetCDF file `eastgr.nc` is already present.  It contains the ice-free bed topography for a portion of eastern Greenland, on a relatively low-resolution 5 km quadrilateral mesh.
 
@@ -48,8 +51,9 @@ pip install netCDF4
 ```
 Then do
 ```
-python3 steady.py -data eastgr.nc
+python3 steady.py -data eastgr.nc -opvd result_data.pvd
 ```
+Perhaps add options `-uniform 2 -refine 6 -pcount 20` etc.
 
 ### re-generating the NetCDF file
 
