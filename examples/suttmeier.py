@@ -14,6 +14,12 @@ parser.add_argument(
     help="print u_h(1/8,1/4) (default: False; serial only)",
 )
 parser.add_argument(
+    "-hmin",
+    type=float,
+    default=-1,
+    help="do not refine below this diameter (default: -1 .. so no hmin)",
+)
+parser.add_argument(
     "-m0", type=int, default=10, help="initial mesh subdivision (default: 10)"
 )
 parser.add_argument(
@@ -124,6 +130,8 @@ for i in range(args.refinements + 1):
         u, psi, residual, theta=args.theta, method="total" if args.total else "max"
     )
     mark = amr.unionmarks(fbmark, imark)
+    if args.hmin > 0.0:
+        mark = amr.lowerboundcelldiameter(mark, args.hmin)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 

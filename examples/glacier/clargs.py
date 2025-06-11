@@ -63,6 +63,12 @@ parser.add_argument(
     help="extract a submesh, defined by -box, into Paraview-format file (.pvd)",
 )
 parser.add_argument(
+    "-hmin",
+    type=float,
+    default=-1,
+    help="do not refine below this diameter (default: -1 .. so no hmin)",
+)
+parser.add_argument(
     "-jaccard",
     action="store_true",
     default=False,

@@ -178,6 +178,9 @@ for i in range(args.refine + 1):
             # FIXME: sporadic parallel bug with method="total" apparently ...
             # imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
             imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="max")
+            if args.hmin > 0.0:
+                fbmark = amr.lowerboundcelldiameter(fbmark, args.hmin)
+                imark = amr.lowerboundcelldiameter(imark, args.hmin)
             mark = amr.unionmarks(fbmark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
             # report percentages of elements marked
