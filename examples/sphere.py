@@ -9,7 +9,6 @@ import numpy as np
 from firedrake import *
 from firedrake.petsc import PETSc
 from viamr import VIAMR
-from viamr.utility import SphereObstacleProblem
 
 try:
     import netgen
