@@ -512,8 +512,8 @@ class VIAMR(OptionsManager):
         return None
 
     def _isotropicfbmetric(self, mesh, uh, lb, CG1, P1tensor):
-        """Construct free-boundary isotropic metric from abs(grad(s)), where s is the
-        (smooth) output of vcdmark().  Compare "L2" option in
+        """Construct a normalized free-boundary isotropic metric from abs(grad(s)),
+        where s is the (smooth) output of vcdmark().  Compare "L2" option in
         animate.compute_isotropic_metric(); here we already have a P1 indicator.)"""
         s = self.vcdmark(uh, lb, returnSmooth=True)
         maggrads = Function(CG1).interpolate(sqrt(dot(grad(s), grad(s))))
@@ -524,7 +524,8 @@ class VIAMR(OptionsManager):
         return VIMetric
 
     def _hessianmetric(self, mesh, uh, P1tensor):
-        """Build metric from hessian of uh.  Motivated by interpolation error formula."""
+        """Construct a normalized metric from the Hessian of uh.  This is motivated
+        by the interpolation error formula."""
         hessmetric = animate.RiemannianMetric(P1tensor)
         hessmetric.set_parameters(self.metricparameters)
         # re method: default "mixed_L2" is more expensive
