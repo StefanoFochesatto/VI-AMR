@@ -2,7 +2,7 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
-from viamr.utility import SphereObstacleProblem
+from utility import SphereObstacleProblem
 import time
 import math
 import argparse
@@ -52,8 +52,6 @@ if __name__ == "__main__":
     mesh = problem_instance.setInitialMesh()
     u = None
 
-    # for debugging purposes
-    # os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
 
     # Load in data about exact solution
     with CheckpointFile("ExactSolution.h5", "r") as afile:
@@ -85,18 +83,14 @@ if __name__ == "__main__":
         _, solFreeBoundaryEdges = amr_instance.freeboundarygraph(u, lb)
         HError = amr_instance.hausdorff(solFreeBoundaryEdges, exactFreeBoundaryEdges)
 
-        # Compute L2 error
-        # L2Error = sqrt(assemble(dot(diffu, diffu) * dx))
-        uProj = Function(exactU.function_space()).project(u)
-        L2Error = errornorm(exactU, uProj, norm_type="L2")
-        # Compute H1 error
-        H1Error = errornorm(exactU, uProj, norm_type="H1")
 
-        # FIXME: investigate this further, this is giving weird results.
-        # Compute L2 Error (using conservative projection to finer mesh)
-        # proju = Function(exactV).project(u)
-        # L2Error = sqrt(
-        #    assemble(dot((proju - exactU), (proju - exactU)) * dx(exactMesh)))
+        # Compute L2 error using ufl solution
+        ExactFunctionSpace = FunctionSpace(mesh, "CG", 3)
+        ufl, _ = problem_instance.setBoundaryConditionsUFL(ExactFunctionSpace)
+        L2Error = errornorm(ufl, u, norm_type="L2")
+        # Compute H1 error
+        H1Error = errornorm(ufl, u, norm_type="H1")
+
 
         # Big switch style statement for methods
         if method == methodlist[0]:  # vcd

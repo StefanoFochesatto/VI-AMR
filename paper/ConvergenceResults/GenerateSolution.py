@@ -1,7 +1,7 @@
 # Import necessary modules from Firedrake
 from firedrake import *
 from firedrake.output import VTKFile
-from viamr.utility import SphereObstacleProblem
+from paper.convergence.utility import SphereObstacleProblem
 from viamr import VIAMR
 
 # for debugging

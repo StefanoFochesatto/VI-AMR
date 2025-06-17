@@ -80,7 +80,7 @@ def create_multiindex_dataframe(result_dir, methodlist):
 
 
 if __name__ == "__main__":
-    os.chdir("/home/stefano/Desktop/VI-AMR/paper/ConvergenceResults")
+    #os.chdir("/home/stefano/Desktop/VI-AMR/paper/ConvergenceResults")
     methodlist = ['vcd', 'udo', 'metricIso', 'metricIsoHess', 'vcdBR', 'udoBR', 'uniform']
 
 
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     if args.lshaped:
         script_path = "ConvergenceLShaped.py"
     else:        
-        script_path = "Convergence.py"
+        script_path = "genspheredata.py"
 
         
     if args.runconvergence:

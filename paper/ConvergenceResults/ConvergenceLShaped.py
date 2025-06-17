@@ -2,7 +2,7 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
-from viamr.utility import LShapedDomainProblem
+from paper.convergence.utility import LShapedDomainProblem
 import time
 import math
 import argparse
