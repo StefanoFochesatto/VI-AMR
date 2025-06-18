@@ -174,6 +174,10 @@ for i in range(args.refine + 1):
                 fbmark = amr.vcdmark(u, lb, bracket=[0.1, 0.8])
             else:
                 fbmark = amr.udomark(u, lb, n=args.udo_n)
+                # asymmetric alternative
+                #mark1 = amr.udomark(u, lb, n=args.udo_n, restrict="active")
+                #mark2 = amr.udomark(u, lb, n=min(1, args.udo_n - 1), restrict="inactive")
+                #fbmark = amr.unionmarks(mark1, mark2)
             pprint(", and by gradient recovery in inactive ...")
             # FIXME: sporadic parallel bug with method="total" apparently ...
             # imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")

@@ -108,6 +108,10 @@ for amrtype in ["udo", "vcd", "avm"]:
             (imark, _, _) = amr.brinactivemark(u, lb, residual, theta=0.7)
             if amrtype == "udo":
                 mark = amr.udomark(u, lb, n=1)
+                # asymmetric alternative:
+                #mark1 = amr.udomark(u, lb, n = 3, restrict="active")
+                #mark2 = amr.udomark(u, lb, n = 1, restrict="inactive")
+                #mark = amr.unionmarks(mark1, mark2)
             elif amrtype == "vcd":
                 mark = amr.vcdmark(u, lb)
             mark = amr.unionmarks(mark, imark)
