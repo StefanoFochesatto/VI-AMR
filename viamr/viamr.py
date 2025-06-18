@@ -13,6 +13,7 @@ try:
 except ImportError:
     from firedrake.petsc import OptionsManager
 
+
 class VIAMR(OptionsManager):
     r"""A VIAMR object manages adaptive mesh refinement (AMR) for a Firedrake variational inequality (VI) solver.  Central notions are that refinement near the free boundary will improve solution quality, and that refinement in the active set can be wasted effort.  Complementary refinement in the inactive set is also supported.  Both refinement modes are necessary for convergence under AMR.
 
@@ -44,7 +45,8 @@ class VIAMR(OptionsManager):
 
     Certain functions do not work in parallel: 1. jaccard() with submesh=False, and 2. hausdorff().
 
-    Certain functions run both in serial and parallel, but can give different results depending on the number of processes: 1. vcdmark() and 2. adaptaveragedmetric().  See the paper for more details."""
+    Certain functions run both in serial and parallel, but can give different results depending on the number of processes: 1. vcdmark() and 2. adaptaveragedmetric().  See the paper for more details.
+    """
 
     def __init__(self, **kwargs):
         self.activetol = kwargs.pop("activetol", 1.0e-10)
@@ -130,7 +132,8 @@ class VIAMR(OptionsManager):
     def _elemborder(self, nodalactive):
         """From *nodal* active set indicator nodalactive, computes bordering element indicator.  Crucially uses the fact that the DG0 degree of freedom is strictly inside the element.  Probably only works if z is in CG1.  Returns 1.0 for elements with
           0 < nu_h(x_K) < 1
-        for nodal active set indicator nu_h, and at x_K which is the DG0 dof for element K."""
+        for nodal active set indicator nu_h, and at x_K which is the DG0 dof for element K.
+        """
         if self.debug:
             if len(nodalactive.dat.data_ro) > 0:
                 assert min(nodalactive.dat.data_ro) >= 0.0
@@ -159,10 +162,12 @@ class VIAMR(OptionsManager):
 
     def lowerboundcelldiameter(self, mark, hmin):
         DG0 = mark.function_space()
-        large = Function(DG0).interpolate(conditional(CellDiameter(DG0.mesh()) >= hmin, 1.0, 0.0))
+        large = Function(DG0).interpolate(
+            conditional(CellDiameter(DG0.mesh()) >= hmin, 1.0, 0.0)
+        )
         return Function(DG0).interpolate(mark * large)
 
-    def udomark(self, uh, lb, n=2, restrict = None):
+    def udomark(self, uh, lb, n=2, restrict=None):
         """Mark mesh using Unstructured Dilation Operator (UDO) algorithm.  The algorithm
         first computes an element-wise indicator for the free boundary.  Then the elements
         which neighbor free-boundary elements are added, and so on iteratively.
@@ -173,25 +178,31 @@ class VIAMR(OptionsManager):
         on simple examples even n=1 may suffice."""
 
         # get mesh and its DMPlex, added flag for restriction
-        
+
         if restrict is not None:
             meshInit = uh.function_space().mesh()
             dInit = meshInit.cell_dimension()
             dmInit = meshInit.topology_dm
-            if restrict == "active": # restrict to active set plus border
-                indicator = Function(FunctionSpace(meshInit, "DG", 0)).interpolate(self._elemactive(uh, lb) + self._elemborder(self._nodalactive(uh, lb)))
-            elif restrict == "inactive": # restric to inactive set, which contains border already
+            if restrict == "active":  # restrict to active set plus border
+                indicator = Function(FunctionSpace(meshInit, "DG", 0)).interpolate(
+                    self._elemactive(uh, lb)
+                    + self._elemborder(self._nodalactive(uh, lb))
+                )
+            elif (
+                restrict == "inactive"
+            ):  # restric to inactive set, which contains border already
                 indicator = self._eleminactive(uh, lb)
 
             mesh = self._filtermesh(meshInit, indicator)
             d = mesh.cell_dimension()
             dm = mesh.topology_dm
-            
+
             # Use nodal active set indicator to make an initial DG0 element border
             # indicator. This is now on a restricted domain so allow_missing_dofs=True
-            border = Function(FunctionSpace(mesh, "DG", 0)).interpolate(self._elemborder(self._nodalactive(uh, lb)), allow_missing_dofs=True)
-            
-            
+            border = Function(FunctionSpace(mesh, "DG", 0)).interpolate(
+                self._elemborder(self._nodalactive(uh, lb)), allow_missing_dofs=True
+            )
+
         else:
             mesh = uh.function_space().mesh()
             d = mesh.cell_dimension()
@@ -199,9 +210,7 @@ class VIAMR(OptionsManager):
             # Use nodal active set indicator to make an initial DG0 element border
             # indicator.
             border = self._elemborder(self._nodalactive(uh, lb))
-            
-            
-            
+
         # FIXME check that distribution parameters are correct in parallel
         if mesh.comm.size > 1:
             dp = mesh._distribution_parameters
@@ -211,7 +220,6 @@ class VIAMR(OptionsManager):
                 )
 
         # FIXME Experiment implementation in cython, DMLabel to mark accumulation, dmplex with only vertex and cell connectivity to save memory
-
 
         # Find range of indices for element stratum
         kmin, kmax = dm.getHeightStratum(0)[:2]
@@ -253,11 +261,13 @@ class VIAMR(OptionsManager):
             # re-generate DG0 element border indicator by adding neighbors
             border = Function(DG0).interpolate(Constant(0.0))
             for k in neighborindices:
-                border.dat.data_wo_with_halos[
-                    dm2fd[k]
-                ] = 1  # parallel communication *here*
+                border.dat.data_wo_with_halos[dm2fd[k]] = (
+                    1  # parallel communication *here*
+                )
 
-        return Function(FunctionSpace(uh.function_space().mesh(), "DG", 0)).interpolate(border, allow_missing_dofs=True)
+        return Function(FunctionSpace(uh.function_space().mesh(), "DG", 0)).interpolate(
+            border, allow_missing_dofs=True
+        )
 
     def vcdmark(
         self,
@@ -293,7 +303,7 @@ class VIAMR(OptionsManager):
         w = TrialFunction(CG1)
         v = TestFunction(CG1)
         h = CellDiameter(mesh)
-        a = w * v * dx + coefficient * h ** 2 * inner(grad(w), grad(v)) * dx
+        a = w * v * dx + coefficient * h**2 * inner(grad(w), grad(v)) * dx
         L = nu * v * dx
         u = Function(CG1, name="Smoothed Nodal Active")
 
@@ -424,7 +434,7 @@ class VIAMR(OptionsManager):
         w = TestFunction(DG0)
         G = (
             inner(eta_sq / v, w) * dx
-            - inner(h ** 2 * res_ufl ** 2, w) * dx
+            - inner(h**2 * res_ufl**2, w) * dx
             - inner(h("+") / 2 * jump(grad(uh), n) ** 2, w("+")) * dS
             - inner(h("-") / 2 * jump(grad(uh), n) ** 2, w("-")) * dS
         )
@@ -437,7 +447,6 @@ class VIAMR(OptionsManager):
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         mark, _, total_error_est = self._fixedrate(ieta, theta, method)
         return (mark, eta, total_error_est)
-    
 
     def refinemarkedelements(self, mesh, indicator, isUniform=False):
         """Call PETSc DMPlex routines to do skeleton-based refinement
@@ -710,47 +719,46 @@ class VIAMR(OptionsManager):
                 ]
                 return coordsV, coordsE
 
-
     def _filtermesh(self, mesh, indicator):
-    
+
         # Create Section for DG0 indicator
         tdim = mesh.topological_dimension()
-        entity_dofs = np.zeros(tdim+1, dtype=IntType)
+        entity_dofs = np.zeros(tdim + 1, dtype=IntType)
         entity_dofs[:] = 0
         entity_dofs[-1] = 1
         indicatorSect, _ = dmcommon.create_section(mesh, entity_dofs)
 
         # Pull Plex from mesh
         dm = mesh.topology_dm
-        
-    
+
         # Create a filter label
-        dm.createLabel('filter')
-        adaptLabel = dm.getLabel('filter')
+        dm.createLabel("filter")
+        adaptLabel = dm.getLabel("filter")
         adaptLabel.setDefaultValue(0)
 
         # Set label values with function array
         dmcommon.mark_points_with_function_array(
-            dm, indicatorSect, 0, indicator.dat.data_with_halos, adaptLabel, 1)
+            dm, indicatorSect, 0, indicator.dat.data_with_halos, adaptLabel, 1
+        )
 
         # Create a DMPlexTransform object to apply the filter
         opts = PETSc.Options()
 
-        opts['dm_plex_transform_active'] = 'filter'
-        opts['dm_plex_transform_type'] = 'transform_filter'
-        dmTransform = PETSc.DMPlexTransform().create(comm = mesh.comm)
+        opts["dm_plex_transform_active"] = "filter"
+        opts["dm_plex_transform_type"] = "transform_filter"
+        dmTransform = PETSc.DMPlexTransform().create(comm=mesh.comm)
         dmTransform.setDM(dm)
-        
+
         # For now the only way to set the active label with petsc4py is with PETSc.Options() (DMPlexTransformSetActive() has no binding)
         dmTransform.setFromOptions()
         dmTransform.setUp()
         dmAdapt = dmTransform.apply(dm)
-        
-        # Labels are no longer needed we need to call destroy on them. 
-        dmAdapt.removeLabel('filter')
-        dm.removeLabel('filter')
+
+        # Labels are no longer needed we need to call destroy on them.
+        dmAdapt.removeLabel("filter")
+        dm.removeLabel("filter")
         dmTransform.destroy()
-        
+
         # Remove labels to stop further distribution in mesh()
         # dm.distributeSetDefault(False) <- Matt's suggestion
         dmAdapt.removeLabel("pyop2_core")
@@ -760,11 +768,11 @@ class VIAMR(OptionsManager):
 
         # Pull distribution parameters from original dm
         distParams = mesh._distribution_parameters
-        
+
         # Create a new mesh from the adapted dm
-        refinedmesh = Mesh(dmAdapt, distribution_parameters = distParams, comm = mesh.comm)
-        
+        refinedmesh = Mesh(dmAdapt, distribution_parameters=distParams, comm=mesh.comm)
+
         # Set transform type back to regular refinemenet
-        opts['dm_plex_transform_type'] = 'refine_regular'
-        
+        opts["dm_plex_transform_type"] = "refine_regular"
+
         return refinedmesh
