@@ -4,11 +4,14 @@ import numpy as np
 from pyop2.mpi import MPI
 from firedrake import *
 from firedrake.petsc import PETSc
-from petsctools import OptionsManager
 from firedrake.utils import IntType
 import firedrake.cython.dmcommon as dmcommon
 import animate
 
+try:
+    from petsctools import OptionsManager
+except ImportError:
+    from firedrake.petsc import OptionsManager
 
 class VIAMR(OptionsManager):
     r"""A VIAMR object manages adaptive mesh refinement (AMR) for a Firedrake variational inequality (VI) solver.  Central notions are that refinement near the free boundary will improve solution quality, and that refinement in the active set can be wasted effort.  Complementary refinement in the inactive set is also supported.  Both refinement modes are necessary for convergence under AMR.
