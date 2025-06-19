@@ -382,14 +382,15 @@ The BR error estimator is explicit and easily-computed.  Ainsworth, Oden, and Le
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
 
-Our first two methods for adaptive mesh refinement (AMR) for VIs, Algorithms \ref{alg:udo} and \ref{alg:vcd}, are of \emph{tag-and-refine} type.  Later we add a third, more-expensive \emph{metric-based mesh adaptation} approach \cite{Wallworketal2020}, Algorithm \ref{alg:avm}, which can hold the mesh complexity approximately constant.
+Our first two methods for adaptive mesh refinement (AMR) for VIs, Algorithms \ref{alg:udo} and \ref{alg:vcd}, are of \emph{tag-and-refine} type.  A third, more-expensive \emph{metric-based mesh adaptation} approach \cite{Wallworketal2020} follows, namely Algorithm \ref{alg:avm} which can hold the mesh complexity approximately constant.
 
 These methods start from a computed solution to FE VI problem \eqref{eq:fe:vi}.  We need only the mesh $\cT_h$, the obstacle $\psi_h \in \cX_h$, and the admissible solution $u_h \in \cK_h \subset \cX_h$.  The following two concepts are fundamental.
 
 \begin{definition} \label{def:nodalactive}
-Denote the vertices of $\cT_h$ by $x_j$.  Given $u_h \ge \psi_h$ and a tolerance $\text{tol}>0$, the \emph{nodal active set indicator} is $\nu_h\in\CG_1(\cT_h)$ satisfying
+Denote the vertices of $\cT_h$ by $x_j$.  Given $u_h \ge \psi_h$ and a tolerance $\text{tol}>0$, the \emph{nodal active set indicator} is the unique $\nu_h\in\cX_h$ satisfying
 	$$\nu_h(x_j) = \begin{cases} 1, & u_h(x_j) - \psi_h(x_j) < \text{tol} \\
 	                             0, & \text{otherwise}\end{cases}$$
+for the nodes $x_j$ of $\cX_h$.
 \end{definition}
 
 \begin{definition} \label{def:marking}
@@ -400,13 +401,13 @@ For PDE problems, an element marking is typically derived from an error estimato
 
 The use of PETSc DMPlex queries is essential to Algorithm \ref{alg:udo} below, so let us sketch aspects of how this domain management class supports unstructured meshes \cite{Langeetal2016}.  A DMPlex object stores the topology (connectivity of entities) of a $d=1,2,3$ FE mesh.  Every mesh entity, regardless of dimension, is assigned a unique index.  Mesh connectivity can be understood as a stratified directed acyclic graph (DAG) in which a covering (incidence) relationship between mesh entities determines the directed edges.  For example, a triangle within a 2D mesh is covered by its three edges, each of which is covered by its two endpoints (vertices).  Each stratum in the DAG represents a dimensional class of mesh entity, thus the cells, edges, and vertices in a 2D mesh are at strata indices (heights) of $0$, $1$, and $2$ respectively.  Given the index $p$ of a mesh entity, we will use the following DMPlex mesh topology queries \cite{petsc-user-ref}:  The operation $\text{\emph{cone}}(p)$ returns the indices of all entities which cover entity $p$.  Its dual, which returns all the entities which are covered by $p$, is $\text{\emph{support}}(p)$.  The transitive closure of \emph{cone} is $\text{\emph{closure}}(p)$, and that of \emph{support} is $\text{\emph{star}}(p)$.  In our application we need only the indices of vertices in the element closure; we denote this as $\text{\emph{closure}}^\wedge(k)$.  Similarly, $\text{\emph{star}}_\vee(j)$ extracts only element indices in the star of vertex $x_j$.
 
-The Unstructured Dilation Operator (UDO) method, Algorithm \ref{alg:udo}, first computes a nodal active set indicator $\nu_h$.  Denoting the degrees of freedom in $\DG_0(\cT_h)$ by $x_k$, it finds the set of indices $k$ of elements such that $0<\nu_h(x_k)<1$.  This condition holds when, according to $u_h$, the element is incident to both active and inactive vertices.  Then the method alternates closure and star on the element set $n$ times, expanding the marking by $n$ element layers, to generate an element marking $I_h$.
+The Unstructured Dilation Operator (UDO) method, Algorithm \ref{alg:udo}, first computes a nodal active set indicator $\nu_h$.  Denoting the degrees of freedom in $\DG_0(\cT_h)$ by $x_k$, it finds the set of indices $k$ of elements such that $0<\nu_h(x_k)<1$.  If $u_h \in \CG_1$ then this condition holds when the element is incident to both active and inactive vertices.  Then the method alternates closure and star on the element set $n$ times, expanding the marking by $n$ element layers, to generate an element marking $I_h$.
 
 \begin{algorithm}[ht]
 	\caption{Unstructured Dilation Operator (UDO) element marking}
 	\begin{algorithmic}[1]
 		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, and expansion parameter $n\ge 1$.
-		\State Compute nodal active set indicator $\nu_h \in \CG_1(\cT_h)$.
+		\State Compute nodal active set indicator $\nu_h \in \cX_h$.
 		\State Find initial element index set $S_0$: \,$k\in S_0$ if $\nu_h(x_k) \in (0,1)$.
 		\For{$i=0,\dots,n-1$}
 		    $$S_{i+1} = \bigcup_{k\in S_i}\, \bigcup_{j\in \text{\emph{closure}}^\wedge(k)} \text{\emph{star}}_\vee(j)$$
@@ -422,15 +423,15 @@ The UDO strategy explicitly manipulates the indices of mesh entities.  Our secon
 \begin{equation} \label{eq:diffusioneqn}
 \frac{\partial s}{\partial t} = \Div\left(D \grad s\right), \qquad s(t=0) = \nu_h,
 \end{equation}
-with Neumann (natural) boundary conditions, a well-posed problem.  A solution of \eqref{eq:diffusioneqn} at any $t>0$ is a smoothed form of $\nu_h$.  The diffusivity here is set to the square of the element diameter, $D=C h^2$ with $C=0.5$ by default; $h=h(k)$ varies over the mesh and $h,D \in \DG_0(\cT_h)$.  The diffusion range is thus proportional to one element diameter everywhere along the free boundary, largely independent of element geometry and dimension.  In fact \eqref{eq:diffusioneqn} is not solved exactly, or even very accurately, as we only compute $s_h\in\CG_1(\cT_h)$ from a single backward-Euler step of duration $\Delta t = 1$.  The default solver for this linear and elliptic problem is four iterations of conjugate gradient, preconditioned by incomplete-Cholesky factorization \cite{Bueler2021}.  This approximate solver is inexpensive, and its complexity is linear in the number of nodes.
+with Neumann (natural) boundary conditions, a well-posed problem.  A solution of \eqref{eq:diffusioneqn} at any $t>0$ is a smoothed form of $\nu_h$.  The diffusivity here is set to the square of the element diameter, $D=C h^2$ with $C=0.5$ by default; $h=h(k)$ varies over the mesh and $h,D \in \DG_0(\cT_h)$.  The diffusion range is thus proportional to one element diameter everywhere along the free boundary, largely independent of element geometry and dimension.  In fact \eqref{eq:diffusioneqn} is not solved exactly, or even very accurately, as we only compute $s_h\in\cX_h$ from a single backward-Euler step of duration $\Delta t = 1$.  The default solver for this linear and elliptic problem is four iterations of conjugate gradient, preconditioned by incomplete-Cholesky factorization \cite{Bueler2021}.  This approximate solver is inexpensive, and its complexity is linear in the number of nodes.
 
 \begin{algorithm}[ht]
 	\caption{Variable Coefficient Diffusion (VCD) element marking}
 	\begin{algorithmic}[1]
 		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, coefficient $C>0$, and threshold interval $0 < \alpha < \beta < 1$.
-		\State Compute nodal active set indicator $\nu_h \in \CG_1(\cT_h)$.
+		\State Compute nodal active set indicator $\nu_h \in \cX_h$.
 		\State For $h$ the element diameter, let $D=C h^2 \in \DG_0(\cT_h)$.
-		\State Approximately solve for $s_h\in\CG_1(\cT_h)$, with Neumann boundary conditions:
+		\State Approximately solve for $s_h\in\cX_h$, with Neumann boundary conditions:
 		  $$s_h - \Div(D \grad s_h) = \nu_h$$ \\
 		\Return marking $I_h \in \DG_0(\cT_h)$ of all elements such that $s_h(x_k) \in (\alpha,\beta)$.
     \end{algorithmic}
@@ -457,11 +458,11 @@ Our \emph{averaged-metric} (AVM; Algorithm \ref{alg:avm}) AMR method for VIs aga
 	\caption{Averaged-metric (AVM) mesh adaptation}
 	\begin{algorithmic}[1]
 		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, target complexity $N$, element diameter bounds $0<\hmin<\hmax$, and averaging parameter $0\le \gamma \le 1$
-		\State Compute $s_h \in \CG_1(\cT_h)$ from Algorithm \ref{alg:vcd}, using $u_h,\psi_h$.
+		\State Compute $s_h \in \cX_h$ from Algorithm \ref{alg:vcd}, using $u_h,\psi_h$.
 		\State Compute normalized isotropic free-boundary metric: $M_1(x)=c_1 |\grad s_h(x)| I_{d\times d}$.
 		\State Compute normalized anisotropic metric from Hessian: $M_2(x)=c_2 |H u_h(x)|$.
 		\State Average the metrics: $M(x) = \gamma M_1(x) + (1-\gamma) M_2(x)$. \\
-		\Return unit mesh $\tilde \cT_h$ adapted to $M(x)$.
+		\Return new mesh $\tilde \cT_h$ which is unit with respect to $M(x)$.
     \end{algorithmic}
 \label{alg:avm}
 \end{algorithm}
@@ -475,30 +476,30 @@ All three methods, UDO, VCD, and AVM, run in parallel under the MPI process mode
 We end this section with two basic Python examples which illustrate how the open source VIAMR library (\href{https://github.com/StefanoFochesatto/VI-AMR}{{\small \texttt{github.com/StefanoFochesatto/VI-AMR}}}) is used.
 
 \begin{example} \label{example:AOL}
-Consider Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The complete code below, which applies the Firedrake and VIAMR libraries, generates a coarse mesh and then applies VCD marking and refinement around the free boundary.  The initial mesh, marked elements near the free boundary, and refined mesh are shown in Figure \ref{fig:resultAOL}.
+Consider now Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The complete code below applies the Firedrake and VIAMR libraries to solve this problem.  First it generates a uniform coarse mesh, then it applies VCD marking for the free boundary, and then it refines to a new mesh (Figure \ref{fig:resultAOL}).  For this example there is no refinement in the inactive set.
 \inputminted[linenos, frame=lines]{python}{../examples/aol.py}
 \end{example}
 
 \begin{figure}[ht]
 \centering
-\mbox{\includegraphics[width=0.21\textwidth]{static/aol-mesh0.png} \qquad\quad
+\mbox{\includegraphics[width=0.21\textwidth]{static/aol-mesh.png} \qquad\quad
 \includegraphics[width=0.21\textwidth]{static/aol-marked.png} \qquad\quad
-\includegraphics[width=0.21\textwidth]{static/aol-mesh1.png}}
-\caption{The Python code in Example \ref{example:AOL}, which solves Example 1 from \cite{AinsworthOdenLee1993}, starts from an initial mesh (left), marks elements by the default-parameter VCD scheme (middle), and generates a refined mesh (right).  The exact free boundary, unknown to the algorithm, is overlaid in black.}
+\includegraphics[width=0.21\textwidth]{static/aol-refinedmesh.png}}
+\caption{The Python code in Example \ref{example:AOL} solves Example 1 from \cite{AinsworthOdenLee1993}: initial mesh (left), marking by the default-parameter VCD scheme (middle), and the refined mesh (right).  The exact free boundary, unknown to the algorithm, is overlaid in black.}
 \label{fig:resultAOL}
 \end{figure}
 
 \begin{example} \label{example:hybrid}
-For the left-hand mesh in Figure \ref{fig:threeballmeshes}, after computing the FE solution \texttt{uh} on each mesh level, the following code snippet generate the next refined mesh:
+The following code snippet was used in generating the left-hand mesh in Figure \ref{fig:threeballmeshes}:
 \begin{minted}[linenos, frame=lines]{python}
 amr = VIAMR()
+fbmark = amr.udomark(uh, psih, n=1)
 residual = -div(grad(uh))
-imark, _, _ = amr.brinactivemark(uh, psi, residual, theta=0.7)
-fbmark = amr.udomark(uh, psi, n=1)
+imark, _, _ = amr.brinactivemark(uh, psih, residual, theta=0.7)
 mark = amr.unionmarks(fbmark, imark)
-mesh = amr.refinemarkedelements(mesh, mark)
+refinedmesh = amr.refinemarkedelements(mesh, mark)
 \end{minted}
-Here the BR error indicator (Section \ref{sec:inactive}) for the inactive set is computed from the \emph{a posteriori} element-wise residual, and then the $n=1$ case of UDO is used to mark near the free boundary, and finally these marks are unioned (hybridized).
+Here the $n=1$ case of UDO is used to mark near the free boundary, then the BR error indicator (Section \ref{sec:inactive}), using the element-wise residual, is applied for marking in the inactive set, and finally these marks are unioned.
 \end{example}
 
 
