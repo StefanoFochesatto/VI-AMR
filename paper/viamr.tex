@@ -61,6 +61,10 @@
 \newcommand{\CG}{\text{CG}}
 \newcommand{\DG}{\text{DG}}
 
+\newcommand{\hmax}{h_{\max}}
+\newcommand{\hmin}{h_{\min}}
+
+
 
 \begin{document}
 
@@ -441,27 +445,34 @@ Figure \ref{fig:vcdillustration} illustrates how the VCD algorithm applies to a 
 \label{fig:vcdillustration}
 \end{figure}
 
-\newcommand{\hmin}{h_{\min}}
-
 It turns out to be helpful, especially when solving highly-nonlinear obstacle problems like that in Section \ref{sec:app}, to have the user of Algorithms \ref{alg:udo} and \ref{alg:vcd} also set a minimum element diameter $\hmin$.  To implement this bound, after running these Algorithms we (un)set the indicator for element $K$, i.e.~we set $I_h|_K=0$, for any element with $h_K < \hmin$.
 
 From the marking $I_h$, computed by either Algorithm, we then apply \emph{skeleton-based refinement} (SBR) \cite{PlazaCarey2000} to generate a refined mesh with no hanging nodes and good mesh quality.  Note that two implementations of SBR are available to Firedrake applications, namely from the DMPlex component of PETSc \cite{petsc-user-ref} or the Netgen library \cite{Betteridgeetal2024}; only the latter is (currently) capable of 3D refinement.
 
-The third AMR method in this section is based on \emph{metric-based mesh adaptation} \cite{Alauzet2010}.  Instead of marking elements for refinement, such mesh adaptation effectively both refines and coarsens to match mesh complexity and resolution target values, for example to keep the mesh complexity approximately constant.  Adaptation is driven by an \emph{a posteriori} computed \emph{metric (ﬁeld)}, which is a continuous, matrix-valued function $M_h:\Omega \to \RR^{d\times d}$.  Each point value $M_h(x)$ is a symmetric and positive-definite matrix.  Such a metric contains local information on distances, areas, and volumes, analogous to a continuous version of a mesh; the analogy can be made precise \cite{LoseilleAlauzet2011}.  The construction of the metric field depends on the meshing goal.  The mesher itself generates a unit mesh with respect to the given metric field, which becomes a mesh with anisotropic edge lengths in the original space \cite{Wallworketal2020}.
+Our third AMR method is based on \emph{metric-based mesh adaptation} \cite{Alauzet2010}.  Instead of marking elements for refinement, mesh adaptation generates a new mesh matching resolution and complexity targets, for example keeping the mesh complexity approximately constant.  Here adaptation is driven by an \emph{a posteriori} computed metric ﬁeld, which is a continuous, matrix-valued function $M_h:\Omega \to \RR^{d\times d}$, with each value $M_h(x)$ a symmetric and positive-definite matrix.  Such a metric contains local information on distances, areas, and volumes \cite{LoseilleAlauzet2011}, and from the metric the mesher itself generates a unit mesh \cite{Alauzet2010}.  The resulting mesh has variable and anisotropic edge lengths in the original space.
 
-Our \emph{averaged-metric} (AVM) AMR method for VIs starts from $u_h$ and $\psi_h$.  The first metric $M_1(x)$ is computed from the gradient of a smoothed nodal active set indicator, namely $s_h$ from the VCD method (Algorithm \ref{alg:vcd}) above.  The metric is isotropic because it is a multiple of the identity: $M_1(x) = c_1 |\grad s_h(x)| I_{d\times d}$.  The second metric $M_2(x)$ is an approximate Hessian of $u_h$, computed via a Hessian-recovery technique \cite{Alauzet2010} because the FE function $u_h$ generally has discontinuous first derivatives.  Actually the absolute value of the Hessian, well-defined because the Hessian is a symmetric matrix \cite{Wallworketal2020}, is used to produce an anisotropic metric: $M_2(x) = c_2 |H u_h(x)|$.  These metrics are computed in the matrix-valued $\CG_1$ FE space, and $c_1,c_2$ are metric normalization constants computed in a standard manner \cite{Wallworketal2020}.  By construction, the first metric should generate small elements near the free boundary, while the second metric should reduce FE approximation error, specifically in the inactive set, because the Hessian of the continuous solution $u$ appears in standard interpolation theory \cite{Wallworketal2020}.
+Our \emph{averaged-metric} (AVM; Algorithm \ref{alg:avm}) AMR method for VIs again starts from $u_h$ and $\psi_h$.  The first metric is isotropic, and it is computed from the gradient of a smoothed nodal active set indicator, namely $s_h$ from the VCD method (Algorithm \ref{alg:vcd}).  The second metric is anisotropic, computed as an approximate Hessian of $u_h$ via a Hessian-recovery technique \cite{Alauzet2010}.  (Generally the FE function $u_h$ has discontinuous first derivatives and no well-defined Hessian.)  Actually the absolute value of the Hessian is used, which well-defined for a symmetric matrix \cite{Wallworketal2020}.  These metrics are in the matrix-valued $\CG_1$ FE space, with metric normalization constants computed from target complexity and eleemnt diameter bounds in a standard manner \cite{Wallworketal2020}.  By construction, the first metric should imply small elements near the free boundary, while the second should reduce FE approximation error, specifically in the inactive set, according to the standard interpolation theory \cite{Ciarlet2002}.  The final metric seen by the mesher is a weighted average of the two metrics, and thus it is an anisotropic metric which is free-boundary aware.
 
-The final metric seen by the mesher is then a weighted average:
-\begin{equation} \label{eq:avm}
-M_h(x) = \gamma M_1(x) + (1-\gamma) M_2(x) = \gamma c_1 |\grad s_h(x)| I_{d\times d} + (1-\gamma) c_2 |H u_h(x)|,
-\end{equation}
-where $\gamma \in [0,1]$; the default is $\gamma=0.5$.  This result $M_h(x)$ is an anisotropic metric which is free-boundary aware.  Our implementation of the AVM method calls the Animate library (\href{https://github.com/mesh-adaptation/animate}{{\small \texttt{github.com/mesh-adaptation/animate}}}) to construct the metrics $M_i(x)$, and to compute their average $M_h$.  Note that Animate uses the Pragmatic library (\href{https://github.com/meshadaptation/pragmatic}{{\small \texttt{github.com/meshadaptation/pragmatic}}}) as the default metric-based mesher.
+\begin{algorithm}[ht]
+	\caption{Averaged-metric (AVM) mesh adaptation}
+	\begin{algorithmic}[1]
+		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, target complexity $N$, element diameter bounds $0<\hmin<\hmax$, and averaging parameter $0\le \gamma \le 1$
+		\State Compute $s_h \in \CG_1(\cT_h)$ from Algorithm \ref{alg:vcd}, using $u_h,\psi_h$.
+		\State Compute normalized isotropic free-boundary metric: $M_1(x)=c_1 |\grad s_h(x)| I_{d\times d}$.
+		\State Compute normalized anisotropic metric from Hessian: $M_2(x)=c_2 |H u_h(x)|$.
+		\State Average the metrics: $M(x) = \gamma M_1(x) + (1-\gamma) M_2(x)$. \\
+		\Return unit mesh $\tilde \cT_h$ adapted to $M(x)$.
+    \end{algorithmic}
+\label{alg:avm}
+\end{algorithm}
 
-Recall that Figure \ref{fig:threeballmeshes} shows AMR results from all three methods on the ``ball'' obstacle problem shown in Figures \ref{fig:ball} and \ref{fig:activesizes} (middle).  The right sub-figure shows an AVM result for this problem.  Note that iterating the AVM method, even while holding the target mesh complexity constant, is worthwhile because the increased resolution near the free boundary allows the \emph{a posteriori}-determined metric to become more effective.  However, because of the many nontrivial computations in metric-based methods \cite{Alauzet2010,Wallworketal2020}, one iteration of AVM is substantially more expensive than an iteration of UDO, even when adding a residual-based marking in the inactive set like \eqref{eq:brestimator}; see Section \ref{sec:results}.
+Note that our implementation of Algorithm \ref{alg:avm} calls the Animate library (\href{https://github.com/mesh-adaptation/animate}{{\small \texttt{github.com/mesh-adaptation/animate}}}) to construct, normalize, and average the metrics.  Furthmermore, Animate uses the Pragmatic library (\href{https://github.com/meshadaptation/pragmatic}{{\small \texttt{github.com/meshadaptation/pragmatic}}}) as the default metric-based mesher.
 
-All three methods, UDO, VCD, and AVM, run in parallel under the MPI process model used by Firedrake/PETSc \cite{Bueler2021,Langeetal2016}.  However, only UDO produces identical results independent of the number of processes.  The VCD method can be configured to have this property, namely by choosing a direct solver for problem \eqref{eq:diffusioneqn}, but this reduces scalability.  For VCD the use of the preconditioned Krylov solver is preferred, though its default parallel block preconditioner will generate slightly different results depending on number of processes \cite{Bueler2021}.
+The right-hand image in Figure \ref{fig:threeballmeshes} (Introduction) shows an AVM result on the ``ball'' obstacle problem, which is the same problem as shown in Figure \ref{fig:ball}, and in the middle image of Figure \ref{fig:activesizes}.  Note that iterating the AVM method, even while holding the target mesh complexity constant, can be worthwhile because the increased resolution near the free boundary allows the \emph{a posteriori} metric to become more effective.  However, because of the many nontrivial computations in metric-based methods \cite{Alauzet2010,Wallworketal2020}, one AVM iteration is notably more expensive than an iteration of UDO or VCD; see Section \ref{sec:results}.
 
-We end this section with two basic Python examples which show how the library, available open source at \href{https://github.com/StefanoFochesatto/VI-AMR}{{\small \texttt{github.com/StefanoFochesatto/VI-AMR}}}, is used.
+All three methods, UDO, VCD, and AVM, run in parallel under the MPI process model used by Firedrake/PETSc \cite{Bueler2021,Langeetal2016}.  However, only UDO produces results which are independent of the number of processes $P$.  The VCD method can be configured to have this property by choosing a direct solver for problem \eqref{eq:diffusioneqn}, but this reduces scalability.  In fact a preconditioned Krylov solver is preferred for VCD performance even though its default parallel block preconditioner generates slightly different results depending on $P$ \cite{Bueler2021}.
+
+We end this section with two basic Python examples which illustrate how the open source VIAMR library (\href{https://github.com/StefanoFochesatto/VI-AMR}{{\small \texttt{github.com/StefanoFochesatto/VI-AMR}}}) is used.
 
 \begin{example} \label{example:AOL}
 Consider Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The complete code below, which applies the Firedrake and VIAMR libraries, generates a coarse mesh and then applies VCD marking and refinement around the free boundary.  The initial mesh, marked elements near the free boundary, and refined mesh are shown in Figure \ref{fig:resultAOL}.
