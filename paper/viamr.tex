@@ -271,9 +271,9 @@ Because $\cK_h \subset \cX_h \subset \cX$, we might regard \eqref{eq:fe:vi} as a
 \end{enumerate}
 Ciarlet \cite[Figure 5.1.3]{Ciarlet2002} observes that situation \emph{i)} generally applies for an interpolated obstacle $\psi_h = \Pi_h \psi$, e.g.~for $\cX_h=P_1$ and when $\psi$ is not convex.  Situation \emph{ii)} holds when $\psi_h \ge \psi$, which can be imposed by using a monotone injection operator, e.g.~``$\psi_h = R^\oplus \psi$'' in the notation from \cite{BuelerFarrell2024}.  (For related ideas, see \cite{GraeserKornhuber2009} and the proof of Theorem 5.1.2 in \cite{Ciarlet2002}.)  The strongest condition \emph{iii)} holds if $\psi_h=\psi$ exactly, for example when $\psi=0$ in the porous dam problems considered by \cite{AinsworthOdenLee1993}.
 
-In any case, the obstacle $\psi$ is given \emph{as data} for VI problem \eqref{eq:vi}.  Point values of $\psi$ can be evaluated as desired to represent (improve) $u_h$ within the numerical active set $A_u^h$.  That is, over elements where there is active-set agreement, i.e.~$K\in\cT_h$ such that $K \subset A_u \cap A_u^h$, reducing the error $e=u-u_h=\psi-u_h$ is post-processing, simply by evaluating the data $\psi$.  The heart of the matter is to improve the mesh, and re-solve the FE problem, so as to more-accurately locate the free boundary and reduce $|e|$ in the inactive set.  Then refinement deeper within a stabilized active set is wasted effort.
+In any case, the obstacle $\psi$ is given \emph{as data} for VI problem \eqref{eq:vi} over $\cK$.  Point values of $\psi$ can be evaluated as desired to better-represent $u_h$ within the numerical active set $A_u^h$.  That is, over elements where there is active-set correctness, i.e.~$K\in\cT_h$ such that $K \subset A_u \cap A_u^h$, reducing the error $e=u-u_h=\psi-u_h$ can be done in post-processing, simply by improving the data representation $\psi_h \approx \psi$.  As the goal for a refined mesh is to more-accurately re-solve the FE problem, locating the free boundary and reducing $|e|$ in the inactive set, thus refinement within a stabilized active set is wasted effort.
 
-These ideas can be seen in \emph{a priori} bounds for FE error in VI problems.  The following theorem generalizes Falk \cite{Falk1974} (and \cite[Theorem 5.1.1]{Ciarlet2002}).  It can be extended further to approximating operators $F_h\approx F$ \cite[Theorem 6.3]{Bueler2024}, but we will not need to do this.
+These ideas can be seen in certain \emph{a priori} bounds for FE error in VI problems.  The following theorem generalizes the Falk bound \cite{Falk1974}; see also \cite[Theorem 5.1.1]{Ciarlet2002}.  It can be extended further to address $F_h\approx F$ \cite[Theorem 6.3]{Bueler2024}, but we will not need such an operator approximation for our examples.
 
 \begin{theorem} \label{thm:genfalk}  For $1<q<\infty$, define the conjugate exponent $q'=q/(q-1)$.  Assume that $F$ is $q$-coercive and Lipschitz on bounded subsets of its domain.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c(R_h)>0$, not otherwise depending on $u$ or $u_h$, so that
 \begin{align}
@@ -310,12 +310,12 @@ Apply Lemma \ref{lem:measure} to \eqref{eq:falkalmost}, note $u=\psi$ a.e.~in $A
 
 Consider the unconstrained PDE case of \eqref{eq:falk}, namely with $A_u=\emptyset$ and $d\mu_u=0$.  In this case the bound is simply Cea's lemma for $q$-coercive operators, namely $\|u-u_h\| \lesssim \inf_{v_h\in\cK_h} \|v_h - u\|^{1/(q-1)}$.  It is standard in FE theory \cite{AinsworthOden2000,ElmanSilvesterWathen2014} to address this final term by solution regularity and interpolation theory.
 
-Note that in the situation where $\psi_h\ge \psi$, thus $\cK_h\subset \cK$, the first term on the right of \eqref{eq:falk} is zero, and the bound from \eqref{eq:falk} is larger than the  Cea's lemma term with $\|v_h-u\|$.  That is, the right side of \eqref{eq:falk} adds a nonnegative infimum, of an integral over $A_u$, to the expected $\|v_h-u\|$ term.  In this case $v_h\in\cK_h$ may be ``blocked'' by $\psi_h$ from descending close to the continuum obstacle $\psi$.  Also, if the (exact) residual $d\mu_u$ is large in the active set $A_u$ then the error norm $\|u_h-u\|$ may be corresponding larger.
+If $\psi_h\ge \psi$ then $\cK_h\subset \cK$, and so the first term on the right of \eqref{eq:falk} is zero.  In this case bound \eqref{eq:falk} adds a nonnegative infimum, of an integral over $A_u$, to the $\|v_h-u\|$ term expected from Cea's lemma.  The addition is large if $v_h\in\cK_h$ is significantly blocked by $\psi_h$ from descending close to the continuum obstacle $\psi$ in the active set $A_u$, and/or if the residual measure $d\mu_u$ is large in $A_u$.
 
-The \emph{a priori} error bound from Theorem \ref{thm:genfalk} can be made clearer in the $p=2$ and $q=q'=2$ case, i.e.~for the classical obstacle problem.  The bound can be expressed with a split between integrals over the exact active set and over the exact inactive set.
+The \emph{a priori} error bound from Theorem \ref{thm:genfalk} becomes clearer in the $p=2$ and $q=q'=2$ case, i.e.~for the classical obstacle problem.  The bound can then be split between integrals over the (exact) active set and inactive sets.
 
 \begin{corollary} \label{cor:falktwo}
-Suppose all hypotheses of Theorem \ref{thm:genfalk}, and assume $p=q=2$.  Also assume that $\psi \in C^1(\Omega)$.  Up to constants which depend on $u$ and $u_h$, we may write the \emph{a priori} bound with four integrals,
+Suppose all the hypotheses of Theorem \ref{thm:genfalk}.  Assume that $p=q=2$, and that $\psi \in C^1(\Omega)$.  Up to constants which depend on $u$ and $u_h$, we may write the \emph{a priori} bound with four integrals,
 \begin{subequations}
 \label{eq:falktwo}
 \begin{align}
@@ -330,11 +330,13 @@ Suppose all hypotheses of Theorem \ref{thm:genfalk}, and assume $p=q=2$.  Also a
 Apply Poincare's inequality to the final term in \eqref{eq:falk}.
 \end{proof}
 
-Consider Corollary \ref{cor:falktwo} from the point of view of AMR.  The first term \eqref{eq:falktwo:a}, which can be positive or negative in general, is controlled by the choice of $\psi_h$.  Since we are assuming $\cX_h\subset \cX$, it relates only to discrete admissibility, and specifically it is zero if $\cK_h \subset \cK$.  The second term \eqref{eq:falktwo:b}, also generally of either sign, relates both to discrete admissibility (choice of $\psi_h$) and to the approximatibility of $\psi$ using FE functions.  Note term \eqref{eq:falktwo:b} is nonnegative if $\psi_h\ge \psi$.  Both terms \eqref{eq:falktwo:a} and \eqref{eq:falktwo:b} have integrals with respect to the residual measure $d\mu_u$, and so their size is determined partly by the action of $F$ on the continuum obstacle, and by the source term $\ell$ in the active set $A_u$.
+We now consider Corollary \ref{cor:falktwo} from the point of view of AMR.  The first term \eqref{eq:falktwo:a}, which can be of either sign, is controlled by the choice of $\psi_h$.  Since we are assuming $\cX_h\subset \cX$, this term relates only to discrete admissibility.  This term can be replaced by zero if $\cK_h \subset \cK$.  The second term \eqref{eq:falktwo:b}, also generally of either sign, relates both to discrete admissibility and to the approximation of $\psi$ using functions from $\cX_h$.  It is nonnegative if $\psi_h\ge \psi$.
 
-However, because they are over the active set $A_u$, neither term \eqref{eq:falktwo:a} or \eqref{eq:falktwo:b}, nor the $A_u$ integral in \eqref{eq:falktwo:c}, requires mesh refinement so as to improve the quality of the FE approximation of the operator $F$, \emph{as long as we have accurately located the free boundary}.  The results of Theorem \ref{thm:genfalk} and Corollary \ref{cor:falktwo} expose why the primary goal of AMR in this paper is to use refinement to generate close approximation $\Gamma_u^h\approx \Gamma_u$.  By doing so, one is then free to avoid unnecessary effort in the active set $A_u$.  That is, computational costs during the solution process, associated to better approximation of the data $\psi$ in $A_u$, can be avoided.
+Both integrals \eqref{eq:falktwo:a} and \eqref{eq:falktwo:b} are with respect to the residual measure $d\mu_u$, so their size is determined partly by the action of $F$ on the continuum obstacle, and partly by the source term $\ell$.  However, because they are over the active set $A_u$, neither integral \eqref{eq:falktwo:a} nor \eqref{eq:falktwo:b}, nor the $A_u$ integral in \eqref{eq:falktwo:c}, requires mesh refinement so as to improve the quality of the FE solution, \emph{as long as the mesh and solver accurately locate the free boundary}.  Corollary \ref{cor:falktwo} suggests why a primary goal of AMR for VIs is to use refinement to generate close approximation $\Gamma_u^h\approx \Gamma_u$.  Then the computational costs expended on better approximation of the data $\psi$ in $A_u$, during the solution process, can be avoided.
 
-However, in order for $\Gamma_u^h\approx \Gamma_u$ to be an accurate approximation, the interior condition of the VI, over $I_u$, must be accurately solved.  This is the significance of the final integral in \eqref{eq:falktwo:c}.  Simultaneously with refinement near the computed free boundary $\Gamma_u^h$, refinement in the (computed) inactive set $I_u^h$ needs to reduce the error of $u_h$ via a suitable AMR approach for the particular PDE problem, i.e.~for the interior condition.
+These observations are easiest to exploit within the class of unilateral obstacle problems described in Appendix \ref{app:blistering}, a class which includes the $\psi=0$ case of the classical obstacle problem \eqref{eq:classical:vi} and the glacier problem of Section \ref{sec:app}.  In such problems one may preprocess the data, marking all the areas where the source term is negative, and then systematically avoid unnecessary active set refinement.
+
+In order for $\Gamma_u^h\approx \Gamma_u$ to be an accurate approximation, the interior condition of the VI, over $I_u$, must be accurately solved, which of course gives the significance of the final integral in \eqref{eq:falktwo:c}.  Our AMR approaches will simultaneously refine near the computed free boundary $\Gamma_u^h$ and in the (computed) inactive set $I_u^h$.
 
 
 \section{\emph{A posteriori} error estimation in inactive and active sets} \label{sec:aposteriori}
@@ -376,31 +378,7 @@ For PDE problems, an alternative to a local BR-type estimator is provided by the
 
 In this paper we avoid the complexity of the techniques in references \cite{AinsworthOdenLee1993} and \cite{Suttmeier2008}, and instead take a more pragmatic approach.  We apply fast (and again heuristic) refinement near a computed free boundary.  We combine this with application of a gradient-recovery or BR estimator, as above, within the computed inactive sets.
 
-Returning to the general, continuum problem \eqref{eq:vi}, next we point out a qualitative property of certain unilateral obstacle problems, which can be exploited \emph{a posteriori} in the active set.  Note that for the classical obstacle problem \eqref{eq:classical:vi}, assuming a continuous source $f\in C(\bar\Omega)$ for simplicity, in general an upward force $f(x)>0$ can occur in the active set.  That is, the force, while locally upward, may be insufficient to lift $u$ above a concave $\psi$.  However, in certain obstacle problems this cannot occur.
 
-\begin{lemma} \label{lem:blister}
-Suppose that $\psi=0$ and $\ell[v] = \int_\Omega fv\,dx$ for $f\in C(\bar\Omega)$.  Suppose also that $F$ is given by measurable densities, for example $F(w)[v]=\int_\Omega \phi(w(x),\grad w(x)) v(x) + \Phi(w(x),\grad w(x)) \cdot \grad v(x)\,dx$, satisfying $\phi(0,0)=0$ and $\Phi(0,0)=0$.  Then for $u$ solving \eqref{eq:vi}, $f\le 0$ a.e.~in $A_u$.
-\end{lemma}
-
-\begin{proof}
-Let $S\subset A_u$ be a Borel set, and denote its indicator function by $\chi_S \in L^\infty(\Omega)$.  The operator value $F(u)[\chi_S]$ is well-defined, \emph{and zero}, because $S$ is in the active set, by a density argument.  Thus by Lemma \ref{lem:measure},
-\begin{equation*}
-0 \le d\mu_u(S) = F(u)[\chi_S]-\ell[\chi_S] = 0 - \ell[\chi_S] = -\int_S f\,dx.
-\end{equation*}
-This shows $f\le 0$ a.e.~with respect to Lebesgue measure.
-\end{proof}
-
-The hypotheses of the Lemma clearly hold for problem \eqref{eq:classical:vi} if $\psi=0$.
-
-By definition, we say that a unilateral obstacle problem, based on $\ell[v] = \int_\Omega fv\,dx$ with $f\in C(\bar \Omega)$, has the \emph{blistering property} if $A_u \subset \{x \in \Omega\, :\, f(x)\le 0\}$ \cite{JouvetBueler2012}, up to a set of measure zero, that is, if the conclusion of Lemma \ref{lem:blister} holds.  To explain the language, if $f(x)>0$ anywhere, for continuous $f$, then under this property the inactive set $I_u$ must be non-empty, and $x\in I_u$; even a small upward force ``blisters'' the membrane off the obstacle.  Note that porous-dam saturation free boundary problems, such as the examples in \cite{AinsworthOdenLee1993}, have this property because $\psi=0$.
-
-In fact, any classical problem \eqref{eq:classical:vi} with a smooth obstacle $\psi\in C^2(\bar\Omega)$ can be transformed into one with the blistering property.  To see this, make the obstacle zero by transforming $\tilde v=v-\psi$, thus $\tilde\cK = \{\tilde v\in\cX\,:\,\tilde v\ge 0 \text{ and } \tilde v|_{\partial\Omega}=g-\psi|_{\partial\Omega}\}$.  Integration-by-parts shows \eqref{eq:classical:vi} is equivalent to finding $\tilde u = u -\psi \in \tilde \cK$ so that
-\begin{equation} \label{eq:classical:vi:blister}
-\int_\Omega \nabla \tilde u \cdot \nabla(\tilde v - \tilde u) \ge \int_\Omega \left(f+\grad^2\psi\right)(\tilde v - \tilde u) \quad \text{ for all } \tilde v \in \tilde \cK.
-\end{equation}
-For VI problem \eqref{eq:classical:vi:blister}, if $x\in A_{\tilde u} = \{\tilde u(x)=0\}$ then $\tilde f(x)= f(x)+\grad^2\psi(x)\le 0$.
-
-For blistering-property problems, substantial AMR efficiency can be achieved by avoiding refinement in the computed active set $A_u^h$.  However, one must carefully identify those elements where no refinement would be beneficial.  Assume the blistering property, and consider an element $K\in \cT_h$ in the active set $A_u^h$.  (In our implementation, this means that \emph{every node in the closure of $K$} is active, according to a tolerance criterion.)  The degenerate case $f=0$ must first be excluded within $K$.  That is, one must know that $K$ is contained in the set $\Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$, which is a property of the data of the problem.  If later refinements might move the free boundary to impinge on $K$ then refinement of $K$ would be appropriate, thus our techniques (next Section) will be designed to mark for refinement those active-set elements which are ``near'' $\Gamma_u^h$ in some sense.  However, if $f \le 0$ on $K$, and if $K$ is too far from the free boundary to be inactivated by later solutions along the refinement path, then $K$ can remain unrefined without affecting solution accuracy.
 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
@@ -608,7 +586,37 @@ FIXME VI solver performance can be substantially improved by combining the AMR m
 
 
 %Any appendices should be placed after the list of references, beginning with the command \verb"\appendix" followed by the command \verb"\section" for each appendix title, e.g.
-%\appendix
-%\section{This is the title of the first appendix}
+\appendix
+\section{Unilateral obstacle problems with the blistering property} \label{app:blistering}
+
+In classical obstacle problem \eqref{eq:classical:vi} an upward force $f(x)>0$ may generally occur in the active set $A_u$.  Physically speaking, an upward force may be insufficient to lift $u$ off a concave obstacle $\psi$.  However, in certain problems this cannot occur.  The hypotheses of Lemma \ref{lem:blister} hold for \eqref{eq:classical:vi} if $\psi=0$, thus including porous dam saturation free-boundary problems \cite[for example]{AinsworthOdenLee1993}, and they hold for the glacier problem in Section \ref{sec:app}.
+
+\begin{lemma} \label{lem:blister}
+Suppose that $\psi=0$ and $\ell[v] = \int_\Omega fv\,dx$ for $f\in L^2(\Omega)$.  Suppose also that the operator $F$ is given by measurable densities: $F(w)[v]=\int_\Omega \phi(w(x),\grad w(x)) v(x) + \Phi(w(x),\grad w(x)) \cdot \grad v(x)\,dx$.  Assume the densities satisfy $\phi(0,0)=0$ and $\Phi(0,0)=0$.  Then for $u$ solving \eqref{eq:vi}, $f\le 0$ a.e.~in $A_u$.
+\end{lemma}
+
+\begin{proof}
+Let $S\subset A_u$ be a Borel set, and denote its indicator function by $\chi_S \in L^\infty(\Omega)$.  By a density argument and the assumptions on $\phi$ and $\Phi$, the operator value $F(u)[\chi_S]$ is well-defined, \emph{and zero}, because $S$ is in the active set.  Thus by Lemma \ref{lem:measure},
+\begin{equation*}
+0 \le d\mu_u(S) = F(u)[\chi_S]-\ell[\chi_S] = 0 - \ell[\chi_S] = -\int_S f\,dx.
+\end{equation*}
+This shows $f\le 0$ a.e.~(with respect to Lebesgue measure).
+\end{proof}
+
+\begin{definition}
+For a unilateral obstacle problem \eqref{eq:vi} with source term $\ell[v] = \int_\Omega fv\,dx$, $f\in C(\bar \Omega)$, we say that \emph{blistering property} holds if $A_u \subset \{x \in \Omega\, :\, f(x)\le 0\}$ \cite{JouvetBueler2012}, that is, if the conclusion of Lemma \ref{lem:blister} holds.
+\end{definition}
+
+To explain the language, if $f(x)>0$ for some $x\in\Omega$ then, assuming this property, the inactive set $I_u$ must be non-empty, and $x\in I_u$.  That is, even a small upward force ``blisters'' the membrane off the obstacle.
+
+Any classical problem \eqref{eq:classical:vi} with a smooth obstacle $\psi\in C^2(\bar\Omega)$ can be transformed into one with the blistering property.  Let $\tilde v=v-\psi$, thus $\tilde\cK = \{\tilde v\in\cX\,:\,\tilde v\ge 0 \text{ and } \tilde v|_{\partial\Omega}=g-\psi|_{\partial\Omega}\}$.  Integration-by-parts shows \eqref{eq:classical:vi} is equivalent to finding $\tilde u = u -\psi \in \tilde \cK$ so that
+\begin{equation} \label{eq:classical:vi:blister}
+\int_\Omega \nabla \tilde u \cdot \nabla(\tilde v - \tilde u) \ge \int_\Omega \left(f+\grad^2\psi\right)(\tilde v - \tilde u) \quad \text{ for all } \tilde v \in \tilde \cK.
+\end{equation}
+For VI problem \eqref{eq:classical:vi:blister}, if $x\in A_{\tilde u} = \{\tilde u(x)=0\}$ then $\tilde f(x)= f(x)+\grad^2\psi(x)\le 0$.
+
+For blistering-property problems, AMR costs can be reduced by avoiding refinement in the computed active sets.  Start by identifying the elements $K\in \cT_h$ in the computed active set $A_u^h$.  (In our implementation we require that every node in the closure of $K$ is active, according to some tolerance.)  To identify $K$ where no refinement would be beneficial, the degenerate case must be excluded, so we require $K \subset \Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$; note this uses only the data of the problem.  If later refinements move the free boundary to be incident to $K$ then refinement of $K$ becomes appropriate.
+
+In summary, if a problem has the blistering property, if $f < 0$ on a currently-active element $K$, and if $K$ is far from the free boundary, then $K$ can likely remain unrefined without affecting solution accuracy.  Noting that the techniques of Section \ref{sec:viamr} are designed to mark for refinement those active-set elements which are near $\Gamma_u^h$ in a geometrical sense, one must also recall the necessity of refinement in the inactive set, e.g.~based on indicators from Section \ref{sec:aposteriori}, to give accuracy $\Gamma_u^h \approx \Gamma_u$.
 
 \end{document}
