@@ -156,7 +156,7 @@ Example meshes are shown in Figure \ref{fig:threeballmeshes}.  They were generat
 % result from examples/sphere.py; note: -n 1 UDO; default VCD; default AVM; theta=0.7 in BR
 \begin{figure}[ht]
 \noindent \hspace{-1mm} \mbox{\includegraphics[width=0.32\textwidth]{static/sphereudo.png} \, \includegraphics[width=0.32\textwidth]{static/spherevcd.png} \,\,\includegraphics[width=0.32\textwidth]{static/sphereavm.png}}
-\caption{Meshes computed from the UDO (left; see also Figure \ref{fig:ball}), VCD (middle), and AVM (right) methods.  Note the coarse active set mesh from the UDO and VCD methods.}
+\caption{Meshes from UDO (left), VCD (middle), and AVM (right) methods.}
 \label{fig:threeballmeshes}
 \end{figure}
 
@@ -535,23 +535,29 @@ FIXME CHECK FROM HERE
 
 Our goals are to generate meshes with high resolution along an accurately-estimated glacier margin.  The UDO and VCD tag-and-refine methods are compared, with a gradient-recovery (GR) error indicator in the inactive set.  (See Example \ref{example:gradrecovery}; note that the linear derivation of the BR error indicator in Example \ref{example:br} does not apply.)  Figure \ref{fig:glacier} shows sample results for the cap problem, including the mesh after three levels of AMR starting from a coarse, uniform mesh (left), and a detail of the jump in the surface gradient at a highly-refined margin with element size around $h = 100$ meters (right).
 
-% $ cd examples/glacier
-%FIXME LEFT:
-% $ python3 steady.py -prob cap -newton -m 7 -opvd result_cap.pvd
-% $ paraview result_cap.pvd
-%RIGHT:
-% $ tmpg -n 12 python3 steady.py -newton -m 5 -refine 11 -prob cap -opvd result_cap_11.pvd
-% $ paraview result_cap_11.pvd
+\begin{figure}[ht]
+\centering
+\medskip
+
+\includegraphics[width=0.96\textwidth]{genfigs/transect.png}
+\caption{Bedrock elevation (solid) along a transect, with three ELA levels (dashed).  The transect location is shown in red in the left image of Figure \ref{fig:glacier}.}
+\label{fig:transect}
+\end{figure}
+
+% see examples/glacier/{steady.py|caps.sh} for information about these runs
 \begin{figure}[ht]
 \centering
 
-\includegraphics[width=\textwidth]{genfigs/transect.png}
-
-FIXME FROM HERE
-
-\mbox{\includegraphics[width=0.46\textwidth]{static/glacier/thickness.png} \qquad \includegraphics[width=0.46\textwidth]{static/glacier/detail.png}}
-\caption{Left:  Ice thickness (grayscale; meters) with a mesh (red) found by applying UDO and a gradient-recovery indicator in the inactive set.  Right:  A detail of the glacier margin at higher refinement.  Though $|\grad u|$ is continuous, the surface elevation gradient $|\grad s|$ (grayscale magnitude) is discontinuous at the margin.}
+\mbox{\includegraphics[width=0.32\textwidth]{static/glacier/surf1000.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/surf800.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/surf600.png}}
+\caption{Glacier surface elevation (grayscale) for ELA of 1000 meters (left), 800 meters (middle), and 600 meters (right).  Inset boxes are 200 km across; see Figure \ref{fig:insetmeshes}.}
 \label{fig:glacier}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\mbox{\includegraphics[width=0.32\textwidth]{static/glacier/sub1000.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/sub800.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/sub600.png}}
+\caption{Details of the refined meshes (red) along glacier margins, from the inset boxes in Figure \ref{fig:glacier}; ELA of 1000 meters (left), 800 meters (middle), and 600 meters (right).}
+\label{fig:insetmeshes}
 \end{figure}
 
 The dome problem was solved with 13 levels of refinement from an initial, uniform $h_0=360$ kilometer mesh to a final mesh with margin resolution of $h_{13}\approx 30$ meters.  Figure \ref{fig:domenormresults} shows relative $H^1$ errors in the solution ($\|u-u_h\|_{H^1}/\|u\|_{H^1}$) and absolute $L^\infty$ errors in the corresponding ice thickness ($\|H-H_h\|_{L^\infty}$), versus number of elements.  Note that solver time was observed to be a function of the number of elements, so showing run-times would add no information in distinguishing AMR schemes from uniform refinement.
