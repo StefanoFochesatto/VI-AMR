@@ -515,25 +515,41 @@ FIXME
 
 \section{Application to determining glaciated land areas} \label{sec:app}
 
-In this section we apply AMR techniques to a model for steady glacier geometry over a given bedrock topography and with a given climate.  A goal of this model is to determine the land which is covered by glaciers, and to determine the ice volume.  Though glaciers will cover any land on which snowfall dominates melt, ice flow further expands the glaciation out to a free boundary, the glacier margin, which can only be determined by solving the coupled mass and momentum conservation equations.  Similar VI problems arise for any fluid layer subject to surface processes which add or remove mass \cite{Bueler2021b}: the unknown fluid thickness must be nonnegative, the operator is nonlinear, the problem is \emph{not} of optimization type (for general bed geometry), and the ``blistering'' property mentioned in the Introduction (and in \cite{JouvetBueler2012}) applies.
+In this section we apply AMR techniques from Sections \ref{sec:inactive} and \ref{sec:viamr} to a model for steady glacier geometry over a given bedrock topography and subject to a given climate.  A goal here is to determine which land is covered by glaciers, and the ice volume.  Though glaciers will cover any land on which snowfall dominates melt, ice flow further expands the glaciation out to a free boundary, the glacier margin, which can only be found by solving the coupled mass and momentum conservation equations.  Similar VI problems arise for any fluid layer subject to surface processes which add or remove mass \cite{Bueler2021b}.  In these problems the unknown fluid thickness must be nonnegative, the operator is nonlinear, the problem is \emph{not} of optimization type for general bed geometry, and the ``blistering'' property (Appendix \ref{app:blistering}) applies.
 
-Let $\Omega \subset \RR^2$ be a fixed land region, and suppose a bedrock elevation $b \in C^1(\Omega)$.   Assume there is a surface mass-balance \cite{GreveBlatter2009} function $a:\Omega \times \RR \to \RR$ which is the annually-averaged rate of ice accumulation (snow) minus melt and runoff.  This function, the climate experienced by the glacier, can depend on the surface elevation $s$; we require that $a(x,s)\in L^\infty(\Omega)$ for any $s\in L^\infty(\Omega)$, additionally that $a$ is Lipschitz continuous in the $s$ variable.  Here distances and elevations are measured in meters while $a$ is in ice-equivalent meters per second.
+Let $\Omega \subset \RR^2$ be a fixed land region, with bedrock elevation $b \in C^1(\Omega)$.   Here distances and elevations are measured in meters.  Assume there is a surface mass-balance \cite{GreveBlatter2009} function $a:\Omega \times \RR \to \RR$, measured in ice-equivalent meters per second.  This quantity is the annually-averaged rate of ice accumulation (snow) minus melt and runoff, and it is the climate experienced by the glacier.  If it depends on the surface elevation $s$ then we require that $a(x,s)\in L^\infty(\Omega)$ for any $s\in L^\infty(\Omega)$, and additionally that it is Lipschitz continuous in $s$.
 
-We consider a glacier flow approximation called the \emph{shallow ice approximation} \cite{GreveBlatter2009}, in the simple isothermal and non-sliding case.   For the standard exponent for the flow law of ice \cite{GreveBlatter2009} we have a VI for the transformed ice thickness $u\in \cX = W^{1,4}(\Omega)$.  The (nonnegative) thickness itself is denoted $H=u^{3/8}$, so of course $u=H^{8/3}$, and the surface elevation is $s=H+b=u^{3/8}+b$.  Let $\cK = \{u \in \cX\,:\,u\ge 0 \text{ and } u|_{\partial\Omega}=0\}$.  The model uses a ``tilted'' variation of the $p$-Laplacian operator \cite{JouvetBueler2012}; we seek $u\in\cK$ so that
+We use a glacier flow approximation called the \emph{shallow ice approximation} \cite{GreveBlatter2009}, in its simplest isothermal and non-sliding case.   Applying the standard exponent of 3 for the shear-thinning flow law of ice \cite{GreveBlatter2009}, we have a VI for the transformed ice thickness $u \in \cK = \{u \in \cX\,:\,u\ge 0 \text{ and } u|_{\partial\Omega}=0\}$ in the Banach space $\cX = W^{1,4}(\Omega)$.  The thickness itself is $H=u^{3/8}$ and the surface elevation is $s=H+b=u^{3/8}+b$.  The model uses a ``tilted'' variation of the $p$-Laplacian operator \cite{JouvetBueler2012}:
 \begin{equation}
 \int_\Omega \Gamma |\grad u + \bm{\beta}(u)|^2 (\grad u + \bm{\beta}(u)) \cdot \grad (v-u) - \tilde a(u) (v-u)\,dx \ge 0 \label{eq:siavi}
 \end{equation}
-for all $v \in \cK$, where $\bm{\beta}(u)=\frac{8}{3} u^{5/8} \grad b$ is a nonlinear multiple of the bed gradient.  Here $\tilde a(u)=a(s)=a(u^{3/8}+b)$ denotes the surface mass balance, with $x$ dependence suppressed.  Also $\Gamma>0$ is a physical constant, essentially the ice softness.  VI \eqref{eq:siavi} defines a nonlinear operator $F(v)[w]$ which is $4$-coercive---see definition \eqref{eq:coercive}---if $\grad b=0$ \cite{JouvetBueler2012}.  If $\tilde a$ does not depend on $u$ then one may move the source term to get ``$F(u)[v-u]\ge\ell[v-u]$'' as in \eqref{eq:vi}, but otherwise we simply set $\ell=0$.
+for all $v \in \cK$, where $\bm{\beta}(u)=\frac{8}{3} u^{5/8} \grad b$ is a nonlinear multiple of the bed gradient.  Here $\tilde a(u)=a(u^{3/8}+b)$ denotes the elevation-dependent surface mass balance, with $x$ dependence suppressed, and $\Gamma>0$ is an ice softness constant.  When $\grad b=0$ the VI \eqref{eq:siavi} defines a nonlinear operator $F(v)[w]$ which is $4$-coercive \cite{JouvetBueler2012}; see definition \eqref{eq:coercive}.  If $\tilde a$ does not depend on $u$ then one may move the source term to get ``$F(u)[v-u]\ge\ell[v-u]$'' as in \eqref{eq:vi}, but otherwise we simply set $\ell=0$.  While uniqueness for \eqref{eq:siavi} is generally open, except in flat-bed cases, existence holds when $\tilde a$ is independent of $u$ \cite{JouvetBueler2012}.  If $\tilde a$ depends on $u$ then simple cases of \emph{non}-existence are known \cite{Jouvetetal2011}, but our example below will have slow increase of snowfall with elevation, evidently avoiding the issue.
 
-While uniqueness for \eqref{eq:siavi} is generally open, except in flat-bed cases, existence holds when $\tilde a$ is independent of $u$ \cite{JouvetBueler2012}.  If $\tilde a$ depends on $u$ then simple cases of \emph{non}-existence are known \cite{Jouvetetal2011}.  Our example below will have slow increase of snowfall with elevation, avoiding the issue.
+In this model both the thickness $H$ and (conserved) flux $\bq = - \Gamma |\grad u + \bm{\beta}(u)|^2 (\grad u + \bm{\beta}(u))$ go to zero at the glacier margin.  However, observations confirm that the gradient of a glacier's surface has large magnitude as one approaches the margin from the ice side.  This property emerges from a solution to \eqref{eq:siavi} when one computes the associated surface elevation $s=u^{3/8} + b$.  Thus generally $|\grad s| \to \infty$ at the glacier margin, even though (again, generally) $\grad u\to 0$ there.
 
-Note that both the thickness $H$ and (conserved) flux $\bq = - \Gamma |\grad u + \bm{\beta}(u)|^2 (\grad u + \bm{\beta}(u))$ go to zero at the glacier margin.  However, observations confirm that the gradient of a glacier's surface has large magnitude as one approaches the margin from the ice side.  This property emerges from a solution to \eqref{eq:siavi} when one computes the associated surface elevation $s=u^{3/8} + b$; note that generally $\grad u\to 0$ at the margin.
+For this highly-nonlinear problem, with low solution regularity for $H$ and $s$, we apply a continuous, piecewise-linear FE method.  The problem is solved either by the same VI-adapted Newton solver (\texttt{vinewtonrsls} in PETSc \cite{petsc-user-ref}) as in Section \ref{sec:results}, or by adding an outer Picard-type iteration over the tilt $\bm{\beta}(u)$ \cite{JouvetBueler2012} and source $\tilde a(u)$, with Newton as an inner solver iteration.  Very similar results are obtained when both converge, but the Picard-based solver is more robust when $|\grad b|$ is large or $\tilde a$ depends on $u$.
 
-For this highly-nonlinear problem, with low solution regularity for $H$ and $s$, we apply a continuous, piecewise-linear FE method.  The problem is solved either by the same VI-adapted Newton solver (PETSc \texttt{vinewtonrsls}) as in Section \ref{sec:results}, or by adding an outer Picard-type iteration over the tilt $\bm{\beta}(u)$ \cite{JouvetBueler2012} and source $\tilde a(u)$, with \texttt{vinewtonrsls} applied at each iteration.  Very similar results are obtained when both converge, but the outer-Picard solver is more robust when $|\grad b|$ is large or $\tilde a$ depends on $u$.  We consider two particular problems over a square domain $\Omega=(0,L)^2$, $L=1800$ kilometers: \emph{i)} ``dome'' problem with a flat bed, elevation-independent source, and a known solution \cite{Bueler2016}, and \emph{ii)} ``cap'' problem with a bumpy bed \cite[Example 8.4]{BuelerFarrell2024} and an elevation dependent surface mass balance function.
+We consider two particular problems, each over the square domain $\Omega=(0,L)^2$, $L=1800$ kilometers.  The ``dome'' problem has a flat bed, elevation-independent source, and a known exact solution \cite{Bueler2016}, and it is used for verification.  The ``cap'' problem with a bumpy bed \cite[Example 8.4]{BuelerFarrell2024} and an elevation dependent surface mass balance function.
 
-FIXME CHECK FROM HERE
+The dome problem was solved with 13 levels of refinement from an initial, uniform $h_0=360$ kilometer mesh to a final mesh with margin resolution of $h_{13}\approx 30$ meters.  Figure \ref{fig:domenormresults} shows relative $H^1$ errors in the solution ($\|u-u_h\|_{H^1}/\|u\|_{H^1}$) and absolute $L^\infty$ errors in the corresponding ice thickness ($\|H-H_h\|_{L^\infty}$), versus number of elements.  The latter $\|H\|_{L^\infty}$ errors are much more responsive to AMR than $\|u\|_{H^1}$ errors because the ice thickness gradient is singular at the free boundary, so its lateral location error is actually what is being measured.
 
-Our goals are to generate meshes with high resolution along an accurately-estimated glacier margin.  The UDO and VCD tag-and-refine methods are compared, with a gradient-recovery (GR) error indicator in the inactive set.  (See Example \ref{example:gradrecovery}; note that the linear derivation of the BR error indicator in Example \ref{example:br} does not apply.)  Figure \ref{fig:glacier} shows sample results for the cap problem, including the mesh after three levels of AMR starting from a coarse, uniform mesh (left), and a detail of the jump in the surface gradient at a highly-refined margin with element size around $h = 100$ meters (right).
+% see examples/glacier/README.md for these runs
+\begin{figure}[ht]
+\noindent\mbox{\includegraphics[width=0.49\textwidth]{genfigs/uerrh1.png} \, \includegraphics[width=0.49\textwidth]{genfigs/herrinf.png}}
+\caption{Left: Per element, $H^1$ norm errors in $u$ are comparable for AMR methods and uniform refinement.  Right: AMR is effective for the maximum thickness error.}
+\label{fig:domenormresults}
+\end{figure}
+
+Figure \ref{fig:domeradiusresults} addresses free-boundary localization for the same problem.  We compute the maximum distance between the numerical and exact free-boundaries.  The AMR methods are much more efficient at locating the free boundary than uniform refinement.  
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.51\textwidth]{genfigs/drmax.png}
+\caption{AMR generates accurate free boundary locations.  Near $10^7$ elements the glacier margin is located to within tens of meters, while mesh sizes orders of magnitude larger would be required for uniform refinement to achieve such accuracy.}
+\label{fig:domeradiusresults}
+\end{figure}
+
+FIXME sketch elevation-dependent $a(x,s)$ with $s_{\text{ELA}}$ parameter; synthetic bed elevation map; refer to Figure \ref{fig:transect}
 
 \begin{figure}[ht]
 \centering
@@ -544,6 +560,8 @@ Our goals are to generate meshes with high resolution along an accurately-estima
 \label{fig:transect}
 \end{figure}
 
+FIXME Our goals are to generate meshes with high resolution along an accurately-estimated glacier margin.  The UDO and VCD tag-and-refine methods are compared, with a gradient-recovery (GR) error indicator in the inactive set.  (See Example \ref{example:gradrecovery}; note that the linear derivation of the BR error indicator in Example \ref{example:br} does not apply.)  Figure \ref{fig:glacier} shows sample results for this problem.
+
 % see examples/glacier/{steady.py|caps.sh} for information about these runs
 \begin{figure}[ht]
 \centering
@@ -553,29 +571,13 @@ Our goals are to generate meshes with high resolution along an accurately-estima
 \label{fig:glacier}
 \end{figure}
 
+FIXME describe how UDO$+$GR is behaving; Figure \ref{fig:insetmeshes}
+
 \begin{figure}[ht]
 \centering
 \mbox{\includegraphics[width=0.32\textwidth]{static/glacier/sub1000.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/sub800.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/sub600.png}}
 \caption{Details of the refined meshes (red) along glacier margins, from the inset boxes in Figure \ref{fig:glacier}; ELA of 1000 meters (left), 800 meters (middle), and 600 meters (right).}
 \label{fig:insetmeshes}
-\end{figure}
-
-The dome problem was solved with 13 levels of refinement from an initial, uniform $h_0=360$ kilometer mesh to a final mesh with margin resolution of $h_{13}\approx 30$ meters.  Figure \ref{fig:domenormresults} shows relative $H^1$ errors in the solution ($\|u-u_h\|_{H^1}/\|u\|_{H^1}$) and absolute $L^\infty$ errors in the corresponding ice thickness ($\|H-H_h\|_{L^\infty}$), versus number of elements.  Note that solver time was observed to be a function of the number of elements, so showing run-times would add no information in distinguishing AMR schemes from uniform refinement.
-
-% see examples/glacier/README.md for these runs
-\begin{figure}[ht]
-\noindent\mbox{\includegraphics[width=0.49\textwidth]{genfigs/uerrh1.png} \, \includegraphics[width=0.49\textwidth]{genfigs/herrinf.png}}
-\caption{Left: Per element, $H^1$ norm errors in $u$ are comparable for AMR methods and uniform refinement.  Right: Because of the low regularity of the ice thickness at the free boundary, AMR is effective in reducing the maximum thickness error.}
-\label{fig:domenormresults}
-\end{figure}
-
-Figure \ref{fig:domeradiusresults} addresses free-boundary localization.  We compute the maximum distance between free-boundary nodes and the exact, circular margin, which reveals that the AMR methods locate the free boundary much more efficiently than uniform refinement.  Given the large ice thickness gradients at the free boundary, this also explains why $\|H\|_{L^\infty}$ errors are much more responsive to AMR than $\|u\|_{H^1}$ errors (Figure \ref{fig:domenormresults}).
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.51\textwidth]{genfigs/drmax.png}
-\caption{AMR generates accurate free boundary locations.  Near $10^7$ elements the glacier margin is located to tens of meters, versus a kilometer for uniform refinement.}
-\label{fig:domeradiusresults}
 \end{figure}
 
 
