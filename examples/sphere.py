@@ -9,7 +9,6 @@ import numpy as np
 from firedrake import *
 from firedrake.petsc import PETSc
 from viamr import VIAMR
-from viamr.utility import SphereObstacleProblem
 
 try:
     import netgen
@@ -105,12 +104,12 @@ for amrtype in ["udo", "vcd", "avm"]:
         if amrtype == "avm":
             mesh = amr.adaptaveragedmetric(mesh, u, lb)
         else:
-            residual = -div(grad(u))
-            (imark, _, _) = amr.brinactivemark(u, lb, residual, theta=0.7)
             if amrtype == "udo":
                 mark = amr.udomark(u, lb, n=1)
             elif amrtype == "vcd":
                 mark = amr.vcdmark(u, lb)
+            residual = -div(grad(u))
+            (imark, _, _) = amr.brinactivemark(u, lb, residual, theta=0.7)
             mark = amr.unionmarks(mark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
 

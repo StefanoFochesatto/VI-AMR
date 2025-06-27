@@ -115,8 +115,8 @@ phi = (p + 1) / (2 * p)  #  phi = 5/8
 r = p / (p - 1)  #  r = 4/3
 
 
-def Phi(u, b):
-    return -(1.0 / omega) * (u + 1.0) ** phi * grad(b)  # eps=1 regularization is small
+def Beta(u, b):
+    return (1.0 / omega) * (u + 1.0) ** phi * grad(b)  # eps=1 regularization is small
 
 
 def amodel(s, sELA=1000.0, dsNEXT=100.0, alpha=0.0001 / secpera, alpharat=0.01):
@@ -137,9 +137,9 @@ def weakform(u, a, b, Z=None, softening=1.0):
     the same result as the automatic mechanism, while Q=2 is distinctly worse."""
     v = TestFunction(u.function_space())
     if Z is not None:
-        du_tilt = grad(u) - Z
+        du_tilt = grad(u) + Z
     else:
-        du_tilt = grad(u) - Phi(u, b)
+        du_tilt = grad(u) + Beta(u, b)
     Dp = inner(du_tilt, du_tilt) ** ((p - 2) / 2)
     C = softening * Gamma * omega ** (p - 1)
     return C * Dp * inner(du_tilt, grad(v)) * dx(degree=args.qdegree) - a * v * dx
@@ -178,6 +178,9 @@ for i in range(args.refine + 1):
             # FIXME: sporadic parallel bug with method="total" apparently ...
             # imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="total")
             imark, _, _ = amr.gradrecinactivemark(u, lb, theta=args.theta, method="max")
+            if args.hmin > 0.0:
+                fbmark = amr.lowerboundcelldiameter(fbmark, args.hmin)
+                imark = amr.lowerboundcelldiameter(imark, args.hmin)
             mark = amr.unionmarks(fbmark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
             # report percentages of elements marked
@@ -261,7 +264,7 @@ for i in range(args.refine + 1):
                 sold = b + uold**omega
                 a = Function(V).interpolate(amodel(sold, sELA=args.sELA))
                 a.rename("a = accumulation")
-            Ztilt = Phi(uold, b)
+            Ztilt = Beta(uold, b)
             F = weakform(u, a, b, Z=Ztilt, softening=args.softening)
             problem = NonlinearVariationalProblem(F, u, bcs=bcs)
             solver = NonlinearVariationalSolver(

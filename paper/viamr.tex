@@ -61,6 +61,10 @@
 \newcommand{\CG}{\text{CG}}
 \newcommand{\DG}{\text{DG}}
 
+\newcommand{\hmax}{h_{\max}}
+\newcommand{\hmin}{h_{\min}}
+
+
 
 \begin{document}
 
@@ -80,7 +84,7 @@ Free-boundary problems posed as variational inequalities, including obstacle pro
 \end{abstract}
 
 %\begin{keywords}
-%FIXME
+%
 %\end{keywords}
 
 
@@ -117,7 +121,7 @@ as the admissible subset, which is closed and convex in $\cX$.  For $f\in L^2(\O
 \int_\Omega \nabla u \cdot \nabla(v - u) \ge \int_\Omega f(v - u) \quad \text{ for all } v \in \cK.
 \end{equation}
 
-In Section \ref{sec:vifem} we will recall and extend some of the theory of such VIs, and their finite element (FE) approximation.  We will generalize from elliptic bilinear forms like \eqref{eq:classical:vi} to coercive nonlinear operators over Banach spaces.  A conforming FE approximation $u_h$ of the VI will solve the same weak form, but over a finite-dimensional admissible set constructed on a mesh $\cT_h$.  Similarly to Cea's lemma for PDEs \cite{ElmanSilvesterWathen2014}, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori} by extending the Falk \cite{Falk1974} technique to nonlinear operators.  Theorem \ref{thm:genfalk} and Corollary \ref{cor:falkconforming} will show how norm errors are controlled by the approximation properties of the FE space, but also subject to VI-specific concerns regarding admissibility.  We will consider the construction of the FE obstacle and the separation of active and inactive set errors.
+In Section \ref{sec:vifem} we will recall and extend some of the theory of such VIs, and their finite element (FE) approximation.  We will generalize from elliptic bilinear forms like \eqref{eq:classical:vi} to coercive nonlinear operators over Banach spaces.  A conforming FE approximation $u_h$ of the VI will solve the same weak form, but over a finite-dimensional admissible set constructed on a mesh $\cT_h$.  Similarly to Cea's lemma for PDEs \cite{ElmanSilvesterWathen2014}, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori} by extending the Falk \cite{Falk1974} technique to nonlinear operators, and results in Section \ref{sec:vifem} will show how norm errors are controlled by the approximation properties of the FE space, but also subject to VI-specific concerns regarding admissibility.  We will consider the construction of the FE obstacle and the separation of active and inactive set errors.
 
 Adaptive mesh refinement (AMR) uses \emph{a posteriori} information from the numerical solution to strategically add mesh elements to increase the resolution and reduce the numerical error.  For VI problems the simulation goal is often the accurate approximation of the sets in \eqref{eq:classical:sets}, but the reasonableness of this goal is problem-dependent.
 
@@ -138,7 +142,7 @@ Furthermore, the effectiveness of different AMR strategies for non-degenerate VI
 
 In this work we consider only $P_1$ element spaces over meshs of triangles or tetrahedra, and only $h$-refinement is addressed.  VIs can be solved using $p$-refinement and higher-order elements, but only if nontrivial monotonicity modifications are made \cite{KeithSurowiec2024}, which is not attempted here.  Furthermore, while the classical obstacle problem \eqref{eq:classical:vi} is equivalent to constrained minimization of a scalar objective, our analysis of FE errors for VI problems does not require an objective, and our AMR strategies do not need, nor can they exploit, an objective.
 
-Three AMR methods for VIs are described in Section \ref{sec:viamr}.  Our implementations use the Firedrake FE library \cite{Rathgeberetal2016} and produce conforming meshes with no hanging nodes.  The first two methods are of tag-and-refine type, only differing by which elements are tagged, with skeleton-based refinement (SBR) \cite{PlazaCarey2000} applied after tagging; SBR is implemented within PETSc's DMPlex component \cite{petsc-user-ref} and in the Netgen library \cite{Betteridgeetal2024}.  These two methods also require a complementary AMR approach to the PDE problem in the inactive set to achieve convergence; see Section \ref{sec:aposteriori}.  The third goal-oriented and metric-based method uses the Netgen and Animate (\href{https://github.com/mesh-adaptation/animate}{{\small \texttt{github.com/mesh-adaptation/animate}}}; see also \cite{Wallworketal2020}) libraries for metric-based mesh adaptation.  Full details are given in Section \ref{sec:viamr}, but here is a high-level view of the methods:
+Three AMR methods for VIs are described in Section \ref{sec:viamr}.  Our implementations use the Firedrake FE library \cite{Rathgeberetal2016} and produce conforming meshes with no hanging nodes.  The first two methods are of tag-and-refine type, only differing by which elements are tagged, with skeleton-based refinement (SBR) \cite{PlazaCarey2000} applied after tagging; SBR is implemented within PETSc's DMPlex component \cite{petsc-user-ref} and in the Netgen library \cite{Betteridgeetal2024}.  These two methods also require a complementary AMR approach to the PDE problem in the inactive set to achieve convergence; see Section \ref{sec:inactive}.  The third goal-oriented and metric-based method uses the Netgen and Animate (\href{https://github.com/mesh-adaptation/animate}{{\small \texttt{github.com/mesh-adaptation/animate}}}; see also \cite{Wallworketal2020}) libraries for metric-based mesh adaptation.  Full details are given in Section \ref{sec:viamr}, but here is a high-level view of the methods:
 
 %\renewcommand{\labelenumi}{\emph{\roman{enumi})}}
 \begin{itemize}
@@ -152,11 +156,11 @@ Example meshes are shown in Figure \ref{fig:threeballmeshes}.  They were generat
 % result from examples/sphere.py; note: -n 1 UDO; default VCD; default AVM; theta=0.7 in BR
 \begin{figure}[ht]
 \noindent \hspace{-1mm} \mbox{\includegraphics[width=0.32\textwidth]{static/sphereudo.png} \, \includegraphics[width=0.32\textwidth]{static/spherevcd.png} \,\,\includegraphics[width=0.32\textwidth]{static/sphereavm.png}}
-\caption{Meshes computed from the UDO (left; see also Figure \ref{fig:ball}), VCD (middle), and AVM (right) methods.  Note the coarse active set mesh from the UDO and VCD methods.}
+\caption{Meshes from UDO (left), VCD (middle), and AVM (right) methods.}
 \label{fig:threeballmeshes}
 \end{figure}
 
-Our numerical results in Sections \ref{sec:results} and \ref{sec:app} will justify the somewhat-heuristic nature of these approaches to AMR for VIs.  Because the convergence of VI problems is dominated by the error in approximating the free boundary, an AMR scheme that quickly concentrates effort around an accurately-computed free boundary, augmented by PDE-type error estimators in the inactive set (Section \ref{sec:aposteriori}), will accelerate convergence and reduce unnecessary computation.
+Our numerical results in Sections \ref{sec:results} and \ref{sec:app} will justify the somewhat-heuristic nature of these approaches to AMR for VIs.  Because the convergence of VI problems is dominated by the error in approximating the free boundary, an AMR scheme that quickly concentrates effort around an accurately-computed free boundary, augmented by PDE-type error estimators in the inactive set (Section \ref{sec:inactive}), will accelerate convergence and reduce unnecessary computation.
 
 AMR for VI problems has been lightly explored in the literature.  The first published analysis may be \cite{AinsworthOdenLee1993}, giving an error bound for the classical obstacle problem in terms of local functionals associated with each element.  The monograph by Suttmeier \cite{Suttmeier2008} covers a broader class of problems, including elasticity.  For the classical obstacle problem, the constructable error estimators in these works require heuristic assumptions which may not hold in general.  (See inequality (42) in \cite{AinsworthOdenLee1993}, and the approximation ``$(u-\psi)\lambda_h\approx 0$'' in \cite{Suttmeier2008}.)  To our knowledge these approaches are not found in publicly-available implementations, nor are they as efficient as our strategies for computing high-resolution approximations to free boundaries.
 
@@ -169,7 +173,7 @@ In summary, here are two principles for the AMR methods of this paper:
 \item Their implementations (\href{https://github.com/StefanoFochesatto/VI-AMR}{{\small \texttt{github.com/StefanoFochesatto/VI-AMR}}}), within the popular Firedrake \cite{Langeetal2016} FE library, are parallel, well-documented, and easy-to-use.
 \end{enumerate}
 
-The paper is organized as follows:  Section \ref{sec:vifem} provides \emph{a priori} norm bounds for FE methods applied to VI problems; aspects of this material are new.  Section \ref{sec:aposteriori} addresses \emph{a posteriori} error estimators which can be applied in the inactive set, and it identifies problems where active-set refinement can be avoided.  Section \ref{sec:viamr} describes the three new AMR methods in more detail.  Sections \ref{sec:results} and \ref{sec:app} compare and discuss their performance on model problems and a realistic glacier application.
+The paper is organized as follows:  Section \ref{sec:vifem} provides \emph{a priori} norm bounds for FE methods applied to VI problems; aspects of this material are new.  Section \ref{sec:inactive} addresses \emph{a posteriori} error estimators which can be applied in the inactive set, and it identifies problems where active-set refinement can be avoided.  Section \ref{sec:viamr} describes the three new AMR methods in more detail.  Sections \ref{sec:results} and \ref{sec:app} compare and discuss their performance on model problems and a realistic glacier application.
 
 Table \ref{tab:abbrev} gives the few abbreviations used herein.
 
@@ -211,13 +215,13 @@ VI        & variational inequality
 
 \section{Variational inequalities and their finite element approximations} \label{sec:vifem}
 
-We consider the VI formulation of unilateral obstacle problems in Banach spaces.  Let $\Omega \subset \RR^d$, $d=2,3$, be a bounded, polygonal domain.  Let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable weak gradients \cite{Evans2010}.  We will assume continuous problem data, for well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$ and $g\in C(\partial \Omega)$ satisfy $g \ge \psi|_{\partial\Omega}$.  Define the closed and convex admissible subset
+We consider unilateral obstacle problems in Banach spaces.  Let $\Omega \subset \RR^d$, $d=2,3$, be a bounded, polygonal domain.  Let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable weak gradients \cite{Evans2010}.  We will assume continuous problem data, with well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$ and $g\in C(\partial \Omega)$ satisfy $g \ge \psi|_{\partial\Omega}$.  Define the closed and convex admissible subset
 \begin{equation} \label{eq:admissible}
 \cK = \{v \in \cX \,:\, v \ge \psi \text{ and } v|_{\partial \Omega} = g\} \subset \cX,
 \end{equation}
-same as for \eqref{eq:classical:admissible}.  Observe that generally $\psi\notin\cK$.
+as in \eqref{eq:classical:admissible}.  Observe that generally $\psi\notin\cK$.
 
-Let $\cX'$ be the dual space of $\cX$; denote the application of $\omega \in \cX'$ to $v\in \cX$ by $\omega[v] \in \RR$.  The norm on $\cX$ is denoted $\|\cdot\|$ and for $\cX'$ it is $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:\cK \to \cX'$ be a given operator, generally nonlinear, and let $\ell\in \cX'$ be given.  While $F$ in Example \ref{example:classicalobstacle} is defined on all of $\cX$, the general operator $F$ might be only defined on $\cK$; Section \ref{sec:app} gives an example.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in \cK$ so that
+Let $\cX'$ be the dual space of $\cX$, and denote the application of $\omega \in \cX'$ to $v\in \cX$ by $\omega[v] \in \RR$.  The norm on $\cX$ is denoted $\|\cdot\|$, and for $\cX'$ the norm is $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:\cK \to \cX'$ be a given operator, generally nonlinear, and let $\ell\in \cX'$ be given.  While $F$ in Example \ref{example:classicalobstacle} is defined on all of $\cX$, the general operator $F$ might be only defined on $\cK$; Section \ref{sec:app} gives an example.  The VI associated to this data, a unilateral obstacle problem, is to find $u\in \cK$ so that
 \begin{equation} \label{eq:vi}
 F(u)[v - u] \ge \ell[v - u] \quad \text{ for all } v \in \cK.
 \end{equation}
@@ -234,6 +238,10 @@ for all $v,w \in B_R(0)\cap \cK$.  If $F$ satisfies \eqref{eq:lipschitz} then it
 
 \begin{example}  \label{example:classicalobstacle}
 In the classical obstacle problem \eqref{eq:classical:vi}, over $\cX=H^1(\Omega)=W^{1,2}(\Omega)$, $F(u)[v] = \int_\Omega \grad u\cdot \grad v\,dx$.  This bilinear operator is $2$-coercive because the Laplacian is uniformly elliptic \cite{Evans2010}, and it is Lipschitz over $\cX$ with constant $C=1$.
+\end{example}
+
+\begin{example}  \label{example:flatsia}
+In glacier model of Section \ref{sec:app}, in the case where the bedrock is flat and the surface mass balance is independent of elevation, the VI problem \eqref{eq:siavi} uses a $4$-Laplacian operator over transformed thicknesses $u\in\cX=W^{1,4}(\Omega)$, namely $F(u)[v] = \int_\Omega \Gamma |\grad u|^2\grad u\cdot \grad v\,dx$ where $\Gamma>0$ is constant.  This operator is $4$-coercive \cite[for example]{JouvetBueler2012}, and it is Lipschitz on bounded subsets of $\cX$.  For more details see Section \ref{sec:app}.
 \end{example}
 
 Note that if the inequality constraint in \eqref{eq:vi} were absent then the residual of the solution $u$ would be zero almost everywhere ($F(u)-\ell=0$); this is the PDE case.  However, for VI \eqref{eq:vi} we only have that $F(u)-\ell=0$ a.e.~within the unknown inactive set $I_u$.  In fact, the residual $F(u)-\ell\in \cX'$ might be highly-irregular in the active set $A_u$, though it is at least nonnegative.  The following lemma states the weak complementarity property associated to VI \eqref{eq:vi}; compare strong-form complementarity \eqref{eq:classical:ncp} for \eqref{eq:classical:vi}.
@@ -256,20 +264,20 @@ The same argument given for \eqref{eq:vi} shows that this has a unique solution 
 \begin{equation}
   I_u^h = \{x \in \Omega \,:\, u_h(x) > \psi_h(x)\}, \quad A_u^h = \Omega \setminus I_u^h, \quad \Gamma_u^h = \Omega \cap \partial I_u^h, \label{eq:fe:sets}
 \end{equation}
-the numerical sets, corresponding to \eqref{eq:classical:sets} for the exact solutio $u$, here defined \emph{a posteriori} from the solution to \eqref{eq:fe:vi}.
+the numerical sets, corresponding to \eqref{eq:classical:sets}, here defined \emph{a posteriori} from solving \eqref{eq:fe:vi}.
 
-Because $\cK_h \subset \cX_h \subset \cX$, we might regard \eqref{eq:fe:vi} as a conforming FE method for \eqref{eq:vi}.  However, this is subtle for an obstacle problem as it depends on the relationship between $\psi$ and $\psi_h$.  If $\psi_h$ is an interpolant of $\psi$, $\psi_h = \Pi_h \psi$, then $\cK_h \approx \cK$ in some sense, but one must distinguish three precise levels of increasingly ``conforming'' admissibility:
+Because $\cK_h \subset \cX_h \subset \cX$, we might regard \eqref{eq:fe:vi} as a conforming FE method for \eqref{eq:vi}.  However, this is subtle for an obstacle problem as it depends on the relationship between $\psi$ and $\psi_h$.  If $\psi_h$ is an interpolant of $\psi$, $\psi_h = \Pi_h \psi$, then $\cK_h \approx \cK$ in some sense, but one might distinguish three levels of increasingly ``conforming'' admissibility:
 \renewcommand{\labelenumi}{\emph{\roman{enumi})}}
 \begin{enumerate}
 \item $\cK_h \not \subset \cK$
 \item $\cK_h \subset \cK$
 \item $\cK_h = \cK \cap \cX_h$
 \end{enumerate}
-As noted early-on by Ciarlet \cite[Figure 5.1.3]{Ciarlet2002}, situation \emph{i)} generally applies for an interpolated obstacle $\psi_h = \Pi_h \psi$, e.g.~for $\cX_h=P_1$ and when $\psi$ is not convex.  Situation \emph{ii)} holds when $\psi_h \ge \psi$, which can be imposed by using a monotone injection operator, e.g.~``$\psi_h = R^\oplus \psi$'' in the notation from \cite{BuelerFarrell2024}.  (For related ideas, see \cite{GraeserKornhuber2009} and the proof of Theorem 5.1.2 in \cite{Ciarlet2002}.)  The strongest condition \emph{iii)} holds if $\psi_h=\psi$ exactly, for example when $\psi=0$ in the porous dam problems considered by \cite{AinsworthOdenLee1993}.
+Ciarlet \cite[Figure 5.1.3]{Ciarlet2002} observes that situation \emph{i)} generally applies for an interpolated obstacle $\psi_h = \Pi_h \psi$, e.g.~for $\cX_h=P_1$ and when $\psi$ is not convex.  Situation \emph{ii)} holds when $\psi_h \ge \psi$, which can be imposed by using a monotone injection operator, e.g.~``$\psi_h = R^\oplus \psi$'' in the notation from \cite{BuelerFarrell2024}.  (For related ideas, see \cite{GraeserKornhuber2009} and the proof of Theorem 5.1.2 in \cite{Ciarlet2002}.)  The strongest condition \emph{iii)} holds if $\psi_h=\psi$ exactly, for example when $\psi=0$ in the porous dam problems considered by \cite{AinsworthOdenLee1993}.
 
-In any case, the obstacle $\psi$ is given \emph{as data} for VI problem \eqref{eq:vi}.  Point values of $\psi$ can therefore be evaluated as desired to represent (improve) $u_h$ within the numerical active set $A_u^h$.  That is, over any elements where there is believed to be active-set agreement, i.e.~$K\in\cT_h$ such that $K \subset A_u \cap A_u^h$, reducing the error $e=u-u_h=\psi-u_h$ can be addressed in post-processing simply by evaluating the data $\psi$.  By contrast, the heart of the matter is to improve the mesh, and re-solve the FE problem, so as to more-accurately locate the free boundary and reduce $|e|$ in the inactive set.  Refinement ``deep within'' a stabilized active set may be wasted effort.
+In any case, the obstacle $\psi$ is given \emph{as data} for VI problem \eqref{eq:vi} over $\cK$.  Point values of $\psi$ can be evaluated as desired to better-represent $u_h$ within the numerical active set $A_u^h$.  That is, over elements where there is active-set correctness, i.e.~$K\in\cT_h$ such that $K \subset A_u \cap A_u^h$, reducing the error $e=u-u_h=\psi-u_h$ can be done in post-processing, simply by improving the data representation $\psi_h \approx \psi$.  As the goal for a refined mesh is to more-accurately re-solve the FE problem, locating the free boundary and reducing $|e|$ in the inactive set, thus refinement within a stabilized active set is wasted effort.
 
-These ideas motivate a reconsideration of \emph{a priori} bounds for VI problems.  The following theorem generalizes Falk \cite{Falk1974} (and \cite[Theorem 5.1.1]{Ciarlet2002}).  It can be extended further to approximating operators $F_h\approx F$, adding a fourth term ``$(F(u_h)-F_h(u_h))[u_h]$'' to the bound \cite[Theorem 6.3]{Bueler2024}, but we will not need the extended result.
+These ideas can be seen in certain \emph{a priori} bounds for FE error in VI problems.  The following theorem generalizes the Falk bound \cite{Falk1974}; see also \cite[Theorem 5.1.1]{Ciarlet2002}.  It can be extended further to address $F_h\approx F$ \cite[Theorem 6.3]{Bueler2024}, but we will not need such an operator approximation for our examples.
 
 \begin{theorem} \label{thm:genfalk}  For $1<q<\infty$, define the conjugate exponent $q'=q/(q-1)$.  Assume that $F$ is $q$-coercive and Lipschitz on bounded subsets of its domain.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c(R_h)>0$, not otherwise depending on $u$ or $u_h$, so that
 \begin{align}
@@ -304,146 +312,133 @@ where $\tilde C(\eps) = (\eps q)^{-q'/q} {q'}^{-1}$.  Choose $\eps>0$ so that $C
 \end{align}
 Apply Lemma \ref{lem:measure} to \eqref{eq:falkalmost}, note $u=\psi$ a.e.~in $A_u$, and take infimums to show \eqref{eq:falk}.\end{proof}
 
-In the unconstrained PDE case, with $A_u=\emptyset$ and $d\mu_u=0$, bound \eqref{eq:falk} becomes Cea's lemma for $q$-coercive operators, namely $\|u-u_h\| \lesssim \inf_{v_h\in\cK_h} \|v_h - u\|^{1/(q-1)}$.  Generally, and standard in FE theory \cite{AinsworthOden2000,ElmanSilvesterWathen2014}, the final term $\inf_{v_h\in\cK_h} \|v_h - u\|$ in  \eqref{eq:falk} is addressed by regularity theory for the exact solution $u$, plus interpolation theory.
+Consider the unconstrained PDE case of \eqref{eq:falk}, namely with $A_u=\emptyset$ and $d\mu_u=0$.  In this case the bound is simply Cea's lemma for $q$-coercive operators, namely $\|u-u_h\| \lesssim \inf_{v_h\in\cK_h} \|v_h - u\|^{1/(q-1)}$.  It is standard in FE theory \cite{AinsworthOden2000,ElmanSilvesterWathen2014} to address this final term by solution regularity and interpolation theory.
 
-FIXME MAKE THE ACTIVE/INACTIVE SPLIT MORE EXPLICIT IN THE COROLLARY  In situations \emph{ii)} and \emph{iii)} mentioned earlier, i.e.~supposing $\cK_h\subset \cK$, the first ``$\inf$'' term from \eqref{eq:falk} is zero.
+If $\psi_h\ge \psi$ then $\cK_h\subset \cK$, and so the first term on the right of \eqref{eq:falk} is zero.  In this case bound \eqref{eq:falk} adds a nonnegative infimum, of an integral over $A_u$, to the $\|v_h-u\|$ term expected from Cea's lemma.  The addition is large if $v_h\in\cK_h$ is significantly blocked by $\psi_h$ from descending close to the continuum obstacle $\psi$ in the active set $A_u$, and/or if the residual measure $d\mu_u$ is large in $A_u$.
 
-\begin{corollary} \label{cor:falkconforming}
-Suppose $\cK_h\subset \cK$, plus the other hypotheses of Theorem \ref{thm:genfalk}.  Then
-\begin{equation} \label{eq:falkconforming}
-\|u-u_h\|^q \le \frac{2}{\alpha} \left(\inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u + c(R_h) \inf_{v_h\in\cK_h} \|v_h - u\|^{q'}\right).
-\end{equation}
+The \emph{a priori} error bound from Theorem \ref{thm:genfalk} becomes clearer in the $p=2$ and $q=q'=2$ case, i.e.~for the classical obstacle problem.  The bound can then be split between integrals over the (exact) active set and inactive sets.
+
+\begin{corollary} \label{cor:falktwo}
+Suppose all the hypotheses of Theorem \ref{thm:genfalk}.  Assume that $p=q=2$, and that $\psi \in C^1(\Omega)$.  Up to constants which depend on $u$ and $u_h$, we may write the \emph{a priori} bound with four integrals,
+\begin{subequations}
+\label{eq:falktwo}
+\begin{align}
+\|u-u_h\|^2 \lesssim &\inf_{v\in\cK} \int_{A_u} (v-u_h)\,d\mu_u \label{eq:falktwo:a} \\
+&\, + \inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u \label{eq:falktwo:b} \\
+&\, + \inf_{v_h\in\cK_h} \left(\int_{A_u} |\grad v_h - \grad \psi|^2\,dx + \int_{I_u} |\grad v_h - \grad u|^2\,dx\right) \label{eq:falktwo:c}
+\end{align}
+\end{subequations}
 \end{corollary}
 
-However, how should we interpret the $\cK_h$ infimum term in \eqref{eq:falk} and \eqref{eq:falkconforming}?:
-	$$(\ast) \qquad \inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u$$
-This is unrelated to the FE solution $u_h$.  If $v_h < \psi$ is locally possible then $(\ast)$ might be negative, but then situation \emph{i)} holds and the ``$\inf_{v\in\cK}$'' term in \eqref{eq:falk} might counter-act (i.e.~if $v\ge \psi > u_h$ anywhere).  In the simpler situation \emph{ii)}, where $\psi_h\ge \psi$ and $\cK_h\subset \cK$, the term is at least nonnegative.  It might be large because no $v_h\in\cK_h$ is close to $\psi$ over $A_u$, for instance where $v_h\ge \psi_h \gg \psi$.  On the other hand, $(\ast)$ might be large even where $v_h-\psi$ can be made small over $A_u$, that is, if the source functional $\ell$ causes the residual $F(u)-\ell\ge 0$ to be large in $A_u$.  (Meaning: $d\mu_u(S)$ is positive and large for some measurable $S\subset A_u$.)  In summary, in the situation where $\cK_h\subset \cK$, the bound \eqref{eq:falkconforming} is significantly larger than that from Cea's lemma only when the FE functions $v_h$ are blocked by $\psi_h$ from descending close to the continuum obstacle $\psi$, or when the (exact) residual $d\mu_u$ is large in the (exact) active set $A_u$, or both.
+\begin{proof}
+Apply Poincare's inequality to the final term in \eqref{eq:falk}.
+\end{proof}
+
+We now consider Corollary \ref{cor:falktwo} from the point of view of AMR.  The first term \eqref{eq:falktwo:a}, which can be of either sign, is controlled by the choice of $\psi_h$.  Since we are assuming $\cX_h\subset \cX$, this term relates only to discrete admissibility.  This term can be replaced by zero if $\cK_h \subset \cK$.  The second term \eqref{eq:falktwo:b}, also generally of either sign, relates both to discrete admissibility and to the approximation of $\psi$ using functions from $\cX_h$.  It is nonnegative if $\psi_h\ge \psi$.
+
+Both integrals \eqref{eq:falktwo:a} and \eqref{eq:falktwo:b} are with respect to the residual measure $d\mu_u$, so their size is determined partly by the action of $F$ on the continuum obstacle, and partly by the source term $\ell$.  However, because they are over the active set $A_u$, neither integral \eqref{eq:falktwo:a} nor \eqref{eq:falktwo:b}, nor the $A_u$ integral in \eqref{eq:falktwo:c}, requires mesh refinement so as to improve the quality of the FE solution, \emph{as long as the mesh and solver accurately locate the free boundary}.  Corollary \ref{cor:falktwo} suggests why a primary goal of AMR for VIs is to use refinement to generate close approximation $\Gamma_u^h\approx \Gamma_u$.  Then the computational costs expended on better approximation of the data $\psi$ in $A_u$, during the solution process, can be avoided.
+
+These observations are easiest to exploit within the class of unilateral obstacle problems described in Appendix \ref{app:blistering}, a class which includes the $\psi=0$ case of the classical obstacle problem \eqref{eq:classical:vi} and the glacier problem of Section \ref{sec:app}.  In such problems one may preprocess the data, marking all the areas where the source term is negative, and then systematically avoid unnecessary active set refinement.
+
+In order for $\Gamma_u^h\approx \Gamma_u$ to be an accurate approximation, the interior condition of the VI, over $I_u$, must be accurately solved, which of course gives the significance of the final integral in \eqref{eq:falktwo:c}.  Our AMR approaches will simultaneously refine near the computed free boundary $\Gamma_u^h$ and in the (computed) inactive set $I_u^h$.
 
 
-\section{\emph{A posteriori} error estimation in inactive and active sets} \label{sec:aposteriori}
+\section{\emph{A posteriori} error estimation in the inactive set} \label{sec:inactive}
 
-For $u\in\cX$ solving VI \eqref{eq:vi}, a PDE holds in the inactive set $I_u$, the \emph{interior condition} of the VI \cite{KinderlehrerStampacchia1980}.  In Section \ref{sec:results} we will demonstrate strategies which do \emph{a posteriori} refinement in the geometric vicinity of the free boundary, and which exploit \emph{a posteriori} error indicators for the interior condition PDE.  We consider two such indicators, starting with \emph{gradient recovery} (GR) \cite[Chapter 4]{AinsworthOden2000}; it is used in Section \ref{sec:app}.
+For $u\in\cX$ solving VI \eqref{eq:vi}, an interior condition PDE holds in the inactive set $I_u$ \cite{KinderlehrerStampacchia1980}.  Our AMR strategies do \emph{a posteriori} refinement in the geometric vicinity of the free boundary, but they also exploit \emph{a posteriori} error indicators for this interior condition.  We consider two such PDE indicators.
 
-\begin{example}  \label{example:gradrecovery}  Suppose $\cX_h$ is a continuous, piecewise-polynomial FE space, of degree $p$, and suppose $u_h\in\cX_h$.  Generally $\grad u_h$ is discontinuous but well-defined on each element.  Let $\cY_h$ be the (scalar) discontinous space with polynomial degree $p-1$, so $\grad u_h \in \cY_h^d$.  Suppose there is a linear operator $G : \cY_h^d \to \cX_h^d$, which we call \emph{gradient recovery}, which is designed so that $G(u_h)\approx \grad u$ in $\cX^d$ in some sense, assuming of course that $u_h\approx u$ in $\cX$.  Then the error indicator $\eta_K\ge 0$ for this GR method, over an element $K \in\cT_h$, is
+\begin{example}  \label{example:gradrecovery}  Suppose $\cX_h=\CG_k$ is the continuous, piecewise-polynomial FE space of degree $k$, and consider $u_h\in\cX_h$.  Generally $\grad u_h$ is discontinuous but well-defined on each element.  If $\cY_h=\DG_{k-1}$ denotes the (scalar) discontinuous space with polynomial degree $k-1$ then $\grad u_h \in \cY_h^d$.  Suppose there is a linear operator $G : \cX_h \to \cX_h^d$, called \emph{gradient recovery} (GR) \citep[Chapter 4]{AinsworthOden2000}, so that $G(u_h)\approx \grad u$ in some sense, assuming of course that $u_h\approx u$ in $\cX$.  Then, over an element $K \in\cT_h$, the error indicator $\eta_K\ge 0$ for this GR method is
 \begin{equation} \label{eq:gradrecoveryindicator}
 \eta_K^2 = \int_K \left|G(u_h) - \grad u_h\right|^2.
 \end{equation}
+We also define $\eta^2 = \sum_{K\in\cT_h} \eta_K^2$.
 \end{example}
 
-Generally one applies the indicator to a solution $u_h \in \cK_h$ of \eqref{eq:fe:vi}, but observe that formula \eqref{eq:gradrecoveryindicator} is well-defined for any $u_h \in \cX_h$.  Let $\eta^2 = \sum_{K\in\cT_h} \eta_K^2$.  For certain gradient recovery methods $G$ it can be shown that, at least for the Poisson equation, $\eta \sim |u-u_h|_{H^1}$ (energy norm) asymptotically as $h\to 0$ \cite[Theorem 4.4]{AinsworthOden2000}.
+Generally one applies the indicator to a solution $u_h \in \cK_h$ of \eqref{eq:fe:vi}, but formula \eqref{eq:gradrecoveryindicator} is well-defined for any $u_h \in \cX_h$.  For certain gradient recovery methods $G$ applied to the Poisson equation, $\eta \sim |u-u_h|_{H^1}$ (energy norm) as $h\to 0$ \cite[Theorem 4.4]{AinsworthOden2000}.
 
-In Sections \ref{sec:results} and \ref{sec:app} our GR operation will simply use orthogonal projection in $L^2$.  That is, $w = G(u_h) \in \cX_h^d$ is the minimizer of
+Our application of GR in Section \ref{sec:app} will simply use orthogonal projection in $L^2$.  That is, $w = G(u_h) \in \cX_h^d$ is defined to be the minimizer of
 \begin{equation} \label{eq:gradrecoveryprojection}
 J(w) = \int_\Omega |w - \grad u_h|^2\,dx.
 \end{equation}
-In the results shown later, the space $\cX_h$ will be the continuous $P_1$ FE space, thus $\grad u_h$ is in (vector-valued) discontinuous $P_0$ space.  It is not clear to the current authors whether Theorem 4.4 in \cite{AinsworthOden2000} applies to our recovery operator.  (The operators analyzed by \cite{AinsworthOden2000} act by averaging element centroid values to get $\cX_h$ nodal values.)
+In this application $\cX_h = \CG_1$, thus $\grad u_h$ is in (vector-valued) $\DG_0$.
 
-The second indicator is only stated for the classical obstacle problem.  It is a well-known \emph{explicit error estimator} for the Poisson equation \cite[Chapter 2]{AinsworthOden2000}.
+The second indicator, applied in Section \ref{sec:results} to the Poisson equation interior condition of classical problem \eqref{eq:classical:vi}, is a well-known \emph{explicit error estimator} \cite[Chapter 2]{AinsworthOden2000}.
 
-\begin{example}  \label{example:br}  Suppose $u \in H^1(\Omega)$ solves the weak form PDE $a(u,v) = \int_\Omega f v\,dx$ for all $v \in H^1_0(\Omega)$, with $u=g$ on $\partial \Omega$, for the bilinear form $a(u,v)=\int_\Omega \grad u\cdot \grad v\,dx$.  Suppose that $u_h$ from the continuous, $P_1$ FE space $\cX_h$ solves the corresponding finite-dimensional weak form.  For each element $K \in \cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $\gamma$, and any vector field $Z$ with traces $Z_L,Z_K$ on $\gamma$, let $\left\llbracket Z \cdot n \right\rrbracket = Z_L \cdot n_L + Z_K \cdot n_K$ be the jump of $Z$ on $\gamma$.  Given the Poisson (strong) residual $r(v)=-\nabla^2 v - f$ defined within the elements, the Babu\v{s}ka--Rheinboldt (BR) \cite{BabuskaRheinboldt1979} error estimator is
+\begin{example}  \label{example:br}  Suppose $u \in H^1(\Omega)$ solves the weak form Poisson equation $a(u,v) = \int_\Omega f v\,dx$ for all $v \in H^1_0(\Omega)$, with $u=g$ on $\partial \Omega$, for $a(u,v)=\int_\Omega \grad u\cdot \grad v\,dx$.  Suppose that $u_h\in\cX_h=\CG_1$ solves the corresponding finite-dimensional weak form.  For each element $K \in \cT_h$, define $n_K$ as the unit outward normal vector on $\partial K$.  For a pair of elements $L,K$ incident to an edge $\gamma$, and any vector field $Z$ with traces $Z_L,Z_K$ on $\gamma$, let $\left\llbracket Z \cdot n \right\rrbracket = Z_L \cdot n_L + Z_K \cdot n_K$ be the jump of $Z$ on $\gamma$.  Given the (strong) residual $r(u_h)=-\nabla^2 u_h - f$ of the Poisson equation, well-defined within an element $K$, the Babu\v{s}ka--Rheinboldt (BR) \cite{BabuskaRheinboldt1979} error estimator is
 \begin{equation} \label{eq:brestimator}
 \eta_K^2 = h_K^2 \int_K |r(u_h)|^2\,dx + \frac{h_K}{2} \sum_{\gamma \in \partial K \setminus \partial \Omega} \int_{\gamma} \left\llbracket \grad u_h \cdot n \right\rrbracket^2\,dS,
 \end{equation}
-where $h_K$ is the diameter of $K$.  It can be shown \cite[Chapter 2]{AinsworthOden2000} that the energy error is bounded by the sum of these indicators:
+where $h_K$ is the diameter of $K$.  It can be shown \cite[Chapter 2]{AinsworthOden2000} that the energy error is bounded by $\eta^2 = \sum_{K\in\cT_h} \eta_K^2$:
 \begin{equation} \label{eq:brbound}
-|u-u_h|_{H^1}^2 = \int_\Omega |\grad(u-u_h)|^2\,dx \le C \eta^2,
+|u-u_h|_{H^1}^2 = \int_\Omega |\grad(u-u_h)|^2\,dx \le C \eta^2.
 \end{equation}
-where $\eta^2 = \sum_{K\in\cT_h} \eta_K^2$.  The constant $C>0$ is determined by the element-wise and edge-wise approximation properties of the elements, including shape regularity.  The $L^2$ error can be bounded by a similar indicator (estimator) \cite[Section 2.4]{AinsworthOden2000}, which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively.
+Similarly the $L^2$ error can be bounded by an estimator, one which replaces the powers in \eqref{eq:brestimator} by $h_K^4,h_K^3$, respectively \cite[Section 2.4]{AinsworthOden2000}.
 \end{example}
 
-Whether $\eta_K$ is computed as in Example \ref{example:gradrecovery} or \ref{example:br}, we will treat these values as local element-wise error estimators.  That is, the set of values $\eta_K$ will be thresholded to providing tagging of elements for refinement; see \cite[Section 4.2]{BangerthRannacher2003} for discussion of such techniques.  Specifically, all (computed) inactive elements satisfying $\eta_K \ge \theta \max \eta_K$, for $0<\theta<1$, will be tagged and refined.  For more details see the next Section.
+Whether $\eta_K$ is computed as in Example \ref{example:gradrecovery} or \ref{example:br}, we will treat these values as local element-wise error estimators.  The set $\{\eta_K\}$ will be thresholded to providing tagging of elements for refinement; see \cite[Section 4.2]{BangerthRannacher2003} for discussion of such techniques.  In one strategy, all (computed) inactive elements satisfying $\eta_K \ge \theta \max \eta_K$, for $0<\theta<1$, will be tagged and refined; see Section \ref{sec:results}.
 
-The BR error estimator in Example \ref{example:br}, for the Poisson equation, is explicit and easily-computed.  Ainsworth, Oden, and Lee \cite{AinsworthOdenLee1993} extend this estimator to certain obstacle problems, but with heuristic aspects.
-
-For PDE problems, an alternative to a local BR-type estimator is provided by the \emph{dual weighted residual} (DWR) technique \cite{BangerthRannacher2003}.  Such estimators are defined using a particular quantity of interest and nonlocal weights (approximately) computed from an adjoint problem.  The weights are essentially Green's functions of the adjoint PDE.  Suttmeier \cite{Suttmeier2008} has extended this DWR technique to VI problems, but this also requires heuristic steps even for the classical obstacle problem.  However, at least for obstacle problems with disconnected inactive sets---see Figure \ref{fig:activesizes} (right)---the weightings from a DWR technique are zero when a free boundary separates the components of the inactive set.  Even if the inactive set is connected, the weights in DWR would be very small in a problem like the one with a spiral active set (Figure \ref{fig:activesizes}, left); though the inactive set is connected it is geometrically very complicated.
-
-In this paper we avoid the complexity of the techniques in references \cite{AinsworthOdenLee1993} and \cite{Suttmeier2008}, and instead take a more pragmatic approach.  We apply fast (and again heuristic) refinement near a computed free boundary.  We combine this with application of a gradient-recovery or BR estimator, as above, within the computed inactive sets.
-
-Returning to the general, continuum problem \eqref{eq:vi}, next we point out a qualitative property of certain unilateral obstacle problems, which can be exploited \emph{a posteriori} in the active set.  Note that for the classical obstacle problem \eqref{eq:classical:vi}, assuming a continuous source $f\in C(\bar\Omega)$ for simplicity, in general an upward force $f(x)>0$ can occur in the active set.  That is, the force, while locally upward, may be insufficient to lift $u$ above a concave $\psi$.  However, in certain obstacle problems this cannot occur.
-
-\begin{lemma} \label{lem:blister}
-Suppose that $\psi=0$ and $\ell[v] = \int_\Omega fv\,dx$ for $f\in C(\bar\Omega)$.  Suppose also that $F$ is given by measurable densities, for example $F(w)[v]=\int_\Omega \phi(w(x),\grad w(x)) v(x) + \Phi(w(x),\grad w(x)) \cdot \grad v(x)\,dx$, satisfying $\phi(0,0)=0$ and $\Phi(0,0)=0$.  Then for $u$ solving \eqref{eq:vi}, $f\le 0$ a.e.~in $A_u$.
-\end{lemma}
-
-\begin{proof}
-Let $S\subset A_u$ be a Borel set, and denote its indicator function by $\chi_S \in L^\infty(\Omega)$.  The operator value $F(u)[\chi_S]$ is well-defined, \emph{and zero}, because $S$ is in the active set, by a density argument.  Thus by Lemma \ref{lem:measure},
-\begin{equation*}
-0 \le d\mu_u(S) = F(u)[\chi_S]-\ell[\chi_S] = 0 - \ell[\chi_S] = -\int_S f\,dx.
-\end{equation*}
-This shows $f\le 0$ a.e.~with respect to Lebesgue measure.
-\end{proof}
-
-The hypotheses of the Lemma clearly hold for problem \eqref{eq:classical:vi} if $\psi=0$.
-
-By definition, we say that a unilateral obstacle problem, based on $\ell[v] = \int_\Omega fv\,dx$ with $f\in C(\bar \Omega)$, has the \emph{blistering property} if $A_u \subset \{x \in \Omega\, :\, f(x)\le 0\}$ \cite{JouvetBueler2012}, up to a set of measure zero, that is, if the conclusion of Lemma \ref{lem:blister} holds.  To explain the language, if $f(x)>0$ anywhere, for continuous $f$, then under this property the inactive set $I_u$ must be non-empty, and $x\in I_u$; even a small upward force ``blisters'' the membrane off the obstacle.  Note that porous-dam saturation free boundary problems, such as the examples in \cite{AinsworthOdenLee1993}, have this property because $\psi=0$.
-
-In fact, any classical problem \eqref{eq:classical:vi} with a smooth obstacle $\psi\in C^2(\bar\Omega)$ can be transformed into one with the blistering property.  To see this, make the obstacle zero by transforming $\tilde v=v-\psi$, thus $\tilde\cK = \{\tilde v\in\cX\,:\,\tilde v\ge 0 \text{ and } \tilde v|_{\partial\Omega}=g-\psi|_{\partial\Omega}\}$.  Integration-by-parts shows \eqref{eq:classical:vi} is equivalent to finding $\tilde u = u -\psi \in \tilde \cK$ so that
-\begin{equation} \label{eq:classical:vi:blister}
-\int_\Omega \nabla \tilde u \cdot \nabla(\tilde v - \tilde u) \ge \int_\Omega \left(f+\grad^2\psi\right)(\tilde v - \tilde u) \quad \text{ for all } \tilde v \in \tilde \cK.
-\end{equation}
-For VI problem \eqref{eq:classical:vi:blister}, if $x\in A_{\tilde u} = \{\tilde u(x)=0\}$ then $\tilde f(x)= f(x)+\grad^2\psi(x)\le 0$.
-
-For blistering-property problems, substantial AMR efficiency can be achieved by avoiding refinement in the computed active set $A_u^h$.  However, one must carefully identify those elements where no refinement would be beneficial.  Assume the blistering property, and consider an element $K\in \cT_h$ in the active set $A_u^h$.  (In our implementation, this means that \emph{every node in the closure of $K$} is active, according to a tolerance criterion.)  The degenerate case $f=0$ must first be excluded within $K$.  That is, one must know that $K$ is contained in the set $\Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$, which is a property of the data of the problem.  If later refinements might move the free boundary to impinge on $K$ then refinement of $K$ would be appropriate, thus our techniques (next Section) will be designed to mark for refinement those active-set elements which are ``near'' $\Gamma_u^h$ in some sense.  However, if $f \le 0$ on $K$, and if $K$ is too far from the free boundary to be inactivated by later solutions along the refinement path, then $K$ can remain unrefined without affecting solution accuracy.
+The BR error estimator is explicit and easily-computed.  Ainsworth, Oden, and Lee \cite{AinsworthOdenLee1993} extend it to certain obstacle problems, but with heuristic aspects.  On the other hand, for certain PDE problems, alternative estimators are provided by the \emph{dual weighted residual} (DWR) technique \cite{BangerthRannacher2003}.  These are defined using a particular quantity of interest and some approximately-computed nonlocal weights, essentially Green's functions of the adjoint PDE.  Suttmeier \cite{Suttmeier2008} has extended this DWR technique to certain VI problems, but this also requires heuristic steps even for the classical obstacle problem.  In this paper we avoid the complexity of the techniques in \cite{AinsworthOdenLee1993} and \cite{Suttmeier2008}, and instead take a more pragmatic approach.  We propose fast, and again heuristic, refinement near a computed free boundary, combined with application of a gradient-recovery or BR estimator within the computed inactive sets.
 
 
 \section{New adaptive mesh refinement strategies} \label{sec:viamr}
 
-Our first two methods for adaptive mesh refinement (AMR) for VIs, namely Algorithms \ref{alg:udo} and \ref{alg:vcd} below, are of \emph{tag-and-refine} type.  Later in this section we compare them to a third, more-expensive \emph{metric-based mesh adaptation} approach \cite{Wallworketal2020}, which can hold the mesh complexity approximately constant.
+Our first two methods for adaptive mesh refinement (AMR) for VIs, Algorithms \ref{alg:udo} and \ref{alg:vcd}, are of \emph{tag-and-refine} type.  A third, more-expensive \emph{metric-based mesh adaptation} approach \cite{Wallworketal2020} follows, namely Algorithm \ref{alg:avm} which can hold the mesh complexity approximately constant.
 
 These methods start from a computed solution to FE VI problem \eqref{eq:fe:vi}.  We need only the mesh $\cT_h$, the obstacle $\psi_h \in \cX_h$, and the admissible solution $u_h \in \cK_h \subset \cX_h$.  The following two concepts are fundamental.
 
 \begin{definition} \label{def:nodalactive}
-Denote the vertices of $\cT_h$ by $x_j$.  Given $u_h \ge \psi_h$ and a tolerance $\text{tol}>0$, the \emph{(a posteriori) nodal active set indicator} is the function $\nu_h\in\CG_1(\cT_h)$ satisfying
+Denote the vertices of $\cT_h$ by $x_j$.  Given $u_h \ge \psi_h$ and a tolerance $\text{tol}>0$, the \emph{nodal active set indicator} is the unique $\nu_h\in\cX_h$ satisfying
 	$$\nu_h(x_j) = \begin{cases} 1, & u_h(x_j) - \psi_h(x_j) < \text{tol} \\
 	                             0, & \text{otherwise}\end{cases}$$
+for the nodes $x_j$ of $\cX_h$.
 \end{definition}
 
 \begin{definition} \label{def:marking}
-An \emph{element marking} (\emph{tagging}) of a mesh $\cT_h$ is a piecewise-constant indicator function $I_h \in \DG_0(\cT_h)$ with values in $\{0,1\}$.  Elements $K \in \cT_h$ such that $I_h|_K=1$ will be refined.
+An \emph{element marking} of $\cT_h$ is a piecewise-constant indicator function $I_h \in \DG_0(\cT_h)$ with values in $\{0,1\}$.  Elements such that $I_h|_K=1$ will be refined.
 \end{definition}
 
-For PDE problems, an element marking is typically derived from an error estimator $\eta_K$ associated with a quantity of interest, such as energy or $L^2$ norm error, or a local functional \cite{BangerthRannacher2003}.  (For the interior condition of problem \eqref{eq:vi}, we gave examples in Section \ref{sec:aposteriori}.)  However, a primary quantity of interest for obstacle problems is \emph{vicinity to the unknown free boundary}.  We do not associate this concept with a precise functional, but instead Algorithms \ref{alg:udo} and \ref{alg:vcd} proceed heuristically to convert an \emph{a posteriori} nodal active set indicator $\nu_h$ (Definition \ref{def:nodalactive}) into an element marking $I_h$ (Definition \ref{def:marking}), with the goal of improving the approximation of the free boundary.
+For PDE problems, an element marking is typically derived from an error estimator $\eta_K$ associated with a quantity of interest, such as energy or $L^2$ norm error, or a local functional \cite{BangerthRannacher2003}; we gave examples in Section \ref{sec:inactive}.  However, a primary quantity of interest for obstacle problems is \emph{vicinity to the unknown free boundary}.  We do not associate this concept with a precise functional.  Instead Algorithms \ref{alg:udo} and \ref{alg:vcd} proceed heuristically to convert a nodal active set indicator $\nu_h$ (Definition \ref{def:nodalactive}) into an element marking $I_h$ (Definition \ref{def:marking}), with the goal of improving the approximation of the free boundary.
 
-From the marking $I_h$ we then apply \emph{skeleton-based refinement} (SBR) \cite{PlazaCarey2000} to generate a refined mesh with no hanging nodes and good mesh quality.  Note that two implementations of SBR are available to Firedrake applications, namely from the DMPlex component of PETSc \cite{petsc-user-ref} or the Netgen library \cite{Betteridgeetal2024}; only the latter is (currently) capable of 3D refinement.  In fact, the use of DMPlex queries is essential to Algorithm \ref{alg:udo} below, so let us sketch aspects of how this domain management class supports unstructured meshes \cite{Langeetal2016}.  A DMPlex object stores the topology (connectivity of entities) of a $d=1,2,3$ FE mesh.  (The mesh geometry is in an associated PetscSection object for the vertex coordinates.)  Every mesh entity, regardless of dimension, is assigned a unique index.  Mesh connectivity can be understood as a stratified directed acyclic graph (DAG) in which a covering (incidence) relationship between mesh entities determines the directed edges.  For example, a triangle within a 2D mesh is covered by its three edges, each of which is covered by its two endpoints (vertices).  Each stratum in the DAG represents a dimensional class of mesh entity.  For example the cells, edges, and vertices in a 2D mesh are at strata indices (``height'') of $0$, $1$, and $2$ respectively.  Given the index $p$ of a mesh entity, we will use the following DMPlex mesh topology queries \cite{petsc-user-ref}:  The operation $\text{\emph{cone}}(p)$ returns the indices of all entities which cover entity $p$.  Its dual, which returns all the entities which are covered by $p$, is $\text{\emph{support}}(p)$.  The transitive closure of \emph{cone} is $\text{\emph{closure}}(p)$, and that of \emph{support} is $\text{\emph{star}}(p)$.  In our application we need only the indices of vertices in the element closure; we denote this $\text{\emph{closure}}^\wedge(k)$.  Similarly, $\text{\emph{star}}_\vee(j)$ extracts only element indices in the vertex star.
+The use of PETSc DMPlex queries is essential to Algorithm \ref{alg:udo} below, so let us sketch aspects of how this domain management class supports unstructured meshes \cite{Langeetal2016}.  A DMPlex object stores the topology (connectivity of entities) of a $d=1,2,3$ FE mesh.  Every mesh entity, regardless of dimension, is assigned a unique index.  Mesh connectivity can be understood as a stratified directed acyclic graph (DAG) in which a covering (incidence) relationship between mesh entities determines the directed edges.  For example, a triangle within a 2D mesh is covered by its three edges, each of which is covered by its two endpoints (vertices).  Each stratum in the DAG represents a dimensional class of mesh entity, thus the cells, edges, and vertices in a 2D mesh are at strata indices (heights) of $0$, $1$, and $2$ respectively.  Given the index $p$ of a mesh entity, we will use the following DMPlex mesh topology queries \cite{petsc-user-ref}:  The operation $\text{\emph{cone}}(p)$ returns the indices of all entities which cover entity $p$.  Its dual, which returns all the entities which are covered by $p$, is $\text{\emph{support}}(p)$.  The transitive closure of \emph{cone} is $\text{\emph{closure}}(p)$, and that of \emph{support} is $\text{\emph{star}}(p)$.  In our application we need only the indices of vertices in the element closure; we denote this as $\text{\emph{closure}}^\wedge(k)$.  Similarly, $\text{\emph{star}}_\vee(j)$ extracts only element indices in the star of vertex $x_j$.
 
-With this preparation we can state the Unstructured Dilation Operator (UDO) method, Algorithm \ref{alg:udo}.  It first computes a nodal active set indicator $\nu_h$ (Definition \ref{def:nodalactive}).  Denoting the degrees of freedom in $\DG_0(\cT_h)$ by $x_k$, it finds the set of indices $k$ of elements $K\in\cT_h$ such that $0<\nu_h(x_k)<1$.  This condition holds when at least one of the vertices incident to $K$ is in the active set (according to $u_h$), and at least one is not.  Then the method alternates closure and star on the element set $n$ times, expanding it by $n$ elements, and then generates the element marking $I_h$ (Definition \ref{def:marking}).
+The Unstructured Dilation Operator (UDO) method, Algorithm \ref{alg:udo}, first computes a nodal active set indicator $\nu_h$.  Denoting the degrees of freedom in $\DG_0(\cT_h)$ by $x_k$, it finds the set of indices $k$ of elements such that $0<\nu_h(x_k)<1$.  If $u_h \in \CG_1$ then this condition holds when the element is incident to both active and inactive vertices.  Then the method alternates closure and star on the element set $n$ times, expanding the marking by $n$ element layers, to generate an element marking $I_h$.
 
 \begin{algorithm}[ht]
 	\caption{Unstructured Dilation Operator (UDO) element marking}
 	\begin{algorithmic}[1]
-		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, and neighborhood expansion parameter $n\ge 1$.
-		\State Compute nodal active set indicator $\nu_h \in \CG_1(\cT_h)$.
+		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, and expansion parameter $n\ge 1$.
+		\State Compute nodal active set indicator $\nu_h \in \cX_h$.
 		\State Find initial element index set $S_0$: \,$k\in S_0$ if $\nu_h(x_k) \in (0,1)$.
 		\For{$i=0,\dots,n-1$}
 		    $$S_{i+1} = \bigcup_{k\in S_i}\, \bigcup_{j\in \text{\emph{closure}}^\wedge(k)} \text{\emph{star}}_\vee(j)$$
 		\EndFor \\
-		\Return marking $I_h \in \DG_0(\cT_h)$ of all elements in $S_n$.
+		\Return marking $I_h \in \DG_0(\cT_h)$ of all elements with indices in $S_n$.
 	\end{algorithmic}
 \label{alg:udo}
 \end{algorithm}
 
-The main idea of the UDO method is that if the approximation $u_h\approx u$ is good then, at least for a non-degenerate VI problem \eqref{eq:vi}, the free boundary $\Gamma_u$ should pass through, or close to, the elements indicated \emph{a posteriori} by $I_h$.  In the results Section \ref{sec:results} we only consider $n=1$ and $n=2$, as this much expansion seems to suffice for accurate representation of the free boundary under a few refinements.
+The main motivation of the UDO method is that if the approximation $u_h\approx u$ is good for a non-degenerate VI problem \eqref{eq:vi} then the free boundary $\Gamma_u$ should pass through, or close to, the elements indicated \emph{a posteriori} by $I_h$.  Indeed, in the results Sections \ref{sec:results} and \ref{sec:app} we only consider $n=1$ and $n=2$, as this much expansion seems to suffice for accurate representation of the free boundary under a few refinements.
 
-The UDO strategy explicitly manipulates the indices of mesh entities.  Our second strategy, called Variable Coefficient Diffusion (VCD) and shown in Algorithm \ref{alg:vcd}, is a smoothed approximation of UDO.  It has the same essential intent, namely to generate a marking $I_h$ for elements near the computed free boundary, but it operates at the level of FE functions and not indices.  Again the first step computes a nodal active set indicator $\nu_h \in \CG_1$, but now this function is used as the initial condition of a time-dependent, variable-coefficient diffusion problem
+The UDO strategy explicitly manipulates the indices of mesh entities.  Our second strategy, called Variable Coefficient Diffusion (VCD) and shown in Algorithm \ref{alg:vcd}, is a smoothed approximation of UDO.  It has the same essential intent, namely to generate a marking $I_h$ for elements near the computed free boundary, but it operates at the level of FE functions and not indices.  Again the first step computes a nodal active set indicator $\nu_h \in \CG_1$, but now this function is used as the initial condition of a time-dependent, variable-coefficient diffusion equation
 \begin{equation} \label{eq:diffusioneqn}
 \frac{\partial s}{\partial t} = \Div\left(D \grad s\right), \qquad s(t=0) = \nu_h,
 \end{equation}
-with Neumann (natural) boundary conditions.  A solution of \eqref{eq:diffusioneqn} at some time $t>0$ is evidently a smoothed form of $\nu_h$.  The diffusivity is set to the square of the element diameter, $D=C h^2$ with $C=0.5$ by default; here $h$ varies over the mesh and $D \in \DG_0(\cT_h)$.  The diffusion range is comparable to one element of distance everywhere along the free boundary, independently of element geometry and dimension.  In fact \eqref{eq:diffusioneqn} is not solve accurately, as instead we only compute $s_h\in\CG_1(\cT_h)$ from a single backward-Euler step of duration $\Delta t = 1$; see Algorithm \ref{alg:vcd}.  The default solver for this linear and elliptic problem is four iterations of conjugate gradient, preconditioned by incomplete-Cholesky factorization \cite{Bueler2021}, an inexpensive and optimal solver with complexity which is linear in the number of nodes.
+with Neumann (natural) boundary conditions, a well-posed problem.  A solution of \eqref{eq:diffusioneqn} at any $t>0$ is a smoothed form of $\nu_h$.  The diffusivity here is set to the square of the element diameter, $D=C h^2$ with $C=0.5$ by default; $h=h(k)$ varies over the mesh and $h,D \in \DG_0(\cT_h)$.  The diffusion range is thus proportional to one element diameter everywhere along the free boundary, largely independent of element geometry and dimension.  In fact \eqref{eq:diffusioneqn} is not solved exactly, or even very accurately, as we only compute $s_h\in\cX_h$ from a single backward-Euler step of duration $\Delta t = 1$.  The default solver for this linear and elliptic problem is four iterations of conjugate gradient, preconditioned by incomplete-Cholesky factorization \cite{Bueler2021}.  This approximate solver is inexpensive, and its complexity is linear in the number of nodes.
 
 \begin{algorithm}[ht]
 	\caption{Variable Coefficient Diffusion (VCD) element marking}
 	\begin{algorithmic}[1]
-		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, coefficient $C>0$, and middle interval $0 < \alpha < \beta < 1$.
-		\State Compute the nodal active set indicator $\nu_h \in \CG_1(\cT_h)$ (Definition \ref{def:nodalactive}).
-		\State For $h$ the cell/element diameter, which varies over the mesh, let $D=C h^2$.
-		\State Approximately solve for $s_h\in\CG_1(\cT_h)$, with Neumann boundary conditions:
+		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, tolerance $\text{tol} > 0$, coefficient $C>0$, and threshold interval $0 < \alpha < \beta < 1$.
+		\State Compute nodal active set indicator $\nu_h \in \cX_h$.
+		\State For $h$ the element diameter, let $D=C h^2 \in \DG_0(\cT_h)$.
+		\State Approximately solve for $s_h\in\cX_h$, with Neumann boundary conditions:
 		  $$s_h - \Div(D \grad s_h) = \nu_h$$ \\
 		\Return marking $I_h \in \DG_0(\cT_h)$ of all elements such that $s_h(x_k) \in (\alpha,\beta)$.
     \end{algorithmic}
 \label{alg:vcd}
 \end{algorithm}
 
-Figure \ref{fig:vcdillustration} illustrates how the VCD algorithm applies to a one-dimensional obstacle problem.  Note that there are parameters to consider with this technique, especially the thresholds $\alpha$ and $\beta$ which we set by default to $0.2$ and $0.8$, respectively.  Lowering $\alpha$ toward zero increases the resulting resolution in the inactive set side of the free boundary.  Increasing $\beta$ toward one increases resolution on the active set side.
+Figure \ref{fig:vcdillustration} illustrates how the VCD algorithm applies to a one-dimensional obstacle problem.  Note that there are parameters to consider with this technique, especially the thresholds $\alpha$ and $\beta$, with defaults $0.2$ and $0.8$, respectively.  Lowering $\alpha$ toward zero increases the resolution in the inactive set near the (computed) free boundary, while increasing $\beta$ toward one increases resolution on the active set side.
 
 \begin{figure}[ht]
 \input{tikz/vcdfour.tex}
@@ -451,49 +446,61 @@ Figure \ref{fig:vcdillustration} illustrates how the VCD algorithm applies to a 
 \label{fig:vcdillustration}
 \end{figure}
 
-The third AMR method in this section is based on \emph{metric-based mesh adaptation} \cite{Alauzet2010}.  Instead of marking elements for refinement, such mesh adaptation effectively both refines and coarsens to match mesh complexity and resolution target values, for example to keep the mesh complexity approximately constant.  Adaptation is driven by an \emph{a posteriori} computed \emph{metric (ﬁeld)}, which is a continuous, matrix-valued function $M_h:\Omega \to \RR^{d\times d}$.  Each point value $M_h(x)$ is a symmetric and positive-definite matrix.  Such a metric contains local information on distances, areas, and volumes, analogous to a continuous version of a mesh; the analogy can be made precise \cite{LoseilleAlauzet2011}.  The construction of the metric field depends on the meshing goal.  The mesher itself generates a unit mesh with respect to the given metric field, which becomes a mesh with anisotropic edge lengths in the original space \cite{Wallworketal2020}.
+It turns out to be helpful, especially when solving highly-nonlinear obstacle problems like that in Section \ref{sec:app}, to have the user of Algorithms \ref{alg:udo} and \ref{alg:vcd} also set a minimum element diameter $\hmin$.  To implement this bound, after running these Algorithms we (un)set the indicator for element $K$, i.e.~we set $I_h|_K=0$, for any element with $h_K < \hmin$.
 
-Our \emph{averaged-metric} (AVM) AMR method for VIs starts from $u_h$ and $\psi_h$.  The first metric $M_1(x)$ is computed from the gradient of a smoothed nodal active set indicator, namely $s_h$ from the VCD method (Algorithm \ref{alg:vcd}) above.  The metric is isotropic because it is a multiple of the identity: $M_1(x) = c_1 |\grad s_h(x)| I_{d\times d}$.  The second metric $M_2(x)$ is an approximate Hessian of $u_h$, computed via a Hessian-recovery technique \cite{Alauzet2010} because the FE function $u_h$ generally has discontinuous first derivatives.  Actually the absolute value of the Hessian, well-defined because the Hessian is a symmetric matrix \cite{Wallworketal2020}, is used to produce an anisotropic metric: $M_2(x) = c_2 |H u_h(x)|$.  These metrics are computed in the matrix-valued $\CG_1$ FE space, and $c_1,c_2$ are metric normalization constants computed in a standard manner \cite{Wallworketal2020}.  By construction, the first metric should generate small elements near the free boundary, while the second metric should reduce FE approximation error, specifically in the inactive set, because the Hessian of the continuous solution $u$ appears in standard interpolation theory \cite{Wallworketal2020}.
+From the marking $I_h$, computed by either Algorithm, we then apply \emph{skeleton-based refinement} (SBR) \cite{PlazaCarey2000} to generate a refined mesh with no hanging nodes and good mesh quality.  Note that two implementations of SBR are available to Firedrake applications, namely from the DMPlex component of PETSc \cite{petsc-user-ref} or the Netgen library \cite{Betteridgeetal2024}; only the latter is (currently) capable of 3D refinement.
 
-The final metric seen by the mesher is then a weighted average:
-\begin{equation} \label{eq:avm}
-M_h(x) = \gamma M_1(x) + (1-\gamma) M_2(x) = \gamma c_1 |\grad s_h(x)| I_{d\times d} + (1-\gamma) c_2 |H u_h(x)|,
-\end{equation}
-where $\gamma \in [0,1]$; the default is $\gamma=0.5$.  This result $M_h(x)$ is an anisotropic metric which is free-boundary aware.  Our implementation of the AVM method calls the Animate library (\href{https://github.com/mesh-adaptation/animate}{{\small \texttt{github.com/mesh-adaptation/animate}}}) to construct the metrics $M_i(x)$, and to compute their average $M_h$.  Note that Animate uses the Pragmatic library (\href{https://github.com/meshadaptation/pragmatic}{{\small \texttt{github.com/meshadaptation/pragmatic}}}) as the default metric-based mesher.
+Our third AMR method is based on \emph{metric-based mesh adaptation} \cite{Alauzet2010}.  Instead of marking elements for refinement, mesh adaptation generates a new mesh matching resolution and complexity targets, for example keeping the mesh complexity approximately constant.  Here adaptation is driven by an \emph{a posteriori} computed metric ﬁeld, which is a continuous, matrix-valued function $M_h:\Omega \to \RR^{d\times d}$, with each value $M_h(x)$ a symmetric and positive-definite matrix.  Such a metric contains local information on distances, areas, and volumes \cite{LoseilleAlauzet2011}, and from the metric the mesher itself generates a unit mesh \cite{Alauzet2010}.  The resulting mesh has variable and anisotropic edge lengths in the original space.
 
-Recall that Figure \ref{fig:threeballmeshes} shows AMR results from all three methods on the ``ball'' obstacle problem shown in Figures \ref{fig:ball} and \ref{fig:activesizes} (middle).  The right sub-figure shows an AVM result for this problem.  Note that iterating the AVM method, even while holding the target mesh complexity constant, is worthwhile because the increased resolution near the free boundary allows the \emph{a posteriori}-determined metric to become more effective.  However, because of the many nontrivial computations in metric-based methods \cite{Alauzet2010,Wallworketal2020}, one iteration of AVM is substantially more expensive than an iteration of UDO, even when adding a residual-based marking in the inactive set like \eqref{eq:brestimator}; see Section \ref{sec:results}.
+Our \emph{averaged-metric} (AVM; Algorithm \ref{alg:avm}) AMR method for VIs again starts from $u_h$ and $\psi_h$.  The first metric is isotropic, and it is computed from the gradient of a smoothed nodal active set indicator, namely $s_h$ from the VCD method (Algorithm \ref{alg:vcd}).  The second metric is anisotropic, computed as an approximate Hessian of $u_h$ via a Hessian-recovery technique \cite{Alauzet2010}.  (Generally the FE function $u_h$ has discontinuous first derivatives and no well-defined Hessian.)  Actually the absolute value of the Hessian is used, which well-defined for a symmetric matrix \cite{Wallworketal2020}.  These metrics are in the matrix-valued $\CG_1$ FE space, with metric normalization constants computed from target complexity and eleemnt diameter bounds in a standard manner \cite{Wallworketal2020}.  By construction, the first metric should imply small elements near the free boundary, while the second should reduce FE approximation error, specifically in the inactive set, according to the standard interpolation theory \cite{Ciarlet2002}.  The final metric seen by the mesher is a weighted average of the two metrics, and thus it is an anisotropic metric which is free-boundary aware.
 
-All three methods, UDO, VCD, and AVM, run in parallel under the MPI process model used by Firedrake/PETSc \cite{Bueler2021,Langeetal2016}.  However, only UDO produces identical results independent of the number of processes.  The VCD method can be configured to have this property, namely by choosing a direct solver for problem \eqref{eq:diffusioneqn}, but this reduces scalability.  For VCD the use of the preconditioned Krylov solver is preferred, though its default parallel block preconditioner will generate slightly different results depending on number of processes \cite{Bueler2021}.
+\begin{algorithm}[ht]
+	\caption{Averaged-metric (AVM) mesh adaptation}
+	\begin{algorithmic}[1]
+		\Require mesh $\cT_h$, solution $u_h \in \cK_h$, obstacle $\psi_h \in \cX_h$, target complexity $N$, element diameter bounds $0<\hmin<\hmax$, and averaging parameter $0\le \gamma \le 1$
+		\State Compute $s_h \in \cX_h$ from Algorithm \ref{alg:vcd}, using $u_h,\psi_h$.
+		\State Compute normalized isotropic free-boundary metric: $M_1(x)=c_1 |\grad s_h(x)| I_{d\times d}$.
+		\State Compute normalized anisotropic metric from Hessian: $M_2(x)=c_2 |H u_h(x)|$.
+		\State Average the metrics: $M(x) = \gamma M_1(x) + (1-\gamma) M_2(x)$. \\
+		\Return new mesh $\tilde \cT_h$ which is unit with respect to $M(x)$.
+    \end{algorithmic}
+\label{alg:avm}
+\end{algorithm}
 
-We end this section with two basic Python examples which show how the library, available open source at \href{https://github.com/StefanoFochesatto/VI-AMR}{{\small \texttt{github.com/StefanoFochesatto/VI-AMR}}}, is used.
+Note that our implementation of Algorithm \ref{alg:avm} calls the Animate library (\href{https://github.com/mesh-adaptation/animate}{{\small \texttt{github.com/mesh-adaptation/animate}}}) to construct, normalize, and average the metrics.  Furthmermore, Animate uses the Pragmatic library (\href{https://github.com/meshadaptation/pragmatic}{{\small \texttt{github.com/meshadaptation/pragmatic}}}) as the default metric-based mesher.
+
+The right-hand image in Figure \ref{fig:threeballmeshes} (Introduction) shows an AVM result on the ``ball'' obstacle problem, which is the same problem as shown in Figure \ref{fig:ball}, and in the middle image of Figure \ref{fig:activesizes}.  Note that iterating the AVM method, even while holding the target mesh complexity constant, can be worthwhile because the increased resolution near the free boundary allows the \emph{a posteriori} metric to become more effective.  However, because of the many nontrivial computations in metric-based methods \cite{Alauzet2010,Wallworketal2020}, one AVM iteration is notably more expensive than an iteration of UDO or VCD; see Section \ref{sec:results}.
+
+All three methods, UDO, VCD, and AVM, run in parallel under the MPI process model used by Firedrake/PETSc \cite{Bueler2021,Langeetal2016}.  However, only UDO produces results which are independent of the number of processes $P$.  The VCD method can be configured to have this property by choosing a direct solver for problem \eqref{eq:diffusioneqn}, but this reduces scalability.  In fact a preconditioned Krylov solver is preferred for VCD performance even though its default parallel block preconditioner generates slightly different results depending on $P$ \cite{Bueler2021}.
+
+We end this section with two basic Python examples which illustrate how the open source VIAMR library (\href{https://github.com/StefanoFochesatto/VI-AMR}{{\small \texttt{github.com/StefanoFochesatto/VI-AMR}}}) is used.
 
 \begin{example} \label{example:AOL}
-Consider Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The complete code below, which applies the Firedrake and VIAMR libraries, generates a coarse mesh and then applies VCD marking and refinement around the free boundary.  The initial mesh, marked elements near the free boundary, and refined mesh are shown in Figure \ref{fig:resultAOL}.
+Consider now Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The complete code below applies the Firedrake and VIAMR libraries to solve this problem.  First it generates a uniform coarse mesh, then it applies VCD marking for the free boundary, and then it refines to a new mesh (Figure \ref{fig:resultAOL}).  For this example there is no refinement in the inactive set.
 \inputminted[linenos, frame=lines]{python}{../examples/aol.py}
 \end{example}
 
 \begin{figure}[ht]
 \centering
-\mbox{\includegraphics[width=0.21\textwidth]{static/aol-mesh0.png} \qquad\quad
+\mbox{\includegraphics[width=0.21\textwidth]{static/aol-mesh.png} \qquad\quad
 \includegraphics[width=0.21\textwidth]{static/aol-marked.png} \qquad\quad
-\includegraphics[width=0.21\textwidth]{static/aol-mesh1.png}}
-\caption{The Python code in Example \ref{example:AOL}, which solves Example 1 from \cite{AinsworthOdenLee1993}, starts from an initial mesh (left), marks elements by the default-parameter VCD scheme (middle), and generates a refined mesh (right).  The exact free boundary, unknown to the algorithm, is overlaid in black.}
+\includegraphics[width=0.21\textwidth]{static/aol-refinedmesh.png}}
+\caption{The Python code in Example \ref{example:AOL} solves Example 1 from \cite{AinsworthOdenLee1993}: initial mesh (left), marking by the default-parameter VCD scheme (middle), and the refined mesh (right).  The exact free boundary, unknown to the algorithm, is overlaid in black.}
 \label{fig:resultAOL}
 \end{figure}
 
 \begin{example} \label{example:hybrid}
-For the left-hand mesh in Figure \ref{fig:threeballmeshes}, after computing the FE solution \texttt{uh} on each mesh level, the following code snippet generate the next refined mesh:
+The following code snippet was used in generating the left-hand mesh in Figure \ref{fig:threeballmeshes}:
 \begin{minted}[linenos, frame=lines]{python}
 amr = VIAMR()
+fbmark = amr.udomark(uh, psih, n=1)
 residual = -div(grad(uh))
-imark, _, _ = amr.brinactivemark(uh, psi, residual, theta=0.7)
-fbmark = amr.udomark(uh, psi, n=1)
+imark, _, _ = amr.brinactivemark(uh, psih, residual, theta=0.7)
 mark = amr.unionmarks(fbmark, imark)
-mesh = amr.refinemarkedelements(mesh, mark)
+refinedmesh = amr.refinemarkedelements(mesh, mark)
 \end{minted}
-Here the BR error indicator (Section \ref{sec:aposteriori}) for the inactive set is computed from the \emph{a posteriori} element-wise residual, and then the $n=1$ case of UDO is used to mark near the free boundary, and finally these marks are unioned (hybridized).
+Here the $n=1$ case of UDO is used to mark near the free boundary, then the BR error indicator (Section \ref{sec:inactive}), using the element-wise residual, is applied for marking in the inactive set, and finally these marks are unioned.
 \end{example}
-
 
 
 \section{Results} \label{sec:results}
@@ -502,67 +509,83 @@ FIXME discuss norm and geometric measures first
 
 FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
 
-FIXME
-
 
 \section{Application to determining glaciated land areas} \label{sec:app}
 
-In this section we apply AMR techniques to a model for steady glacier geometry over a given bedrock topography and with a given climate.  A goal of this model is to determine the land which is covered by glaciers, and to determine the ice volume.  Though glaciers will cover any land on which snowfall dominates melt, ice flow further expands the glaciation out to a free boundary, the glacier margin, which can only be determined by solving the coupled mass and momentum conservation equations.  Similar VI problems arise for any fluid layer subject to surface processes which add or remove mass \cite{Bueler2021b}: the unknown fluid thickness must be nonnegative, the operator is nonlinear, the problem is \emph{not} of optimization type (for general bed geometry), and the ``blistering'' property mentioned in the Introduction (and in \cite{JouvetBueler2012}) applies.
+In this section we apply AMR techniques from Sections \ref{sec:inactive} and \ref{sec:viamr} to a model for the steady geometry of a glacier, over a given bedrock topography and subject to a given climate.  This model finds which land is covered by ice and what is the ice volume.  Though glacier will cover any land on which snowfall exceeds melt, ice flow expands the ice-covered area out to a free boundary, the glacier margin, which can only be found by solving conservation equations.  Any fluid layer subject to surface processes which add or remove mass is governed by such a model \cite{Bueler2021b}.  In these VI problems, which generally are \emph{not} of optimization type, the unknown fluid thickness must be nonnegative, the operator is nonlinear, and the blistering property (Appendix \ref{app:blistering}) applies.
 
-Let $\Omega \subset \RR^2$ be a fixed land region, and suppose a bedrock elevation $b \in C^1(\Omega)$.   Assume there is a surface mass-balance \cite{GreveBlatter2009} function $a:\Omega \times \RR \to \RR$ which is the annually-averaged rate of ice accumulation (snow) minus melt and runoff.  This function, the climate experienced by the glacier, can depend on the surface elevation $s$; we require that $a(x,s)\in L^\infty(\Omega)$ for any $s\in L^\infty(\Omega)$, additionally that $a$ is Lipschitz continuous in the $s$ variable.  Here distances and elevations are measured in meters while $a$ is in ice-equivalent meters per second.
+Let $\Omega \subset \RR^2$ be a fixed land region, with bedrock elevation $b=b(x,y) \in C^1(\Omega)$.  Assume there is a surface mass-balance \cite{GreveBlatter2009} function $a:\Omega \times \RR \to \RR$.  This climatic function models the annually-averaged rate of ice accumulation (snow) minus melt and runoff.  If $a$ depends on the surface elevation $s$ then we suppose that $a(x,y,s)\in L^\infty(\Omega)$ for any $s=s(x,y) \in L^\infty(\Omega)$, and additionally that $a$ is Lipschitz continuous in $s$.
 
-We consider a glacier flow approximation called the \emph{shallow ice approximation} \cite{GreveBlatter2009}, in the simple isothermal and non-sliding case.   For the standard exponent for the flow law of ice \cite{GreveBlatter2009} we have a VI for the transformed ice thickness $u\in \cX = W^{1,4}(\Omega)$.  The (nonnegative) thickness itself is denoted $H=u^{3/8}$, so of course $u=H^{8/3}$, and the surface elevation is $s=H+b=u^{3/8}+b$.  Let $\cK = \{u \in \cX\,:\,u\ge 0 \text{ and } u|_{\partial\Omega}=0\}$.  The model uses a ``tilted'' variation of the $p$-Laplacian operator \cite{JouvetBueler2012}; we seek $u\in\cK$ so that
+We use an ice flow approximation called the \emph{shallow ice approximation} \cite{GreveBlatter2009}, derived by a thin-layer argument from mass and momentum conservation, in its simplest isothermal and non-sliding case.  Applying the standard exponent of 3 for the shear-thinning flow law of ice \cite{GreveBlatter2009}, we have a VI for admissible transformed ice thickness functions $u \in \cK = \{u \in \cX\,:\,u\ge 0 \text{ and } u|_{\partial\Omega}=0\}$, in the Banach space $\cX = W^{1,4}(\Omega)$ \cite{JouvetBueler2012}.  The thickness itself is $H=u^{3/8}$, while the surface elevation is $s=H+b=u^{3/8}+b$.  The model is a VI based upon a ``tilted'' variation of the $p$-Laplacian operator \cite{JouvetBueler2012}:
 \begin{equation}
-\int_\Omega \Gamma |\grad u + \bm{\beta}(u)|^2 (\grad u + \bm{\beta}(u)) \cdot \grad (v-u) - \tilde a(u) (v-u)\,dx \ge 0 \label{eq:siavi}
+\int_\Omega \Gamma |\grad u + \bm{\beta}(u)|^2 (\grad u + \bm{\beta}(u)) \cdot \grad (v-u) - \tilde a(u) (v-u)\,dx \ge 0 \label{eq:sia:vi}
 \end{equation}
-for all $v \in \cK$, where $\bm{\beta}(u)=\frac{8}{3} u^{5/8} \grad b$ is a nonlinear multiple of the bed gradient.  Here $\tilde a(u)=a(s)=a(u^{3/8}+b)$ denotes the surface mass balance, with $x$ dependence suppressed.  Also $\Gamma>0$ is a physical constant, essentially the ice softness.  VI \eqref{eq:siavi} defines a nonlinear operator $F(v)[w]$ which is $4$-coercive---see definition \eqref{eq:coercive}---if $\grad b=0$ \cite{JouvetBueler2012}.  If $\tilde a$ does not depend on $u$ then one may move the source term to get ``$F(u)[v-u]\ge\ell[v-u]$'' as in \eqref{eq:vi}, but otherwise we simply set $\ell=0$.
+for all $v \in \cK$.  Here $\Gamma>0$ is an ice softness constant, $\bm{\beta}(u)=\frac{8}{3} u^{5/8} \grad b$ is a nonlinear multiple of the bed gradient, and $\tilde a(u)=a(x,y,u^{3/8}+b(x,y))$ denotes the surface mass balance (with $x,y$ dependence suppressed).  When $\grad b=0$, \eqref{eq:sia:vi} defines a nonlinear operator $F(v)[w]$ which is $4$-coercive \cite{JouvetBueler2012}; recall definition \eqref{eq:coercive}.  If $a$ has no $s$ dependence then one may treat it as the source term, and write ``$F(u)[v-u]\ge\ell[v-u]$'' as in \eqref{eq:vi}, but otherwise we simply set $\ell=0$.
 
-While uniqueness for \eqref{eq:siavi} is generally open, except in flat-bed cases, existence holds when $\tilde a$ is independent of $u$ \cite{JouvetBueler2012}.  If $\tilde a$ depends on $u$ then simple cases of \emph{non}-existence are known \cite{Jouvetetal2011}.  Our example below will have slow increase of snowfall with elevation, avoiding the issue.
+While uniqueness for \eqref{eq:sia:vi} is generally open, except in flat-bed cases, existence holds for any $b$ when $a$ is independent of $s$ \cite{JouvetBueler2012}.  Otherwise, simple cases of \emph{non}-existence are known wherein $a$ depends on $s$ \cite{Jouvetetal2011}, but our examples below have slow increase of snowfall with elevation \cite{GreveBlatter2009}, avoiding the issue.
 
-Note that both the thickness $H$ and (conserved) flux $\bq = - \Gamma |\grad u + \bm{\beta}(u)|^2 (\grad u + \bm{\beta}(u))$ go to zero at the glacier margin.  However, observations confirm that the gradient of a glacier's surface has large magnitude as one approaches the margin from the ice side.  This property emerges from a solution to \eqref{eq:siavi} when one computes the associated surface elevation $s=u^{3/8} + b$; note that generally $\grad u\to 0$ at the margin.
+In VI model \eqref{eq:sia:vi} the strong-form interior condition is a conservation equation:
+\begin{equation}
+\Div \bq = \tilde a \text{ over } I_u, \quad \text{where } \bq = - \Gamma |\grad u + \bm{\beta}(u)|^2 (\grad u + \bm{\beta}(u)).
+\label{eq:sia:interior}
+\end{equation}
+At the free boundary (glacier margin) the solution $u$, the solution gradient $|\grad u|$, and the flux $\bq$ all go to zero.  However, observations confirm that the gradient of a glacier's surface has large magnitude as one approaches the margin from the ice side.  This property emerges from \eqref{eq:sia:vi} when one differentiates the associated surface elevation $s=u^{3/8} + b$.  Generally $|\grad s| \to \infty$ at the glacier margin.
 
-For this highly-nonlinear problem, with low solution regularity for $H$ and $s$, we apply a continuous, piecewise-linear FE method.  The problem is solved either by the same VI-adapted Newton solver (PETSc \texttt{vinewtonrsls}) as in Section \ref{sec:results}, or by adding an outer Picard-type iteration over the tilt $\bm{\beta}(u)$ \cite{JouvetBueler2012} and source $\tilde a(u)$, with \texttt{vinewtonrsls} applied at each iteration.  Very similar results are obtained when both converge, but the outer-Picard solver is more robust when $|\grad b|$ is large or $\tilde a$ depends on $u$.  We consider two particular problems over a square domain $\Omega=(0,L)^2$, $L=1800$ kilometers: \emph{i)} ``dome'' problem with a flat bed, elevation-independent source, and a known solution \cite{Bueler2016}, and \emph{ii)} ``cap'' problem with a bumpy bed \cite[Example 8.4]{BuelerFarrell2024} and an elevation dependent surface mass balance function.
+We apply a conforming, continuous, piecewise-linear FE method \eqref{eq:fe:vi}, over unstructured triangulations.  The FE problem is either solved directly by the same VI-adapted Newton solver (\texttt{vinewtonrsls} in PETSc \cite{petsc-user-ref}) as in Section \ref{sec:results}, or with an added outer Picard-type iteration over the tilt $\bm{\beta}(u)$ \cite{JouvetBueler2012} and source $\tilde a(u)$, with Newton as the inner iteration.  The linear Newton steps are solved directly.  Very similar results are obtained when both converge, but the Picard-based solver is more robust when $|\grad b|$ is large or $\tilde a$ depends on $u$.
 
-FIXME CHECK FROM HERE
+We consider two particular problems, each over a square domain $\Omega=(0,L)^2$, $L=1800$ kilometers.  The first ``dome'' problem has a flat bed, elevation-independent source, and a known exact solution \cite{Bueler2016}; this is used for verification and to compare AMR algorithms.  The second ``realistic'' problem has a bumpy bed and an elevation dependent surface mass balance function.
 
-Our goals are to generate meshes with high resolution along an accurately-estimated glacier margin.  The UDO and VCD tag-and-refine methods are compared, with a gradient-recovery (GR) error indicator in the inactive set.  (See Example \ref{example:gradrecovery}; note that the linear derivation of the BR error indicator in Example \ref{example:br} does not apply.)  Figure \ref{fig:glacier} shows sample results for the cap problem, including the mesh after three levels of AMR starting from a coarse, uniform mesh (left), and a detail of the jump in the surface gradient at a highly-refined margin with element size around $h = 100$ meters (right).
-
-% $ cd examples/glacier
-%FIXME LEFT:
-% $ python3 steady.py -prob cap -newton -m 7 -opvd result_cap.pvd
-% $ paraview result_cap.pvd
-%RIGHT:
-% $ tmpg -n 12 python3 steady.py -newton -m 5 -refine 11 -prob cap -opvd result_cap_11.pvd
-% $ paraview result_cap_11.pvd
-\begin{figure}[ht]
-\centering
-
-\includegraphics[width=\textwidth]{genfigs/transect.png}
-
-FIXME FROM HERE
-
-\mbox{\includegraphics[width=0.46\textwidth]{static/glacier/thickness.png} \qquad \includegraphics[width=0.46\textwidth]{static/glacier/detail.png}}
-\caption{Left:  Ice thickness (grayscale; meters) with a mesh (red) found by applying UDO and a gradient-recovery indicator in the inactive set.  Right:  A detail of the glacier margin at higher refinement.  Though $|\grad u|$ is continuous, the surface elevation gradient $|\grad s|$ (grayscale magnitude) is discontinuous at the margin.}
-\label{fig:glacier}
-\end{figure}
-
-The dome problem was solved with 13 levels of refinement from an initial, uniform $h_0=360$ kilometer mesh to a final mesh with margin resolution of $h_{13}\approx 30$ meters.  Figure \ref{fig:domenormresults} shows relative $H^1$ errors in the solution ($\|u-u_h\|_{H^1}/\|u\|_{H^1}$) and absolute $L^\infty$ errors in the corresponding ice thickness ($\|H-H_h\|_{L^\infty}$), versus number of elements.  Note that solver time was observed to be a function of the number of elements, so showing run-times would add no information in distinguishing AMR schemes from uniform refinement.
+\begin{example} \label{example:dome}
+The dome problem was solved with 13 levels of refinement from an initial, uniform $h_0=360$ kilometer mesh to a final mesh with margin (free boundary) resolution of $h_{13}\approx 30$ meters.  Both UDO and VCD methods (Section \ref{sec:viamr}) were applied along the margin, with GR marking in the inactive set (Section \ref{sec:inactive}).  Figure \ref{fig:domenormresults} shows relative $H^1$ errors in the solution ($\|u-u_h\|_{H^1}/\|u\|_{H^1}$) and absolute $L^\infty$ errors in the corresponding ice thickness ($\|H-H_h\|_{L^\infty}$), versus number of elements.  The latter errors are much more responsive to AMR because the physical ice thickness gradient is singular at the free boundary, so (lateral) margin location error is effectively being measured.  Figure \ref{fig:domeradiusresults} shows the maximum radial error for the numerical margin, directly addressing free-boundary localization for the same runs.  We see that AMR methods are much more efficient for this purpose, compared to uniform refinement, and the UDO and VCD variants are seen to perform very similarly here.
+\end{example}
 
 % see examples/glacier/README.md for these runs
 \begin{figure}[ht]
 \noindent\mbox{\includegraphics[width=0.49\textwidth]{genfigs/uerrh1.png} \, \includegraphics[width=0.49\textwidth]{genfigs/herrinf.png}}
-\caption{Left: Per element, $H^1$ norm errors in $u$ are comparable for AMR methods and uniform refinement.  Right: Because of the low regularity of the ice thickness at the free boundary, AMR is effective in reducing the maximum thickness error.}
+\caption{Left: $H^1$ norm errors in $u$ are comparable for AMR and uniform refinement, in a per-element sense.  Right: AMR is effective for the maximum thickness error.}
 \label{fig:domenormresults}
 \end{figure}
-
-Figure \ref{fig:domeradiusresults} addresses free-boundary localization.  We compute the maximum distance between free-boundary nodes and the exact, circular margin, which reveals that the AMR methods locate the free boundary much more efficiently than uniform refinement.  Given the large ice thickness gradients at the free boundary, this also explains why $\|H\|_{L^\infty}$ errors are much more responsive to AMR than $\|u\|_{H^1}$ errors (Figure \ref{fig:domenormresults}).
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.51\textwidth]{genfigs/drmax.png}
-\caption{AMR generates accurate free boundary locations.  Near $10^7$ elements the glacier margin is located to tens of meters, versus a kilometer for uniform refinement.}
+\caption{AMR generates accurate free boundary locations.  To achieve tens of meters accuracy as here, uniform refinement would use orders of magnitude more elements.}
 \label{fig:domeradiusresults}
 \end{figure}
+
+\begin{example} \label{example:realistic}
+The next example is more realistic.  It uses a bumpy bedrock topography $b(x,y)$, built as a finite sum of sinusoids \cite[Example 8.4]{BuelerFarrell2024}, and a surface mass balance function $a(s)$ which depends only on surface elevation.\footnote{For detailed formulas see the source code in \href{https://github.com/StefanoFochesatto/VI-AMR/examples/glacier/}{{\scriptsize \texttt{github.com/StefanoFochesatto/VI-AMR/examples/glacier/}}}.}  An important parameter in the formula for $a(s)$ is the equilibrium line altitude (ELA) \cite{GreveBlatter2009}, with $a>0$ above this altitude and $a< 0$ below.
+
+Figure \ref{fig:transect} shows the bedrock topography along a transect $x=\hat x$ (red line in Figure \ref{fig:glacier}), with three possible ELA values superimposed.  Bedrock above the ELA will certainly be glacier-covered, but snowfall occurs on a larger solution-dependent set, namely $S=\{(x,y)\,:\,u(x,y)^{3/8} + b(x,y) > s_0\}$, where $s_0$ denotes the ELA.  Then glaciation extends beyond $S$ because of flow: $I_u \supset S$.  The difficult nonlinearities in model \eqref{eq:sia:vi} include this elevation-dependent surface mass balance, but also the $u^{5/8}$ dependence in $\bm{\beta}(u)$.  Among the other effects of the tilt $\bm{\beta}(u)$ is the tendency of ice to pool in bedrock elevation lows.  Our primary goals in this example are to generate an accurate map of glaciation, i.e.~of the inactive set $I_u$, to estimate the location of the glacier margin ($\Gamma_u$), and to compute the ice volume ($V=\int_\Omega u^{3/8}\,dx\,dy$).  Note that the number of connected components of the glacier, i.e.~the number of glaciers, is also a model output.
+
+\begin{figure}[ht]
+\centering
+\medskip
+
+\includegraphics[width=0.96\textwidth]{genfigs/transect.png}
+\caption{Bedrock elevation (solid) along a transect (red in Figure \ref{fig:glacier}, left), with three ELA levels (dashed).}
+\label{fig:transect}
+\end{figure}
+
+We applied UDO (Algorithm \ref{alg:udo}), with $n=2$ levels, for free-boundary marking, and GR marking in the inactive set.  A minimum marking diameter $\hmin=500$ meters (Section \ref{sec:viamr}) was set, with the resulting meshes having about 300 meter resolution along most of the glacier margin.  For ELA values $s_0=1000,800,600$ meters, the resulting surface elevation maps are shown in Figure \ref{fig:glacier}.  The ice volumes varied substantially, at $1.1\times 10^5$, $5.6\times 10^5$, and $8.9\times 10^5$ cubic kilometers, respectively, reflecting the expected strong climate sensitivity (ELA sensitivity) of realistic glacier models \cite{GreveBlatter2009}.\footnote{Compare the volume of the present-day Greenland ice sheet at $2.9\times 10^6$ cubic kilometers.}
+
+% see examples/glacier/{steady.py|caps.sh} for information about these runs
+\begin{figure}[ht]
+\centering
+
+\mbox{\includegraphics[width=0.32\textwidth]{static/glacier/surf1000.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/surf800.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/surf600.png}}
+\caption{Glacier surface elevation (grayscale) for ELA of 1000 meters (left), 800 meters (middle), and 600 meters (right).  Inset boxes are 200 km across; see Figure \ref{fig:insetmeshes}.}
+\label{fig:glacier}
+\end{figure}
+
+Figure \ref{fig:insetmeshes} shows details of the resulting meshes along randomly-chosen portions of the glacier margins.  It is key to observe that under the UDO$+$GR AMR approach the mesh was \emph{not} refined in the vast majority of the active set, and this represents a significant efficiency.  That is, we did not waste elements on modeling ice which turned out to not be present.  Also we observe that this highly-nonlinear problem causes AMR to work hard to pin down the glacier margin, as only once the inactive side of the margin is resolved at high resolution will its location stabilize.
+\begin{figure}[ht]
+\centering
+\mbox{\includegraphics[width=0.32\textwidth]{static/glacier/sub1000.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/sub800.png} \,\includegraphics[width=0.32\textwidth]{static/glacier/sub600.png}}
+\caption{Details of refined meshes (red) along glacier margins, from the inset boxes in Figure \ref{fig:glacier}, for the same ELA values.}
+\label{fig:insetmeshes}
+\end{figure}
+\end{example}
 
 
 \section{Discussion and conclusion} \label{sec:conclusion}
@@ -591,7 +614,37 @@ FIXME VI solver performance can be substantially improved by combining the AMR m
 
 
 %Any appendices should be placed after the list of references, beginning with the command \verb"\appendix" followed by the command \verb"\section" for each appendix title, e.g.
-%\appendix
-%\section{This is the title of the first appendix}
+\appendix
+\section{Unilateral obstacle problems with the blistering property} \label{app:blistering}
+
+In classical obstacle problem \eqref{eq:classical:vi} an upward force $f(x)>0$ may generally occur in the active set $A_u$.  Physically speaking, an upward force may be insufficient to lift $u$ off a concave obstacle $\psi$.  However, in certain problems this cannot occur.  The hypotheses of Lemma \ref{lem:blister} hold for porous dam saturation free-boundary problems \cite[for example]{AinsworthOdenLee1993} and the glacier problem in Section \ref{sec:app}.
+
+\begin{lemma} \label{lem:blister}
+Suppose that $\psi=0$ and $\ell[v] = \int_\Omega fv\,dx$ for $f\in L^2(\Omega)$.  Suppose also that the operator $F$ is given by measurable densities: $F(w)[v]=\int_\Omega \phi(w(x),\grad w(x)) v(x) + \Phi(w(x),\grad w(x)) \cdot \grad v(x)\,dx$.  Assume the densities satisfy $\phi(0,0)=0$ and $\Phi(0,0)=0$.  Then for $u$ solving \eqref{eq:vi}, $f\le 0$ a.e.~in $A_u$.
+\end{lemma}
+
+\begin{proof}
+Let $S\subset A_u$ be a Borel set, and denote its indicator function by $\chi_S \in L^\infty(\Omega)$.  By a density argument and the assumptions on $\phi$ and $\Phi$, the operator value $F(u)[\chi_S]$ is well-defined, \emph{and zero}, because $S$ is in the active set.  Thus by Lemma \ref{lem:measure},
+\begin{equation*}
+0 \le d\mu_u(S) = F(u)[\chi_S]-\ell[\chi_S] = 0 - \ell[\chi_S] = -\int_S f\,dx.
+\end{equation*}
+This shows $f\le 0$ a.e.~(with respect to Lebesgue measure).
+\end{proof}
+
+\begin{definition}
+For a unilateral obstacle problem \eqref{eq:vi} with source term $\ell[v] = \int_\Omega fv\,dx$, $f\in C(\bar \Omega)$, we say that \emph{blistering property} holds if $A_u \subset \{x \in \Omega\, :\, f(x)\le 0\}$ \cite{JouvetBueler2012}, that is, if the conclusion of Lemma \ref{lem:blister} holds.
+\end{definition}
+
+To explain the language, if $f(x)>0$ for some $x\in\Omega$ then, assuming this property, the inactive set $I_u$ must be non-empty, and $x\in I_u$.  That is, even a small upward force ``blisters'' the membrane off the obstacle.
+
+Any classical problem \eqref{eq:classical:vi} with a smooth obstacle $\psi\in C^2(\bar\Omega)$ can be transformed into one with the blistering property.  Let $\tilde v=v-\psi$, thus $\tilde\cK = \{\tilde v\in\cX\,:\,\tilde v\ge 0 \text{ and } \tilde v|_{\partial\Omega}=g-\psi|_{\partial\Omega}\}$.  Integration-by-parts shows \eqref{eq:classical:vi} is equivalent to finding $\tilde u = u -\psi \in \tilde \cK$ so that
+\begin{equation} \label{eq:classical:vi:blister}
+\int_\Omega \nabla \tilde u \cdot \nabla(\tilde v - \tilde u) \ge \int_\Omega \left(f+\grad^2\psi\right)(\tilde v - \tilde u) \quad \text{ for all } \tilde v \in \tilde \cK.
+\end{equation}
+For VI problem \eqref{eq:classical:vi:blister}, if $x\in A_{\tilde u} = \{\tilde u(x)=0\}$ then $\tilde f(x)= f(x)+\grad^2\psi(x)\le 0$.
+
+For blistering-property problems, AMR costs can be reduced by avoiding refinement in the computed active sets.  Start by identifying the elements $K\in \cT_h$ in the computed active set $A_u^h$.  (In our implementation we require that every node in the closure of $K$ is active, according to some tolerance.)  To identify $K$ where no refinement would be beneficial, the degenerate case must be excluded, so we require $K \subset \Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$; note this uses only the data of the problem.  If later refinements move the free boundary to be incident to $K$ then refinement of $K$ becomes appropriate.
+
+In summary, if a problem has the blistering property, if $f < 0$ on a currently-active element $K$, and if $K$ is far from the free boundary, then $K$ can likely remain unrefined without affecting solution accuracy.  Noting that the techniques of Section \ref{sec:viamr} are designed to mark for refinement those active-set elements which are near $\Gamma_u^h$ in a geometrical sense, one must also recall the necessity of refinement in the inactive set, e.g.~based on indicators from Section \ref{sec:inactive}, to give accuracy $\Gamma_u^h \approx \Gamma_u$.
 
 \end{document}

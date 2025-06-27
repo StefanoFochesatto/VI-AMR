@@ -8,7 +8,7 @@ from firedrake.petsc import PETSc
 
 print = PETSc.Sys.Print  # enables correct printing in parallel
 from viamr import VIAMR
-from viamr.utility import SpiralObstacleProblem
+from paper.convergence.utility import SpiralObstacleProblem
 
 levels = 3
 h_initial = 0.20
