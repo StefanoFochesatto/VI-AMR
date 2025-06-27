@@ -2,7 +2,13 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from firedrake import *
-from firedrake.petsc import OptionsManager, PETSc
+from firedrake.petsc import PETSc
+
+try:
+    from petsctools import OptionsManager
+except ImportError:
+    from firedrake.petsc import OptionsManager
+    
 from firedrake.output import VTKFile
 
 
