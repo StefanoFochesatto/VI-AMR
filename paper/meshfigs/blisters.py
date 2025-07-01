@@ -15,10 +15,10 @@ print = PETSc.Sys.Print  # enables correct printing in parallel
 
 refine_br = True  # True = mark inactive elements according to B&R method
 refine_inactive = False  # True = mark *all* inactive elements for refinement
-refinements = 6
+refinements = 5
 m_initial = 30
 m_data = 500
-outfile = "result_blisters.pvd"
+outfile = "blisters.pvd"
 
 
 def normal2d(mesh, x0, y0, sigma):
@@ -69,9 +69,9 @@ dataV = FunctionSpace(datamesh, "CG", 2)
 fdata = Function(dataV, name="f_data(x,y)")
 fdata.interpolate(eval_fsource(datamesh))
 
-datafile = "result_data.pvd"
-print(f"writing source f(x,y) to {datafile} ...")
-VTKFile(datafile).write(fdata)
+#datafile = "result_data.pvd"
+#print(f"writing source f(x,y) to {datafile} ...")
+#VTKFile(datafile).write(fdata)
 
 initial_mesh = UnitSquareMesh(m_initial, m_initial)
 
@@ -131,4 +131,20 @@ for i in range(refinements + 1):
 print(f"done ... writing solution u(x,y) and f(x,y) to {outfile} ...")
 activeset = amr._elemactive(u, lb)
 
+# Get the spatial coordinates from the mesh
+mesh = u.function_space().mesh()
+x = ufl.SpatialCoordinate(u.function_space().mesh())
+
+rect_condition = ufl.And(ufl.And(x[0] >= 0.64, x[0] <= 0.87),
+                         ufl.And(x[1] >= 0.66, x[1] <= 0.82))
+
+
+zoom = Function(FunctionSpace(mesh, "DG", 0)).interpolate(ufl.conditional(rect_condition, 1.0, 0.0))
+
+submesh = amr._filtermesh(mesh, zoom)
+
+activezoom = Function(FunctionSpace(submesh, "DG", 0)).interpolate(activeset)
 VTKFile(outfile).write(u, fsource, activeset)
+VTKFile("blisterszoomed.pvd").write(activezoom)
+(.652083, .814583)
+(.8625, .67395)

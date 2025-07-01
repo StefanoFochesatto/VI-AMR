@@ -10,16 +10,15 @@ mesh = problem.setInitialMesh()
 u = None
 amr_instance = VIAMR()
 
-for i in range(9):
+for i in range(5):
     u, lb = problem.solveProblem(mesh=mesh, u=u)
-    markFB = amr_instance.udomark(u, lb, n = 5)
+    markFB = amr_instance.udomark(u, lb, n = (i + 2))
     resUFL = -div(grad(u))
-    (markBR, _, _) = amr_instance.brinactivemark(u, lb, resUFL, theta=0.6)
+    (markBR, _, _) = amr_instance.brinactivemark(u, lb, resUFL, theta=0.8)
     mark = amr_instance.unionmarks(markFB, markBR)
     mesh = amr_instance.refinemarkedelements(mesh, mark)
     
-gapDG = Function(FunctionSpace(mesh, "DG", 0)).interpolate(u - lb)
-gapCG = Function(FunctionSpace(mesh, "CG", 1)).interpolate(u - lb)   
+active = amr_instance._eleminactive(u, lb)
    
-VTKFile("spiral.pvd").write(gapDG, gapCG)
+VTKFile("spiral.pvd").write(active)
     

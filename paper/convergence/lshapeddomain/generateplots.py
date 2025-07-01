@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
-path = "../convergence/ResultsLShaped/"
+path = "../lshapeddomain/ResultsLShaped/"
 
 def floatvals(method, field):
     fname = path + method + ".csv"

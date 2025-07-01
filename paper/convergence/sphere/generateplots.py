@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
-path = "../convergence/Results/"
+path = "../sphere/Results/"
 
 def floatvals(method, field):
     fname = path + method + ".csv"
@@ -25,7 +25,7 @@ fs0 = 14.0
 for j in range(3):
     plt.figure()
     plt.loglog(intvals("udoBR", "Elements"), floatvals("udoBR", enorm[j]), 'ko', ms=ms0, label="UDO+BR")
-    plt.loglog(intvals("vcdBR", "Elements"), floatvals("vcdBR", enorm[j]), 'o', ms=ms0+2, markerfacecolor="w", alpha=0.5, markeredgecolor="k", label="VCD+BR")
+    plt.loglog(intvals("udo", "Elements"), floatvals("udo", enorm[j]), 'o', ms=ms0+2, markerfacecolor="w", alpha=0.5, markeredgecolor="k", label="UDO")
     plt.loglog(intvals("uniform", "Elements"), floatvals("uniform", enorm[j]), 'k+', ms=ms0+2, label="uniform")
     plt.grid(True)
     plt.ylabel(ytitle[j], fontsize=fs0+2.0)

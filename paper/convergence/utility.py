@@ -233,16 +233,18 @@ class SpiralObstacleProblem(BaseObstacleProblem):
         super().__init__(**kwargs)
 
     def setInitialMesh(self):
-        geo = SplineGeometry()
-        geo.AddRectangle(p1=(-1, -1), p2=(1, 1), bc="rectangle")
-        ngmsh = geo.GenerateMesh(maxh=self.TriHeight)
-        mesh = Mesh(
-            ngmsh,
-            distribution_parameters={
-                "partition": True,
-                "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
-            },
-        )
+        mesh = RectangleMesh(
+                            nx=int(4 / self.TriHeight),
+                            ny=int(4 / self.TriHeight),
+                            Lx=4,
+                            Ly=4,
+                            originX=-2,
+                            originY=-2,
+                            distribution_parameters={
+                                "partition": True,
+                                "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
+                            },
+                        )
         return mesh
 
     def setObstacleUFL(self, V):
