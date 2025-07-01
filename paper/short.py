@@ -1,7 +1,7 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
-from viamr.utility import SpiralObstacleProblem
+from paper.convergence.utility import SpiralObstacleProblem
 
 problem = SpiralObstacleProblem()
 hierarchy = [problem.setInitialMesh()]

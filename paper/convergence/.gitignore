@@ -1,0 +1,4 @@
+/__pycache__/
+/Plots/
+*.h5
+*.png

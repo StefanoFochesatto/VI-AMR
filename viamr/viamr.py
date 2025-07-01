@@ -4,6 +4,12 @@ import numpy as np
 from pyop2.mpi import MPI
 from firedrake import *
 from firedrake.petsc import PETSc
+
+try:
+    from petsctools import OptionsManager
+except ImportError:
+    from firedrake.petsc import OptionsManager
+    
 from firedrake.utils import IntType
 import firedrake.cython.dmcommon as dmcommon
 import animate
