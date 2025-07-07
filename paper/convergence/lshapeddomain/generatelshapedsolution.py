@@ -5,7 +5,7 @@ from paper.convergence.utility import LShapedDomainProblem
 import os
 
 # For debugging purposes
-os.chdir("/home/stefano/Desktop/VI-AMR/paper/convergence/lshapeddomain")
+#os.chdir("/home/stefano/Desktop/VI-AMR/paper/convergence/lshapeddomain")
 problem = LShapedDomainProblem()
 amr = VIAMR()
 ExactMesh = problem.setInitialMesh("lshapedSolution.msh")

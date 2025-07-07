@@ -232,14 +232,15 @@ class SpiralObstacleProblem(BaseObstacleProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def setInitialMesh(self):
+    def setInitialMesh(self):        
+        
         mesh = RectangleMesh(
                             nx=int(4 / self.TriHeight),
                             ny=int(4 / self.TriHeight),
-                            Lx=4,
-                            Ly=4,
-                            originX=-2,
-                            originY=-2,
+                            Lx=1,
+                            Ly=1,
+                            originX=-1,
+                            originY=-1,
                             distribution_parameters={
                                 "partition": True,
                                 "overlap_type": (DistributedMeshOverlapType.VERTEX, 1),
