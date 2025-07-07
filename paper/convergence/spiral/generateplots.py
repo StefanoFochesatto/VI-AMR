@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
-path = "../lshapeddomain/ResultsLShaped/"
+path = "../spiral/ResultsSpiral/"
 
 def floatvals(method, field):
     fname = path + method + ".csv"
@@ -32,8 +32,7 @@ for j in range(3):
     plt.xlabel("elements", fontsize=fs0+2.0)
     plt.legend(fontsize=fs0)
     plt.xlim(7.0e1,1.0e6)
-    if enorm[j] == "Jaccard":
-        plt.ylim(8.0e-1, 1.0e0)
+
 
     #plt.show()
     plt.savefig(enorm[j].lower()+".png", bbox_inches="tight")

@@ -64,6 +64,7 @@ if __name__ == "__main__":
         exactMesh = afile.load_mesh()
         exactU = afile.load_function(exactMesh, "ExactU")
     exactV = FunctionSpace(exactMesh, "CG", 1)
+    VTKFile(o)
 
     exactPsi = problem_instance.getObstacle(exactV)
     exactElementIndicator = amr_instance._elemactive(exactU, exactPsi)

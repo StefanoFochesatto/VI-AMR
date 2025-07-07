@@ -54,6 +54,7 @@ if __name__ == "__main__":
     amr_instance = VIAMR()
     mesh = problem_instance.setInitialMesh()
     u = None
+    VTKFile('testspiral.pvd').write(mesh)
 
     # for debugging purposes
     # os.chdir("/home/stefano/Desktop/VI-AMR/NumericalResults/ConvergenceResults")
