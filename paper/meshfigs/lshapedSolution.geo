@@ -1,12 +1,12 @@
 // Define points (starting at 9)
-Point(9) = {1.25, -1.25, 0, 1};
-Point(10) = {6, -1.25, 0, 1};
-Point(11) = {6, 2, 0, 1};
+Point(9) = {2, -2, 0, 1};
+Point(10) = {5, -2, 0, 1};
+Point(11) = {5, 2, 0, 1};
 Point(12) = {2, 2, 0, 1};
 Point(13) = {-2, 2, 0, 1};
 Point(14) = {-2, -2, 0, 1};
-Point(15) = {-2, -6, 0, 1};
-Point(16) = {1.25, -6, 0, 1};
+Point(15) = {-2, -5, 0, 1};
+Point(16) = {2, -5, 0, 1};
 
 // Create lines connecting the points (to form a closed curve)
 Line(1) = {9, 10};
@@ -38,4 +38,4 @@ Plane Surface(1) = {1};
 Physical Surface("MySurface") = {1};
 
 // Set the mesh size:  smaller value = finer mesh
-Mesh.CharacteristicLengthMax = 0.85; // Adjust this value to change mesh fineness.
+Mesh.CharacteristicLengthMax = 1; // Adjust this value to change mesh fineness.

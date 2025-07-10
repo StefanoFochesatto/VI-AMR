@@ -350,7 +350,7 @@ class LShapedDomainProblem(BaseObstacleProblem):
 
         obsUFL = self.setObstacleUFL(V)
         # bdryUFL = conditional(le(r, afree), obsUFL, -A * ln(r) + B)
-        bdryUFL = Constant(0.0)
+        bdryUFL = Constant(-1.0)
         # if V.mesh().netgen_mesh is not None:
         #    ngmsh = V.mesh().netgen_mesh
         #    bdryID = [

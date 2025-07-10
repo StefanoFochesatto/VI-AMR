@@ -15,6 +15,15 @@ genfigs/drmax.png genfigs/herrinf.png genfigs/uerrh1.png: genfigs/glacierconv.py
 genfigs/transect.png: genfigs/transect.py
 	(cd genfigs/ && python3 transect.py && mogrify -trim transect.png)
 
+convergence/lshapeddomain/h1.png convergence/lshapeddomain/l2.png convergence/lshapeddomain/jaccard.png: convergence/lshapeddomain/generateplots.py
+	(cd convergence/lshapeddomain/ && python3 generateplots.py)
+
+convergence/spiral/h1.png convergence/spiral/l2.png convergence/spiral/jaccard.png: convergence/spiral/generateplots.py
+	(cd convergence/spiral/ && python3 generateplots.py)
+
+convergence/sphere/h1.png convergence/sphere/l2.png convergence/sphere/jaccard.png: convergence/sphere/generateplots.py
+	(cd convergence/sphere/ && python3 generateplots.py)
+
 .PHONY: clean
 
 clean:

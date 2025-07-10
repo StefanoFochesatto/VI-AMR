@@ -504,6 +504,89 @@ Here the $n=1$ case of UDO is used to mark near the free boundary, then the BR e
 
 
 \section{Results} \label{sec:results}
+In this section we will discuss the results of applying our new AMR methods to various obstacle problems. To do so, we must first describe the way in which we are measuring the geometric convergence of the free boundary. The VIAMR library provides two geometric measures of convergence: the Hausdorff distance and the Jaccard index. We will proceed by describing only the Jaccard index method as its implementation is simpler, relies solely on the Firedrake FE library, and works in parallel for meshes with compatable distributions of elements across processes. 
+
+\subsection{The Jaccard index} \label{sec:jaccard}
+The Jaccard index is a similarilty measure on sets, defined as
+\begin{equation}
+J(A, B) = \frac{|A \cap B|}{|A \cup B|}
+\end{equation}
+with
+\begin{equation}
+	J(\emptyset, \emptyset) := 1
+\end{equation}
+Note that $J(\cdot, \cdot) \in [0, 1]$ where $J = 1$ indicates that A and B are identical, and $J = 0$ indicates otherwise.   
+
+In our application of the Jaccard index to measure the convergence of the free boundary we assume that the convergence of the active and inactive sets implies the convergence of the free boundary. (when does this not happen? space filling free boundary? fractal boundary)
+
+Computation of the Jaccard index is implemented in the VIAMR library as the function \texttt{jaccard()}. This function takes two element-wise active/inactive set indicators $A$ and $B$ defined on $\DG_0(\cT_A)$ and $\DG_0(\cT_B)$ respectively and computes the jaccard index via the following integrals, where $A$ and $B$ are the two indicators, 
+
+\begin{equation}
+	J(A, B) = \frac{\int_{\Omega} AB }{\int_{\Omega} A + B - AB}.
+\end{equation}
+
+These integrals are computed element-wise over $\tau_A$ and $B$ is projected into $\DG_0(\cT_A)$ via an L2 conservative supermesh projection(reading through the implementation is interesting because the supermesh projection of an indicator function literally ends up beingf the fractions of how an active element in B is split into elements in A which is cool and exactly the dream operation that makes this work) FIXME cite farrell 
+
+To demonstrate the use of the Jaccard index, and the effectiveness of our proposed methods we consider two particular problems. 
+
+
+
+
+%% Qualitative assesment of AMR methods. 
+We will present the three 2D classical obstacle problems whose active sets are depicted in Example 1.2. The first is the is the "spiral" problem, which is a modification of the homogeneous Dirichlet classical Laplacian obstacle problem as described in Section 1 in which the obstacle formulation is given by, 
+\begin{equation}
+  \psi(r, \theta) = \sin(2\pi/r + \pi/2 - \theta) + \frac{r(r + 1)}{r - 2} - 3r + 3.6,
+\end{equation}
+and $\psi(0, \theta) = 3.6$. 
+
+\begin{figure}[ht]
+\centering
+\mbox{
+\includegraphics[width = .75\textwidth]{meshfigs/spiral.png}
+}
+\caption{}
+\label{fig:spiralmeshfig}
+\end{figure}
+
+
+
+
+The second is the "blisters" problem, which is another unilateral obstacle problem but with the "blistering" property as described in Appendix A. To summarize this example has $\psi = 0$, and nonegative source term $f$ with homogeneous Dirichlet conditions. 
+
+
+
+\begin{figure}[ht]
+\centering
+\mbox{
+\includegraphics[width = .50\textwidth]{meshfigs/blisters.png}\quad\quad
+\includegraphics[width = .50\textwidth]{meshfigs/blisterszoomed.png}
+}
+\caption{}
+\label{fig:blistersmeshfig}
+\end{figure}
+
+
+
+
+
+The third is the "L-shaped" problem, which is a homogeneous Dirichlet classical Laplacian obstacle problem with an L-shaped domain. The interior corner of this domain, demonstrates the need to both refine the mesh with a FB aware strategy and use a traditional a posteriori AMR technique on the inactive set to capture the singularity. 
+
+
+\begin{figure}[ht]
+\centering
+\mbox{
+\includegraphics[width = .70\textwidth]{meshfigs/lshaped.png}
+}
+\caption{}
+\label{fig:lshapedmeshfig}
+\end{figure}
+
+
+
+
+
+
+
 
 FIXME discuss norm and geometric measures first
 
