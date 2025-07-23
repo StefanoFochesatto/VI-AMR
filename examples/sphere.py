@@ -16,7 +16,7 @@ except ImportError:
     raise ImportError("Unable to import NetGen.  Exiting.")
 from netgen.geom2d import SplineGeometry
 
-levels = 3  # number of AMR refinements
+levels = 3  # number of AMR refinements; use e.g. levels = 7 for more serious convergence
 m0 = 20  # for UDO and VCD, initial mesh is m0 x m0
 initialhAVM = 4.0 / m0  # for apples-to-apples
 targetAVM = 2000  # adjust to make apples-to-apples ish
@@ -77,16 +77,16 @@ for amrtype in ["udo", "vcd", "avm"]:
 
         V = FunctionSpace(mesh, "CG", 1)
         if i == 0:
-            u = Function(V, name="u_h")
+            uh = Function(V, name="u_h")
         else:
             # initialize by cross-mesh interpolation to fine mesh
-            uUFL = conditional(u < lb, lb, u)  # use old data
-            u = Function(V, name="u_h").interpolate(uUFL)
+            uUFL = conditional(uh < lb, lb, uh)  # use old data
+            uh = Function(V, name="u_h").interpolate(uUFL)
 
         v = TestFunction(V)
-        F = inner(grad(u), grad(v)) * dx
+        F = inner(grad(uh), grad(v)) * dx
         bcs = DirichletBC(V, bdryUFL, "on_boundary")
-        problem = NonlinearVariationalProblem(F, u, bcs)
+        problem = NonlinearVariationalProblem(F, uh, bcs)
 
         solver = NonlinearVariationalSolver(
             problem, solver_parameters=sp, options_prefix="s"
@@ -96,20 +96,20 @@ for amrtype in ["udo", "vcd", "avm"]:
         solver.solve(bounds=(lb, ub))
 
         uexact = Function(V, name="u_exact").interpolate(bdryUFL)
-        print(f"  ||u - u_exact||_2 = {errornorm(u, uexact):.3e}")
+        print(f"  ||u_exact - u_h||_2 = {errornorm(bdryUFL, uh):.3e},  ||pi_h(u_exact) - u_h||_2 = {errornorm(uexact, uh):.3e}")
 
         if i == levels:
             break
 
         if amrtype == "avm":
-            mesh = amr.adaptaveragedmetric(mesh, u, lb)
+            mesh = amr.adaptaveragedmetric(mesh, uh, lb)
         else:
             if amrtype == "udo":
-                mark = amr.udomark(u, lb, n=1)
+                mark = amr.udomark(uh, lb, n=1)
             elif amrtype == "vcd":
-                mark = amr.vcdmark(u, lb)
-            residual = -div(grad(u))
-            (imark, _, _) = amr.brinactivemark(u, lb, residual, theta=0.7)
+                mark = amr.vcdmark(uh, lb)
+            residual = -div(grad(uh))
+            (imark, _, _) = amr.brinactivemark(uh, lb, residual, theta=0.4)
             mark = amr.unionmarks(mark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
 
@@ -117,8 +117,8 @@ for amrtype in ["udo", "vcd", "avm"]:
 
     outfile = "result_sphere_" + amrtype + ".pvd"
     print(f"done ... writing to {outfile} ...")
-    V = u.function_space()
-    gap = Function(V, name="gap = u - lb").interpolate(u - lb)
-    error = Function(V, name="error = |u - u_exact|").interpolate(abs(u - uexact))
-    VTKFile(outfile).write(u, lb, gap, uexact, error)
+    V = uh.function_space()
+    gap = Function(V, name="gap = u_h - lb").interpolate(uh - lb)
+    error = Function(V, name="error = |pi_h(u_exact) - u_h|").interpolate(abs(uexact - uh))
+    VTKFile(outfile).write(uh, lb, gap, uexact, error)
     print("")
