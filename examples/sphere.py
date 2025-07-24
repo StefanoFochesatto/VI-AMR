@@ -16,19 +16,41 @@ except ImportError:
     raise ImportError("Unable to import NetGen.  Exiting.")
 from netgen.geom2d import SplineGeometry
 
-levels = 3  # number of AMR refinements; use e.g. levels = 7 for more serious convergence
+print = PETSc.Sys.Print  # enables correct printing in parallel
+
+# number of AMR refinements; use e.g. levels = 10, and parallel, for serious convergence
+levels = 4
+
+# method parameters
 m0 = 20  # for UDO and VCD, initial mesh is m0 x m0
 initialhAVM = 4.0 / m0  # for apples-to-apples
 targetAVM = 2000  # adjust to make apples-to-apples ish
+thetaBR = 0.4  # controls resolution in inactive set, and convergence rate
 
-# set-up for boundary conditions and exact solution
-afree = 0.697965148223374
-A, B = 0.680259411891719, 0.471519893402112
-r0 = 0.9
-psi0 = np.sqrt(1.0 - r0 * r0)
-dpsi0 = -r0 / psi0
+def psiUFL(x, y):
+    """obstacle as UFL"""
+    r0 = 0.9
+    psi0 = np.sqrt(1.0 - r0 * r0)
+    dpsi0 = -r0 / psi0
+    r = sqrt(x * x + y * y)
+    return conditional(le(r, r0), sqrt(1.0 - r * r), psi0 + dpsi0 * (r - r0))
 
-print = PETSc.Sys.Print  # enables correct printing in parallel
+
+def uexactUFL(x, y):
+    """exact solution (and boundary conditions) as UFL"""
+    afree = 0.697965148223374
+    A, B = 0.680259411891719, 0.471519893402112
+    r = sqrt(x * x + y * y)
+    return conditional(le(r, afree), psiUFL(x, y), -A * ln(r) + B)
+
+
+def errornormpreferred(x, y, uh, activeh):
+    """error norm against "preferred" form of numerical solution"""
+    tildeuh = conditional(eq(activeh, 1.0), psiUFL(x, y), uh) # preferred
+    # high degree quadrature important in next line
+    normsq = assemble((uexactUFL(x, y) - tildeuh)**2 * dx)
+    return np.sqrt(normsq)
+
 
 # solver parameters for VI
 sp = {
@@ -65,18 +87,22 @@ for amrtype in ["udo", "vcd", "avm"]:
         mesh0 = Mesh(ngmsh, distribution_parameters=dp)
         amr.setmetricparameters(target_complexity=targetAVM, h_min=1.0e-4, h_max=1.0)
     else:
-        mesh0 = RectangleMesh(m0, m0, Lx=2.0, Ly=2.0, originX=-2.0, originY=-2.0, distribution_parameters=dp)
+        mesh0 = RectangleMesh(
+            m0,
+            m0,
+            Lx=2.0,
+            Ly=2.0,
+            originX=-2.0,
+            originY=-2.0,
+            distribution_parameters=dp,
+        )
     meshHist = [mesh0]
 
     for i in range(levels + 1):
         mesh = meshHist[i]
         print(f"solving on mesh {i} ...")
         amr.meshreport(mesh)
-
         x, y = SpatialCoordinate(mesh)
-        r = sqrt(x * x + y * y)
-        obsUFL = conditional(le(r, r0), sqrt(1.0 - r * r), psi0 + dpsi0 * (r - r0))
-        bdryUFL = conditional(le(r, afree), obsUFL, -A * ln(r) + B)
 
         V = FunctionSpace(mesh, "CG", 1)
         if i == 0:
@@ -88,18 +114,21 @@ for amrtype in ["udo", "vcd", "avm"]:
 
         v = TestFunction(V)
         F = inner(grad(uh), grad(v)) * dx
-        bcs = DirichletBC(V, bdryUFL, "on_boundary")
+        bcs = DirichletBC(V, uexactUFL(x, y), "on_boundary")
         problem = NonlinearVariationalProblem(F, uh, bcs)
 
         solver = NonlinearVariationalSolver(
             problem, solver_parameters=sp, options_prefix="s"
         )
-        lb = Function(V, name="psi").interpolate(obsUFL)
+        lb = Function(V, name="psi").interpolate(psiUFL(x, y))
         ub = Function(V).interpolate(Constant(PETSc.INFINITY))
         solver.solve(bounds=(lb, ub))
 
-        uexact = Function(V, name="u_exact").interpolate(bdryUFL)
-        print(f"  ||u_exact - u_h||_2 = {errornorm(bdryUFL, uh):.3e},  ||pi_h(u_exact) - u_h||_2 = {errornorm(uexact, uh):.3e}")
+        en_no = errornorm(uexactUFL(x, y), uh)
+        activeh = amr.elemactive(uh, lb)
+        en_pre = errornormpreferred(x, y, uh, activeh)
+        print(f"  ||u_exact - u_h||_2 = {en_no:.3e}")
+        print(f"  ||u_exact - tilde u_h||_2 = {en_pre:.3e}")
 
         if i == levels:
             break
@@ -112,7 +141,7 @@ for amrtype in ["udo", "vcd", "avm"]:
             elif amrtype == "vcd":
                 mark = amr.vcdmark(uh, lb)
             residual = -div(grad(uh))
-            (imark, _, _) = amr.brinactivemark(uh, lb, residual, theta=0.4)
+            (imark, _, _) = amr.brinactivemark(uh, lb, residual, theta=thetaBR)
             mark = amr.unionmarks(mark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
 
@@ -122,6 +151,9 @@ for amrtype in ["udo", "vcd", "avm"]:
     print(f"done ... writing to {outfile} ...")
     V = uh.function_space()
     gap = Function(V, name="gap = u_h - lb").interpolate(uh - lb)
-    error = Function(V, name="error = |pi_h(u_exact) - u_h|").interpolate(abs(uexact - uh))
-    VTKFile(outfile).write(uh, lb, gap, uexact, error)
+    uexactint = Function(V, name="u_exact").interpolate(uexactUFL(x,y))
+    error = Function(V, name="error = |pi_h(u_exact) - u_h|").interpolate(
+        abs(uexactint - uh)
+    )
+    VTKFile(outfile).write(uh, lb, gap, uexactint, error)
     print("")

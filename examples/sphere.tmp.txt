@@ -1,0 +1,117 @@
+(firedrake) ~/repos/VI-AMR/examples[main*]$ mpg -n 12 python3 sphere.py 
+solving by VIAMR using UDO+BR method ...
+solving on mesh 0 ...
+  current mesh: 441 vertices, 800 elements, h in [0.28284,0.28284]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 4
+  ||u_exact - u_h||_2 = 1.506e-02
+  ||u_exact - tilde u_h||_2 = 1.055e-02
+solving on mesh 1 ...
+  current mesh: 769 vertices, 1456 elements, h in [0.11863,0.31389]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 2
+  ||u_exact - u_h||_2 = 5.663e-03
+  ||u_exact - tilde u_h||_2 = 3.477e-03
+solving on mesh 2 ...
+  current mesh: 2503 vertices, 4916 elements, h in [0.05129,0.31435]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 1
+  ||u_exact - u_h||_2 = 4.006e-03
+  ||u_exact - tilde u_h||_2 = 1.306e-03
+solving on mesh 3 ...
+  current mesh: 6847 vertices, 13548 elements, h in [0.02612,0.31436]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 2
+  ||u_exact - u_h||_2 = 3.781e-03
+  ||u_exact - tilde u_h||_2 = 4.814e-04
+solving on mesh 4 ...
+  current mesh: 17011 vertices, 33744 elements, h in [0.01455,0.31435]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.751e-03
+  ||u_exact - tilde u_h||_2 = 1.458e-04
+solving on mesh 5 ...
+  current mesh: 39199 vertices, 78040 elements, h in [0.00654,0.31435]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.749e-03
+  ||u_exact - tilde u_h||_2 = 6.554e-05
+solving on mesh 6 ...
+  current mesh: 98245 vertices, 195884 elements, h in [0.00332,0.31435]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 2
+  ||u_exact - u_h||_2 = 3.749e-03
+  ||u_exact - tilde u_h||_2 = 2.813e-05
+solving on mesh 7 ...
+  current mesh: 211587 vertices, 422140 elements, h in [0.00162,0.31435]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.749e-03
+  ||u_exact - tilde u_h||_2 = 1.212e-05
+solving on mesh 8 ...
+  current mesh: 556153 vertices, 1111044 elements, h in [0.00080,0.31435]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.749e-03
+  ||u_exact - tilde u_h||_2 = 5.066e-06
+solving on mesh 9 ...
+  current mesh: 1255055 vertices, 2507768 elements, h in [0.00038,0.31435]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.749e-03
+  ||u_exact - tilde u_h||_2 = 2.249e-06
+solving on mesh 10 ...
+  current mesh: 2837787 vertices, 5672260 elements, h in [0.00020,0.31435]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.749e-03
+  ||u_exact - tilde u_h||_2 = 8.724e-07
+done ... writing to result_sphere_udo.pvd ...
+
+(firedrake) ~/repos/VI-AMR/examples[main*]$ mpg -n 12 python3 sphere.py 
+solving by VIAMR using VCD+BR method ...
+solving on mesh 0 ...
+  current mesh: 441 vertices, 800 elements, h in [0.28284,0.28284]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 4
+  ||u_exact - u_h||_2 = 1.506e-02
+  ||u_exact - tilde u_h||_2 = 1.055e-02
+solving on mesh 1 ...
+  current mesh: 765 vertices, 1448 elements, h in [0.11863,0.30950]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 2
+  ||u_exact - u_h||_2 = 5.749e-03
+  ||u_exact - tilde u_h||_2 = 3.477e-03
+solving on mesh 2 ...
+  current mesh: 2445 vertices, 4800 elements, h in [0.05129,0.31251]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 1
+  ||u_exact - u_h||_2 = 4.254e-03
+  ||u_exact - tilde u_h||_2 = 1.306e-03
+solving on mesh 3 ...
+  current mesh: 6647 vertices, 13148 elements, h in [0.02612,0.30977]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 2
+  ||u_exact - u_h||_2 = 4.027e-03
+  ||u_exact - tilde u_h||_2 = 4.814e-04
+solving on mesh 4 ...
+  current mesh: 16351 vertices, 32424 elements, h in [0.01259,0.30978]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.995e-03
+  ||u_exact - tilde u_h||_2 = 1.461e-04
+solving on mesh 5 ...
+  current mesh: 37511 vertices, 74664 elements, h in [0.00611,0.30974]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.966e-03
+  ||u_exact - tilde u_h||_2 = 6.558e-05
+solving on mesh 6 ...
+  current mesh: 94691 vertices, 188776 elements, h in [0.00307,0.30974]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 2
+  ||u_exact - u_h||_2 = 3.964e-03
+  ||u_exact - tilde u_h||_2 = 2.815e-05
+solving on mesh 7 ...
+  current mesh: 202945 vertices, 404856 elements, h in [0.00147,0.30974]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.964e-03
+  ||u_exact - tilde u_h||_2 = 1.217e-05
+solving on mesh 8 ...
+  current mesh: 533234 vertices, 1065206 elements, h in [0.00073,0.30974]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.964e-03
+  ||u_exact - tilde u_h||_2 = 5.126e-06
+solving on mesh 9 ...
+  current mesh: 1197596 vertices, 2392842 elements, h in [0.00036,0.30974]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.964e-03
+  ||u_exact - tilde u_h||_2 = 2.293e-06
+solving on mesh 10 ...
+  current mesh: 2739968 vertices, 5476638 elements, h in [0.00018,0.30974]
+  Nonlinear s_ solve converged due to CONVERGED_FNORM_ABS iterations 3
+  ||u_exact - u_h||_2 = 3.964e-03
+  ||u_exact - tilde u_h||_2 = 8.825e-07
+done ... writing to result_sphere_vcd.pvd ...
