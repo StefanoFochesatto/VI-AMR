@@ -47,7 +47,10 @@ sp = {
 }
 
 for amrtype in ["udo", "vcd", "avm"]:
-    print(f"solving by VIAMR using {amrtype.upper()} method ...")
+    methodname = amrtype.upper()
+    if methodname != "AVM":
+        methodname += "+BR"
+    print(f"solving by VIAMR using {methodname} method ...")
     amr = VIAMR()
 
     # setting distribution parameters should not be necessary ... but bug in netgen
