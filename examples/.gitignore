@@ -2,8 +2,5 @@
 /*.pvtu
 /*.vtu
 /result*
-/foo*
-/hires*
-/dome*
-/bumps*
+/*.csv
 /__pycache__/

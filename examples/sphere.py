@@ -20,6 +20,7 @@ print = PETSc.Sys.Print  # enables correct printing in parallel
 
 # number of AMR refinements; use e.g. levels = 10, and parallel, for serious convergence
 levels = 4
+writecsvs = False
 
 # method parameters
 m0 = 20  # for UDO and VCD, initial mesh is m0 x m0
@@ -73,6 +74,11 @@ for amrtype in ["udo", "vcd", "avm"]:
     if methodname != "AVM":
         methodname += "+BR"
     print(f"solving by VIAMR using {methodname} method ...")
+
+    if writecsvs:
+        csvfile = open(f'sphere_{methodname}.csv', 'w')
+        csvfile.write("I,NV,NE,HMIN,HMAX,ENORM,ENORMPREF,JACCARD\n")
+
     amr = VIAMR()
 
     # setting distribution parameters should not be necessary ... but bug in netgen
@@ -130,6 +136,13 @@ for amrtype in ["udo", "vcd", "avm"]:
         print(f"  ||u_exact - u_h||_2 = {en_no:.3e}")
         print(f"  ||u_exact - tilde u_h||_2 = {en_pre:.3e}")
 
+        jaccard = amr.jaccardUFL(activeexactUFL(r), activeh)
+        print(f"  jaccard(A_u, A_uh) = {jaccard:.5f}")
+
+        if writecsvs:
+            Nv, Ne, hmin, hmax = amr.meshsizes(mesh)
+            csvfile.write(f"{i},{Nv},{Ne},{hmin:.5f},{hmax:.5f},{en_no:.3e},{en_pre:.3e},{jaccard:.5f}\n")
+
         if i == levels:
             break
 
@@ -146,6 +159,9 @@ for amrtype in ["udo", "vcd", "avm"]:
             mesh = amr.refinemarkedelements(mesh, mark)
 
         meshHist.append(mesh)
+
+    if writecsvs:
+        csvfile.close()
 
     outfile = "result_sphere_" + amrtype + ".pvd"
     print(f"done ... writing to {outfile} ...")
