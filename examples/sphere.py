@@ -28,28 +28,32 @@ initialhAVM = 4.0 / m0  # for apples-to-apples
 targetAVM = 2000  # adjust to make apples-to-apples ish
 thetaBR = 0.4  # controls resolution in inactive set, and convergence rate
 
-def psiUFL(x, y):
-    """obstacle as UFL"""
+def psiUFL(r):
+    """obstacle as UFL, from UFL expression for r"""
     r0 = 0.9
     psi0 = np.sqrt(1.0 - r0 * r0)
     dpsi0 = -r0 / psi0
-    r = sqrt(x * x + y * y)
     return conditional(le(r, r0), sqrt(1.0 - r * r), psi0 + dpsi0 * (r - r0))
 
 
-def uexactUFL(x, y):
-    """exact solution (and boundary conditions) as UFL"""
+def uexactUFL(r):
+    """exact solution (and boundary conditions) as UFL, from UFL expression for r"""
     afree = 0.697965148223374
     A, B = 0.680259411891719, 0.471519893402112
-    r = sqrt(x * x + y * y)
-    return conditional(le(r, afree), psiUFL(x, y), -A * ln(r) + B)
+    return conditional(le(r, afree), psiUFL(r), -A * ln(r) + B)
 
 
-def errornormpreferred(x, y, uh, activeh):
+def activeexactUFL(r):
+    """exact active set as UFL, from UFL expression for r"""
+    afree = 0.697965148223374
+    return conditional(le(r, afree), 1.0, 0.0)
+
+
+def errornormpreferred(r, uh, activeh):
     """error norm against "preferred" form of numerical solution"""
-    tildeuh = conditional(eq(activeh, 1.0), psiUFL(x, y), uh) # preferred
+    tildeuh = conditional(eq(activeh, 1.0), psiUFL(r), uh) # preferred
     # high degree quadrature important in next line
-    normsq = assemble((uexactUFL(x, y) - tildeuh)**2 * dx)
+    normsq = assemble((uexactUFL(r) - tildeuh)**2 * dx)
     return np.sqrt(normsq)
 
 
@@ -109,6 +113,7 @@ for amrtype in ["udo", "vcd", "avm"]:
         print(f"solving on mesh {i} ...")
         amr.meshreport(mesh)
         x, y = SpatialCoordinate(mesh)
+        r = sqrt(x * x + y * y)
 
         V = FunctionSpace(mesh, "CG", 1)
         if i == 0:
@@ -120,19 +125,19 @@ for amrtype in ["udo", "vcd", "avm"]:
 
         v = TestFunction(V)
         F = inner(grad(uh), grad(v)) * dx
-        bcs = DirichletBC(V, uexactUFL(x, y), "on_boundary")
+        bcs = DirichletBC(V, uexactUFL(r), "on_boundary")
         problem = NonlinearVariationalProblem(F, uh, bcs)
 
         solver = NonlinearVariationalSolver(
             problem, solver_parameters=sp, options_prefix="s"
         )
-        lb = Function(V, name="psi").interpolate(psiUFL(x, y))
+        lb = Function(V, name="psi").interpolate(psiUFL(r))
         ub = Function(V).interpolate(Constant(PETSc.INFINITY))
         solver.solve(bounds=(lb, ub))
 
-        en_no = errornorm(uexactUFL(x, y), uh)
+        en_no = errornorm(uexactUFL(r), uh)
         activeh = amr.elemactive(uh, lb)
-        en_pre = errornormpreferred(x, y, uh, activeh)
+        en_pre = errornormpreferred(r, uh, activeh)
         print(f"  ||u_exact - u_h||_2 = {en_no:.3e}")
         print(f"  ||u_exact - tilde u_h||_2 = {en_pre:.3e}")
 
@@ -167,7 +172,7 @@ for amrtype in ["udo", "vcd", "avm"]:
     print(f"done ... writing to {outfile} ...")
     V = uh.function_space()
     gap = Function(V, name="gap = u_h - lb").interpolate(uh - lb)
-    uexactint = Function(V, name="u_exact").interpolate(uexactUFL(x,y))
+    uexactint = Function(V, name="u_exact").interpolate(uexactUFL(r))
     error = Function(V, name="error = |pi_h(u_exact) - u_h|").interpolate(
         abs(uexactint - uh)
     )
