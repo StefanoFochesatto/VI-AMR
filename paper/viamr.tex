@@ -503,29 +503,28 @@ Here the $n=1$ case of UDO is used to mark near the free boundary, then the BR e
 \end{example}
 
 
-\section{Results} \label{sec:results}
-In this section we will discuss the results of applying our new AMR methods to various obstacle problems. To do so, we must first describe the way in which we are measuring the geometric convergence of the free boundary. The VIAMR library provides two geometric measures of convergence: the Hausdorff distance and the Jaccard index. We will proceed by describing only the Jaccard index method as its implementation is simpler, relies solely on the Firedrake FE library, and works in parallel for meshes with compatable distributions of elements across processes. 
+\section{Results on classical obstacle problems} \label{sec:results}
 
-\subsection{The Jaccard index} \label{sec:jaccard}
-The Jaccard index is a similarilty measure on sets, defined as
+This section starts with a revised look at how numerical errors should be measured for obstacle problems.  It then presents results on the performance of our new AMR methods from Sections \ref{sec:inactive} and \ref{sec:viamr} on classical obstacle problems \eqref{eq:classical:vi}, first in the case of a problem with known exact solution (Figure \ref{fig:activesizes} middle), and then on other examples to show various features.  Section \ref{sec:app} shows results for a more challenging obstacle problem.
+
+\subsection{Measuring numerical errors for obstacle problems} \label{subsec:measures}  One goal for numerical solutions of obstacle problems is to accurately locate the free boundary and active/inactive sets.  We seek to measure the quality of the approximate sets \eqref{eq:fe:sets} versus the exact sets \eqref{eq:classical:sets}, and determine rates of geometric convergence.
+
+Our library computes an FE version of the \emph{Jaccard similarity index} of (Lebesgue) measurable sets $S,T \subset \Omega$,
 \begin{equation}
-J(A, B) = \frac{|A \cap B|}{|A \cup B|}
+J(S,T) = \frac{|S \cap T|}{|S \cup T|}, \label{eq:jaccard}
 \end{equation}
-with
-\begin{equation}
-	J(\emptyset, \emptyset) := 1
-\end{equation}
-Note that $J(\cdot, \cdot) \in [0, 1]$ where $J = 1$ indicates that A and B are identical, and $J = 0$ indicates otherwise.   
+where $|\cdot|$ is the Lebesgue measure, with $J(S,T)=1$ by definition if $|S \cup T|=0$.  Note $J(S,T) \in [0, 1]$, with $J(S,T)=1$ indicating geometrical agreement of $S$ and $T$ up to a measure zero set.  The computed index \texttt{VIAMR().jaccard(S,T)} is element-wise and based on Firedrake's supermesh concept \cite{Farrelletal2009}; index \eqref{eq:jaccard} is available only for sets $S,T$ which are unions of elements from their respective meshes.
 
-In our application of the Jaccard index to measure the convergence of the free boundary we assume that the convergence of the active and inactive sets implies the convergence of the free boundary. (when does this not happen? space filling free boundary? fractal boundary)
+Note that the computed active set $A_u^h$, in particular, can be defined by an element marking (Definition \ref{def:marking}), so we will restrict the application of \eqref{eq:jaccard} to comparison of active sets.  The quality of the approximation $A_u^h \approx A_u$ will be measured by $J(A_u^h,A_u)$, in cases where $A_u$ is exactly known (and defined by an element marking on a highly-refined mesh).  We will not directly compare free boundary sets, i.e.~$\Gamma_u^h \approx \Gamma_u$.
 
-Computation of the Jaccard index is implemented in the VIAMR library as the function \texttt{jaccard()}. This function takes two element-wise active/inactive set indicators $A$ and $B$ defined on $\DG_0(\cT_A)$ and $\DG_0(\cT_B)$ respectively and computes the jaccard index via the following integrals, where $A$ and $B$ are the two indicators, 
 
-\begin{equation}
-	J(A, B) = \frac{\int_{\Omega} AB }{\int_{\Omega} A + B - AB}.
-\end{equation}
 
-These integrals are computed element-wise over $\tau_A$ and $B$ is projected into $\DG_0(\cT_A)$ via an L2 conservative supermesh projection(reading through the implementation is interesting because the supermesh projection of an indicator function literally ends up beingf the fractions of how an active element in B is split into elements in A which is cool and exactly the dream operation that makes this work) FIXME cite farrell 
+
+\subsection{Convergence} \label{subsec:convergence}
+
+
+\subsection{Mesh quality and performance} \label{subsec:performance}
+
 
 To demonstrate the use of the Jaccard index, and the effectiveness of our proposed methods we consider two particular problems. 
 
@@ -588,9 +587,8 @@ The third is the "L-shaped" problem, which is a homogeneous Dirichlet classical 
 
 
 
-FIXME discuss norm and geometric measures first
 
-FIXME \cite{Kosub2016} \cite{JungeblutKleistMiltzow2022}
+FIXME \cite{Kosub2016}? \cite{Pratt1991}?
 
 
 \section{Application to determining glaciated land areas} \label{sec:app}
