@@ -34,7 +34,7 @@ for i in range(4):
 
 
 
-active = amr._elemactive(ExactU, lb)
+active = amr.elemactive(ExactU, lb)
 
 mesh = ExactU.function_space().mesh()
 # Get the spatial coordinates from the mesh

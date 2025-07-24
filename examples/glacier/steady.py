@@ -184,7 +184,7 @@ for i in range(args.refine + 1):
             mark = amr.unionmarks(fbmark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
             # report percentages of elements marked
-            inactive = amr._eleminactive(u, lb)
+            inactive = amr.eleminactive(u, lb)
             perfb = 100.0 * amr.countmark(fbmark) / ne
             perin = 100.0 * amr.countmark(imark) / amr.countmark(inactive)
             pprint(
@@ -293,7 +293,7 @@ for i in range(args.refine + 1):
 
     # report glaciated area and inactive set agreement using Jaccard index
     vol = assemble(H * dx)
-    ei = amr._eleminactive(u, lb)
+    ei = amr.eleminactive(u, lb)
     area = assemble(ei * dx)
     pprint(
         f"  glaciated area {area / 1000.0**4:.4f} million km^2, ice volume = {vol / 1000.0**4:.2f} thousand km^3",

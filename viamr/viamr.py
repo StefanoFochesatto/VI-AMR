@@ -40,6 +40,8 @@ class VIAMR(OptionsManager):
       mark = amr.vcdmark(uh, lb)                     # same, but based on diffusion
       mark = amr.gradrecinactivemark(uh, lb)         # classical gradient recovery in inactive set
       mark = amr.brinactivemark(uh, lb, res_ufl)     # classical Babuska & Rheinboldt in inactive set
+      mark = amr.elemactive(uh, lb)                  # element marking for active set, according to uh
+      mark = amr.eleminactive(uh, lb)                # element marking for inactive set, according to uh
       mark = amr.unionmarks(mark1, mark2)            # union existing marks
       mark = amr.lowerboundcelldiameter(mark, hmin)  # stop further refinement below hmin
       rmesh = amr.refinemarkelements(mesh, mark)     # calls PETSc DMPlexTransform method for SBR
@@ -108,7 +110,7 @@ class VIAMR(OptionsManager):
         z.interpolate(conditional(abs(uh - lb) < self.activetol, 1.0, 0.0))
         return z
 
-    def _elemactive(self, uh, lb):
+    def elemactive(self, uh, lb):
         """Compute element active set indicator in DG0.  Applies to unilateral
         obstacle problems with.  Elements are marked active if the DG0 degree of
         freedom for that element is active, within activetol.  Active elements get
@@ -122,7 +124,7 @@ class VIAMR(OptionsManager):
         z.interpolate(conditional(abs(uh - lb) < self.activetol, 1.0, 0.0))
         return z
 
-    def _eleminactive(self, uh, lb):
+    def eleminactive(self, uh, lb):
         """Compute element inactive set indicator in DG0.  Elements are marked
         inactive if the DG0 degree of freedom for that element is inactive, within
         activetol.  Inactive elements get value 1.0."""
@@ -191,13 +193,13 @@ class VIAMR(OptionsManager):
             dmInit = meshInit.topology_dm
             if restrict == "active":  # restrict to active set plus border
                 indicator = Function(FunctionSpace(meshInit, "DG", 0)).interpolate(
-                    self._elemactive(uh, lb)
+                    self.elemactive(uh, lb)
                     + self._elemborder(self._nodalactive(uh, lb))
                 )
             elif (
                 restrict == "inactive"
             ):  # restric to inactive set, which contains border already
-                indicator = self._eleminactive(uh, lb)
+                indicator = self.eleminactive(uh, lb)
 
             mesh = self._filtermesh(meshInit, indicator)
             d = mesh.cell_dimension()
@@ -409,7 +411,7 @@ class VIAMR(OptionsManager):
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
         # restrict grad recovery eta to inactive set
-        imark = self._eleminactive(uh, lb)
+        imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         # compute mark in inactive set
         mark, _, total_error_est = self._fixedrate(ieta, theta, method)
@@ -449,7 +451,7 @@ class VIAMR(OptionsManager):
         solve(G == 0, eta_sq, solver_parameters=sp)
         eta = Function(DG0).interpolate(sqrt(eta_sq))  # eta from eta^2
         # restrict BR eta to inactive set
-        imark = self._eleminactive(uh, lb)
+        imark = self.eleminactive(uh, lb)
         ieta = Function(DG0, name="eta on inactive set").interpolate(eta * imark)
         mark, _, total_error_est = self._fixedrate(ieta, theta, method)
         return (mark, eta, total_error_est)
@@ -649,7 +651,7 @@ class VIAMR(OptionsManager):
         CellVertexMap = mesh.topology.cell_closure
 
         # Get active indicators
-        elemactive = self._elemactive(uh, lb)  # cell
+        elemactive = self.elemactive(uh, lb)  # cell
         elemborder = self._elemborder(self._nodalactive(uh, lb))  # bordering cell
 
         # Pull Indices

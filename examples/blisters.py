@@ -105,12 +105,12 @@ for i in range(refinements + 1):
 
     # evaluate inactive fraction
     if i > 0:
-        newei = amr._eleminactive(u, lb)
+        newei = amr.eleminactive(u, lb)
         jac = amr.jaccard(newei, ei, submesh=True)
         print(f"  Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]")
         ei = newei
     else:
-        ei = amr._eleminactive(u, lb)
+        ei = amr.eleminactive(u, lb)
     ifrac = assemble(ei * dx)
     print(f"  inactive fraction {ifrac:.6f}")
 

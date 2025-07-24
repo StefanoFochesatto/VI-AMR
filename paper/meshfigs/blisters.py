@@ -105,12 +105,12 @@ for i in range(refinements + 1):
 
     # evaluate inactive fraction
     if i > 0:
-        newei = amr._eleminactive(u, lb)
+        newei = amr.eleminactive(u, lb)
         jac = amr.jaccard(newei, ei, submesh=True)
         print(f"  Jaccard agreement {100*jac:.2f}% [levels {i-1}, {i}]")
         ei = newei
     else:
-        ei = amr._eleminactive(u, lb)
+        ei = amr.eleminactive(u, lb)
     ifrac = assemble(ei * dx)
     print(f"  inactive fraction {ifrac:.6f}")
 
@@ -129,7 +129,7 @@ for i in range(refinements + 1):
     meshhierarchy.append(mesh)
 
 print(f"done ... writing solution u(x,y) and f(x,y) to {outfile} ...")
-activeset = amr._elemactive(u, lb)
+activeset = amr.elemactive(u, lb)
 
 # Get the spatial coordinates from the mesh
 mesh = u.function_space().mesh()

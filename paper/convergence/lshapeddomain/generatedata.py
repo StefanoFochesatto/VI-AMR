@@ -67,7 +67,7 @@ if __name__ == "__main__":
     VTKFile(o)
 
     exactPsi = problem_instance.getObstacle(exactV)
-    exactElementIndicator = amr_instance._elemactive(exactU, exactPsi)
+    exactElementIndicator = amr_instance.elemactive(exactU, exactPsi)
     _, exactFreeBoundaryEdges = amr_instance.freeboundarygraph(exactU, exactPsi)
 
     # init data list which will be written to csv
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         nv, ne, hmin, hmax = amr_instance.meshsizes(mesh)
 
         # Compute Jaccard index
-        solElementIndicator = amr_instance._elemactive(u, lb)
+        solElementIndicator = amr_instance.elemactive(u, lb)
         JError = amr_instance.jaccard(solElementIndicator, exactElementIndicator)
 
         # Compute Hausdorff error

@@ -116,5 +116,5 @@ for i in range (10):
     mark = amr.unionmarks(FBmark, BRmark)
     mesh = amr.refinemarkedelements(mesh, mark)
 
-active = amr._elemactive(u, lb)
+active = amr.elemactive(u, lb)
 VTKFile("spiral.pvd").write(active, u)
