@@ -26,10 +26,12 @@ class VIAMR(OptionsManager):
     The public API of the VIAMR class consists of:
       1. udomark(), vcdmark():  two marking methods which target the computed free boundary
       2. gradreinactivemark(), brinactivemark():  two classical a posterior error indicator marking methods applied in the computed inactive set
-      3. unionmark():  a method for combining existing marks
-      4. lowerboundcelldiameter():  unmark elements with cell diameters below a minimum cell diameter
-      5. refinemarkedelements():  a method which calls PETSc for skeleton-based-refinement (SBR); compare refine_marked_elements() from NetGen/ngspetsc
-      6. adaptaveragedmetric():  a method which does metric-based mesh adaptation by combining an anisotropic metric with a free-boundary targeted isotropic metric
+      3. elemactive(), eleminactive():  element markings for computed active and inactive sets
+      4. unionmark():  a method for combining existing marks
+      5. lowerboundcelldiameter():  unmark elements with cell diameters below a minimum cell diameter
+      6. refinemarkedelements():  a method which calls PETSc for skeleton-based-refinement (SBR); compare refine_marked_elements() from NetGen/ngspetsc
+      7. adaptaveragedmetric():  a method which does metric-based mesh adaptation by combining an anisotropic metric with a free-boundary targeted isotropic metric
+      8. jaccard(), jaccardUFL():  computation of the Jaccard similarity index for two active sets
 
     The default calls are as follows:
 
