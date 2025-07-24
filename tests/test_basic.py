@@ -134,7 +134,7 @@ def test_adapt_avm_separated():
     assert CG1.dim() == 64
     psi = Function(CG1).interpolate(Constant(0.0))
     (x, y) = SpatialCoordinate(mesh)
-    r = sqrt(x ** 2 + y ** 2)
+    r = sqrt(x**2 + y**2)
     u_ufl = conditional(r < 1, 1.0 + cos(pi * r), 0.0)
     uh = Function(CG1).interpolate(u_ufl)
     amr.setmetricparameters(target_complexity=100, h_min=1.0e-4, h_max=1.0)
@@ -298,6 +298,18 @@ def test_jaccard_submesh_uniform():
     assert amr.jaccard(mark, rmark, submesh=True) == amr.jaccard(mark, rmark)
 
 
+def test_third_jaccard_ufl():
+    mesh = UnitSquareMesh(4, 4)
+    mesh = RectangleMesh(4, 4, Lx=1.0, Ly=1.0, originX=-1.0, originY=-1.0)
+    amr = VIAMR(debug=True)
+    _, DG0 = amr.spaces(mesh)
+    x, y = SpatialCoordinate(mesh)
+    active1 = conditional(y > 0, 1, 0)  # top half as UFL
+    right = conditional(x > 0, 1, 0)
+    active2 = Function(DG0).interpolate(right)  # right half as DG0
+    assert abs(amr.jaccardUFL(active1, active2) - 1.0 / 3.0) < 1.0e-10
+
+
 def test_overlapping_and_nonoverlapping_hausdorff():
     # to have free boundaries line up with conditional statements
     mesh = RectangleMesh(10, 10, 1, 1)
@@ -328,6 +340,7 @@ if __name__ == "__main__":
     test_nonoverlapping_jaccard()
     test_symmetry_jaccard()
     test_jaccard_submesh_uniform()
+    test_third_jaccard_ufl()
     test_overlapping_and_nonoverlapping_hausdorff()
     test_petsc4py_refine_vcd()
     test_refine_vcd_petsc4py_firedrake()

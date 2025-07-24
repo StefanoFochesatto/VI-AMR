@@ -634,6 +634,20 @@ class VIAMR(OptionsManager):
         assert AreaUnion > 0.0, "jaccard() computed measure of the union as zero"
         return AreaIntersection / AreaUnion
 
+    def jaccardUFL(self, active1, active2, qdegree=6):
+        """Version of jaccard() for when active1 is a UFL expression.
+        Uses high-degree quadrature.  Always valid in parallel."""
+        mesh2 = active2.function_space().mesh()
+        if self.debug:
+            if len(active2.dat.data_ro) > 0:
+                assert min(active2.dat.data_ro) >= 0.0
+                assert max(active2.dat.data_ro) <= 1.0
+        AreaIntersection = assemble(active1 * active2 * dx(mesh2, degree=qdegree))
+        AreaUnion = assemble((active2 + active1 - (active2 * active1)) * dx(mesh2, degree=qdegree))
+        assert AreaUnion > 0.0, "jaccard() computed measure of the union as zero"
+        return AreaIntersection / AreaUnion
+
+
     def hausdorff(self, E1, E2):
         try:
             import shapely
