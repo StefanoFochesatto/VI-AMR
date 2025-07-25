@@ -6,6 +6,7 @@
 # Jaccard convergence rates.  Note we are comparing n=1 UDO to default [0.2,0.8]
 # VCD.
 
+import time
 import numpy as np
 from firedrake import *
 from firedrake.petsc import PETSc
@@ -22,15 +23,17 @@ print = PETSc.Sys.Print  # enables correct printing in parallel
 # number of AMR refinements; use e.g. levels = 11, and parallel, for serious convergence
 # generally uniform can't reach high levels; suggest  uniformlevels = 0.6 levels,
 # e.g. levels=11 --> uniformlevels=7
+m0 = 12           # for UDO,VCD,UNI initial mesh is m0 x m0; see below for AVM
 levels = 4
 uniformlevels = 4
 writecsvs = False
 
 # method parameters
-m0 = 12  # for UDO and VCD, initial mesh is m0 x m0
-initialhAVM = 4.0 / m0  # for apples-to-apples
-targetAVM = 2000  # adjust to make apples-to-apples ish
-thetaBR = 0.4  # controls resolution in inactive set, and convergence rate
+thetaBR = 0.4  # controls BR resolution in inactive set, and convergence rate
+
+# AVM parameters; attempts to do apples-to-apples vs UDO|VCD+BR
+initialhAVM = 4.0 / m0
+targetsAVM = [100, 300, 900, 3000, 7000, 18000, 50000, 100000, 250000, 600000, 1400000, 3000000]
 
 
 def psiUFL(r):
@@ -78,7 +81,7 @@ sp = {
     "snes_converged_reason": None,
 }
 
-for amrtype in ["udo", "vcd", "avm", "uni"]:
+for amrtype in ["udo", "vcd", "uni", "avm"]:
     methodname = amrtype.upper()
     if methodname != "AVM" and methodname != "UNI":
         methodname += "+BR"
@@ -86,7 +89,7 @@ for amrtype in ["udo", "vcd", "avm", "uni"]:
 
     if writecsvs:
         csvfile = open(f"sphere_{methodname}.csv", "w")
-        csvfile.write("I,NV,NE,HMIN,HMAX,ENORM,ENORMPREF,JACCARD\n")
+        csvfile.write("I,NV,NE,HMIN,HMAX,ENORM,ENORMPREF,JACCARD,REFINETIME\n")
 
     amr = VIAMR()
 
@@ -100,7 +103,6 @@ for amrtype in ["udo", "vcd", "avm", "uni"]:
         geo.AddRectangle(p1=(-2, -2), p2=(2, 2), bc="rectangle")
         ngmsh = geo.GenerateMesh(maxh=initialhAVM)
         mesh0 = Mesh(ngmsh, distribution_parameters=dp)
-        amr.setmetricparameters(target_complexity=targetAVM, h_min=1.0e-4, h_max=1.0)
     else:
         mesh0 = RectangleMesh(
             m0,
@@ -118,14 +120,15 @@ for amrtype in ["udo", "vcd", "avm", "uni"]:
 
     for i in range(levels + 1):
         mesh = meshHist[i]
-        print(f"solving on mesh {i} ...")
-        amr.meshreport(mesh)
         x, y = SpatialCoordinate(mesh)
         r = sqrt(x * x + y * y)
+        print(f"solving on mesh {i} ...")
+        amr.meshreport(mesh)
 
         V = FunctionSpace(mesh, "CG", 1)
         if i == 0:
             uh = Function(V, name="u_h")
+            refinetime = 0.0
         else:
             # initialize by cross-mesh interpolation to fine mesh
             uUFL = conditional(uh < lb, lb, uh)  # use old data
@@ -155,7 +158,7 @@ for amrtype in ["udo", "vcd", "avm", "uni"]:
         if writecsvs:
             Nv, Ne, hmin, hmax = amr.meshsizes(mesh)
             csvfile.write(
-                f"{i},{Nv},{Ne},{hmin:.5f},{hmax:.5f},{en_no:.3e},{en_pre:.3e},{jaccard:.5f}\n"
+                f"{i},{Nv},{Ne},{hmin:.5f},{hmax:.5f},{en_no:.3e},{en_pre:.3e},{jaccard:.5f},{refinetime:.3e}\n"
             )
 
         if amrtype == "uni" and i >= uniformlevels:
@@ -164,9 +167,11 @@ for amrtype in ["udo", "vcd", "avm", "uni"]:
         if i >= levels:
             break
 
+        start_time = time.time()
         if amrtype == "uni":
             mesh = unimh[i+1]
         elif amrtype == "avm":
+            amr.setmetricparameters(target_complexity=targetsAVM[i+1], h_min=1.0e-4, h_max=1.0)
             mesh = amr.adaptaveragedmetric(mesh, uh, lb)
         else:
             if amrtype == "udo":
@@ -177,6 +182,8 @@ for amrtype in ["udo", "vcd", "avm", "uni"]:
             (imark, _, _) = amr.brinactivemark(uh, lb, residual, theta=thetaBR)
             mark = amr.unionmarks(mark, imark)
             mesh = amr.refinemarkedelements(mesh, mark)
+        if amrtype != "uni":
+            refinetime = time.time() - start_time
 
         meshHist.append(mesh)
 
