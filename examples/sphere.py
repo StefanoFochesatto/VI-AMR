@@ -28,6 +28,7 @@ initialhAVM = 4.0 / m0  # for apples-to-apples
 targetAVM = 2000  # adjust to make apples-to-apples ish
 thetaBR = 0.4  # controls resolution in inactive set, and convergence rate
 
+
 def psiUFL(r):
     """obstacle as UFL, from UFL expression for r"""
     r0 = 0.9
@@ -51,9 +52,9 @@ def activeexactUFL(r):
 
 def errornormpreferred(r, uh, activeh):
     """error norm against "preferred" form of numerical solution"""
-    tildeuh = conditional(eq(activeh, 1.0), psiUFL(r), uh) # preferred
+    tildeuh = conditional(eq(activeh, 1.0), psiUFL(r), uh)  # preferred
     # high degree quadrature important in next line
-    normsq = assemble((uexactUFL(r) - tildeuh)**2 * dx)
+    normsq = assemble((uexactUFL(r) - tildeuh) ** 2 * dx)
     return np.sqrt(normsq)
 
 
@@ -80,7 +81,7 @@ for amrtype in ["udo", "vcd", "avm"]:
     print(f"solving by VIAMR using {methodname} method ...")
 
     if writecsvs:
-        csvfile = open(f'sphere_{methodname}.csv', 'w')
+        csvfile = open(f"sphere_{methodname}.csv", "w")
         csvfile.write("I,NV,NE,HMIN,HMAX,ENORM,ENORMPREF,JACCARD\n")
 
     amr = VIAMR()
@@ -146,7 +147,9 @@ for amrtype in ["udo", "vcd", "avm"]:
 
         if writecsvs:
             Nv, Ne, hmin, hmax = amr.meshsizes(mesh)
-            csvfile.write(f"{i},{Nv},{Ne},{hmin:.5f},{hmax:.5f},{en_no:.3e},{en_pre:.3e},{jaccard:.5f}\n")
+            csvfile.write(
+                f"{i},{Nv},{Ne},{hmin:.5f},{hmax:.5f},{en_no:.3e},{en_pre:.3e},{jaccard:.5f}\n"
+            )
 
         if i == levels:
             break
