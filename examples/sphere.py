@@ -1,9 +1,10 @@
 # This example attempts to do apples-to-apples comparisons of all three
 # algorithms on the "ball" problem, where the exact solution is known
-# and we can compute norm convergence rates.  We generate three .pvd
-# files, result_sphere_{udo,vcd,avm}.pvd, suitable for a figure in the
-# paper.  Note we are comparing n=1 UDO to default [0.2,0.8] VCD on the
-# sphere problem, for which an exact solution is known.
+# and we can compute norm convergence rates.  Uniform refinement is also done.
+# We generate four .pvd files, result_sphere_{udo,vcd,avm,uniform}.pvd, suitable
+# for a figure in the paper.  Optionally we generate .csv files for norm and
+# Jaccard convergence rates.  Note we are comparing n=1 UDO to default [0.2,0.8]
+# VCD.
 
 import numpy as np
 from firedrake import *
@@ -20,6 +21,7 @@ print = PETSc.Sys.Print  # enables correct printing in parallel
 
 # number of AMR refinements; use e.g. levels = 10, and parallel, for serious convergence
 levels = 4
+uniformlevels = 4  # generally uniform can't reach high levels; stop at levels-3?
 writecsvs = False
 
 # method parameters
@@ -74,9 +76,9 @@ sp = {
     "snes_converged_reason": None,
 }
 
-for amrtype in ["udo", "vcd", "avm"]:
+for amrtype in ["udo", "vcd", "avm", "uni"]:
     methodname = amrtype.upper()
-    if methodname != "AVM":
+    if methodname != "AVM" and methodname != "UNI":
         methodname += "+BR"
     print(f"solving by VIAMR using {methodname} method ...")
 
@@ -108,6 +110,9 @@ for amrtype in ["udo", "vcd", "avm"]:
             distribution_parameters=dp,
         )
     meshHist = [mesh0]
+
+    if amrtype == "uni":
+        unimh = MeshHierarchy(mesh0, uniformlevels)
 
     for i in range(levels + 1):
         mesh = meshHist[i]
@@ -151,10 +156,15 @@ for amrtype in ["udo", "vcd", "avm"]:
                 f"{i},{Nv},{Ne},{hmin:.5f},{hmax:.5f},{en_no:.3e},{en_pre:.3e},{jaccard:.5f}\n"
             )
 
-        if i == levels:
+        if amrtype == "uni" and i >= uniformlevels:
             break
 
-        if amrtype == "avm":
+        if i >= levels:
+            break
+
+        if amrtype == "uni":
+            mesh = unimh[i+1]
+        elif amrtype == "avm":
             mesh = amr.adaptaveragedmetric(mesh, uh, lb)
         else:
             if amrtype == "udo":
