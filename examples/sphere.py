@@ -19,13 +19,13 @@ from netgen.geom2d import SplineGeometry
 
 print = PETSc.Sys.Print  # enables correct printing in parallel
 
-# number of AMR refinements; use e.g. levels = 10, and parallel, for serious convergence
+# number of AMR refinements; use e.g. levels = 11, and parallel, for serious convergence
 levels = 4
 uniformlevels = 4  # generally uniform can't reach high levels; stop at levels-3?
 writecsvs = False
 
 # method parameters
-m0 = 20  # for UDO and VCD, initial mesh is m0 x m0
+m0 = 12  # for UDO and VCD, initial mesh is m0 x m0
 initialhAVM = 4.0 / m0  # for apples-to-apples
 targetAVM = 2000  # adjust to make apples-to-apples ish
 thetaBR = 0.4  # controls resolution in inactive set, and convergence rate
