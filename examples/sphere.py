@@ -20,8 +20,10 @@ from netgen.geom2d import SplineGeometry
 print = PETSc.Sys.Print  # enables correct printing in parallel
 
 # number of AMR refinements; use e.g. levels = 11, and parallel, for serious convergence
+# generally uniform can't reach high levels; suggest  uniformlevels = 0.6 levels,
+# e.g. levels=11 --> uniformlevels=7
 levels = 4
-uniformlevels = 4  # generally uniform can't reach high levels; stop at levels-3?
+uniformlevels = 4
 writecsvs = False
 
 # method parameters
