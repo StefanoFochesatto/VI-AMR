@@ -519,34 +519,38 @@ A second goal for numerical solutions of obstacle problems is to avoid wasted ef
 
 \begin{definition} \label{def:preferred}
 Suppose the original VI problem \eqref{eq:vi} has exact obstacle $\psi \in \cX\cap C(\bar\Omega)$.  Consider a computed solution $u_h$ to the FE VI problem \eqref{eq:fe:vi}, over a mesh $\cT_h$ on $\Omega$.  Let $A_u^h$ denote the computed active set \eqref{eq:fe:sets}, as a closed union of elements.  We define the \emph{preferred approximation} $\tilde u_h$ as the measurable function
-\begin{equation}
+\begin{equation} \label{eq:preferredapprox}
 \tilde u_h(x) = \begin{cases} \psi(x), & x\in A_u^h \\ u_h(x), & \text{otherwise.} \end{cases}
 \end{equation}
 \end{definition}
 
 For a classical obstacle problem \eqref{eq:classical:vi}, the preferred approximation $\tilde u_h$ is in $L^2(\Omega)$.  However, it is generally discontinuous, even when $\cX_h=\CG_k$, and generally $\tilde u_h \notin H^1(\Omega)$.  Importantly, $\tilde u_h$ is defined \emph{without} reference to, or knowledge of, the exact solution to problem \eqref{eq:vi}; only the continuum data $\psi$ is referenced.
 
-\subsection{Convergence for the ball example} \label{subsec:convergence}  Now we consider the classical obstacle problem shown in Figure \ref{fig:ball} and in Figure \ref{fig:activesizes} middle.  This ``ball'' problem has a known exact solution \cite[Chapter 12]{Bueler2021}.  We have applied AMR Algorithms \ref{alg:udo} (UDO) and \ref{alg:vcd} (VCD), combined with inactive-set refinement based on the BR error estimator \eqref{eq:brestimator}.  Note these methods avoid refinement in the active set, away from the estimated free boundary.  We start from a coarse uniform mesh over the square domain, and apply 11 levels of AMR; element counts range over four orders of magnitude.  We have also applied uniform refinement over the whole domain.
+\subsection{Convergence for the ball example} \label{subsec:convergence}  Consider the ``ball'' classical obstacle problem shown in Figure \ref{fig:ball} and Figure \ref{fig:activesizes} (middle), which has a known exact solution \cite[Chapter 12]{Bueler2021}.  Algorithms \ref{alg:udo} (UDO) and \ref{alg:vcd} (VCD) were applied to this problem, but combined with inactive-set marking based on the BR error estimator \eqref{eq:brestimator}.  These methods, denoted UDO$+$BR and VCD$+$BR, respectively, avoid refinement in the active set, except near the estimated free boundary.  We also applied mesh adaptation Algorithm \ref{alg:avm} (AVM), setting mesh complexity targets to closely-match the number of elements from the other Algorithms.  Note that AVM refines everywhere, but the meshes are anisotropic, from the Hessian of $u_h$, and free-boundary focussed.
 
-As shown in Figure \ref{fig:ballconv} (left), $L^2$ convergence for the UDO$+$BR method apparently stagnates, for the standard error norm $\|u-u_h\|_2$.  However, this stagnation arises from the active set norm $\|\psi - \psi_h\|_2$ over meshes which have \emph{deliberately} not been refined in the active set.  If we compute the $L^2$ error relative to the preferred approximation then the convergence is better than from uniform refinement, in a per-element sense.  The result from applying the VCD$+$BR method is so similar that it is not shown.
+The experiment started from a coarse uniform mesh over the square domain, and applied 11 levels of AMR, so that the number of elements increased by four orders of magnitude.  We also compared uniform refinement.
+
+As shown in Figure \ref{fig:jaccball}, our AMR methods are distinctly superior to uniform refinement when evaluated by active set Jaccard distances $d(A_u^h,A_u)$.  At higher resolutions, all three methods produce distances an order of magnitude smaller than from uniform refinement.  AVM produces the best meshes by this measure, but its runtime is about an order of magnitude higher (not shown).
 
 % see examples/sphere.py and genfigs/ballconv.py for these runs
 \begin{figure}[ht]
-\noindent\mbox{\includegraphics[width=0.49\textwidth]{genfigs/convball_UDO+BR.png} \, \includegraphics[width=0.49\textwidth]{genfigs/jaccball.png}}
-\caption{Left: $L^2$ norm errors for the UDO$+$BR method, versus uniform refinement.  Right: Active set Jaccard distances.}
+\centering
+\includegraphics[width=0.55\textwidth]{genfigs/jaccball.png}
+\caption{Active set Jaccard distances $d(A_u^h,A_u)$.}
+\label{fig:jaccball}
+\end{figure}
+
+On the other hand, as shown in Figure \ref{fig:ballconv} (left), $L^2$ convergence using the standard error norm $\|u-u_h\|_2$ apparently stagnates for the UDO$+$BR method.  This is entirely due to the contribution from the active set, i.e.~from $|\psi(x) - \psi_h(x)|$ for $x\in A_u^h$, over meshes which have \emph{deliberately} not been refined in $A_u^h$.  If we compute the $L^2$ error relative to the preferred approximation \eqref{eq:preferredapprox}, namely $\|u-\tilde u_h\|_2$, then the convergence is actually slightly better than from uniform refinement, in a per-element sense.  As shown in Figure \ref{fig:ballconv} (right) for the AVM algorithm, because of its active set refinement, the standard ($\|u-u_h\|_2$) and preferred ($\|u-\tilde u_h\|_2$) error norms are comparable.
+
+% see examples/sphere.py and genfigs/ballconv.py for these runs
+\begin{figure}[ht]
+\noindent\mbox{\includegraphics[width=0.49\textwidth]{genfigs/convball_UDO+BR.png} \, \includegraphics[width=0.49\textwidth]{genfigs/convball_AVM.png}}
+\caption{Left: $L^2$ norm errors for the UDO$+$BR method, versus uniform refinement.  Results from VCD$+$BR are virtually identical, and not shown.  Right: The same norm errors for the AVM method.}
 \label{fig:ballconv}
 \end{figure}
 
-FIXME Jaccard in Figure \ref{fig:ballconv} right
 
-Next we have applied Algorithm \ref{alg:avm}; these algorithms refine everywhere, but the latter is both anisotropic in the inactive set and free-boundary focussed.
-
-FIXME Figure showing good standard norm and Jaccard for AVM; slightly more time spent in AMR
-
-\subsection{Mesh quality and performance} \label{subsec:performance}
-
-
-To demonstrate the use of the Jaccard index, and the effectiveness of our proposed methods we consider two particular problems. 
+\subsection{Mesh quality and performance} \label{subsec:performance}  FIXME  To demonstrate the use of the Jaccard index, and the effectiveness of our proposed methods we consider two particular problems. 
 
 
 

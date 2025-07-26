@@ -24,13 +24,15 @@ ms0 = 10.0
 fs0 = 14.0
 for j in range(3):
     plt.figure()
+    plt.loglog(intvals("vcd", "NE"), floatvals("vcd", enorm[j]), 'ko', ms=ms0+4, markerfacecolor="w", markeredgecolor="k", label="VCD+GR")
     plt.loglog(intvals("udo", "NE"), floatvals("udo", enorm[j]), 'ko', ms=ms0, label="UDO+GR")
-    plt.loglog(intvals("vcd", "NE"), floatvals("vcd", enorm[j]), 'o', ms=ms0+2, markerfacecolor="w", alpha=0.5, markeredgecolor="k", label="VCD+GR")
-    plt.loglog(intvals("uniform", "NE"), floatvals("uniform", enorm[j]), 'k+', ms=ms0+2, label="uniform")
+    plt.loglog(intvals("uniform", "NE"), floatvals("uniform", enorm[j]), 'r+', ms=ms0+4, label="uniform")
     plt.grid(True)
     plt.ylabel(ytitle[j], fontsize=fs0+2.0)
     plt.xlabel("elements", fontsize=fs0+2.0)
-    plt.legend(fontsize=fs0)
+    handles, labels = plt.gca().get_legend_handles_labels()
+    order = [1,0,2]
+    plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order], fontsize=fs0)
     plt.xlim(7.0e1,1.0e7)
     if enorm[j] == "HERRINF":
         plt.ylim(10.0, 1000.0)
