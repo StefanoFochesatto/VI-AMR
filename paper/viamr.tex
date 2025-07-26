@@ -135,7 +135,7 @@ The $\alpha=2$ case of Example \ref{example:notcontinuous} is \emph{degenerate} 
 
 Furthermore, the effectiveness of different AMR strategies for non-degenerate VI problems depends strongly upon the measure (area or volume) of the active and inactive sets.  This observation motivates the \emph{a posteriori} approaches of this paper.  For example, in certain problems the elements which are significantly interior to the active set require no further computation or refinement.  For such problems, for which examples are given in Sections \ref{sec:results} and \ref{sec:app}, if a solution is desired at higher resolution within the active set, i.e.~where $u=\psi$, then this can be computed in post-processing by arbitrary interpolation of the obstacle data; refinement effort in the active set and during the solution process is wasted.
 
-\begin{example} \label{example:activesets} Examples in Section \ref{sec:results} will cover three 2D classical obstacle problems.  Figure \ref{fig:activesizes} shows their active sets in black.  For the left-hand problem, with a small active set and a long free boundary, our AMR methods refine a large fraction of the elements, namely those close to the free boundary.  The middle problem has a known exact solution; Section \ref{sec:results} shows convergence rates.  For the right-hand problem, a clear performance benefit of our AMR techniques, relative to uniform refinement, comes from avoiding refinement in the active set.  The glaciation application in Section \ref{sec:app} also exploit this efficiency. \end{example}
+\begin{example} \label{example:activesets} Examples in Section \ref{sec:results} will cover three 2D classical obstacle problems.  Figure \ref{fig:activesizes} shows their active sets in black.  For the left-hand problem, with a small active set and a long free boundary, our AMR methods refine a large fraction of the elements, namely those close to the free boundary.  The middle problem has a known exact solution; Section \ref{sec:results} shows convergence rates.  For the right-hand problem, a clear performance benefit of our AMR techniques, relative to uniform refinement, comes from avoiding refinement in the active set.  The glaciation application in Section \ref{sec:app} also exploits this efficiency. \end{example}
 
 \begin{figure}[ht]
 \noindent \hspace{-1mm} \mbox{\includegraphics[width=0.32\textwidth]{static/spiral.png} \, \includegraphics[width=0.32\textwidth]{static/sphere.png} \, \includegraphics[width=0.32\textwidth]{static/blisters.png}}
@@ -145,7 +145,7 @@ Furthermore, the effectiveness of different AMR strategies for non-degenerate VI
 
 In this work we consider only $P_1$ element spaces over meshs of triangles or tetrahedra, and only $h$-refinement is addressed.  VIs can be solved using $p$-refinement and higher-order elements, but only if nontrivial penalty-type modifications are made to the VI \cite{KeithSurowiec2024}, which is not attempted here.  While the classical obstacle problem \eqref{eq:classical:vi} is equivalent to constrained minimization of a scalar objective, our analysis of FE errors for VI problems does not require such an objective, and our AMR strategies do not exploit one if available.
 
-Three AMR methods for VIs are described in Section \ref{sec:viamr}.  Our implementations use the Firedrake FE library \cite{Rathgeberetal2016} and produce conforming meshes with no hanging nodes.  The first two methods are of tag-and-refine type, only differing by which elements are tagged, with skeleton-based refinement (SBR) \cite{PlazaCarey2000} applied after tagging.  Note that SBR is implemented within PETSc's DMPlex component \cite{petsc-user-ref} and in the Netgen library \cite{Betteridgeetal2024}.  These two methods also require a complementary AMR approach for the PDE problem in the inactive set to achieve convergence; see Section \ref{sec:inactive}.  The third goal-oriented and metric-based method uses the Netgen and Animate (\href{https://github.com/mesh-adaptation/animate}{{\small \texttt{github.com/mesh-adaptation/animate}}}; see also \cite{Wallworketal2020}) libraries for metric-based mesh adaptation.  Full details are given in Section \ref{sec:viamr}, but here is a high-level view of the methods:
+Three AMR methods for VIs are described in Section \ref{sec:viamr}.  Our implementations use the Firedrake FE library \cite{Rathgeberetal2016} and produce conforming meshes with no hanging nodes.  The first two methods are of tag-and-refine type, only differing by which elements are tagged, with skeleton-based refinement (SBR) \cite{PlazaCarey2000} applied after tagging.  Note that SBR is implemented within PETSc's DMPlex component \cite{petsc-user-ref} and in the Netgen library \cite{Betteridgeetal2024}.  These two methods also require a complementary AMR approach for the PDE problem in the inactive set to achieve convergence; see Section \ref{sec:inactive}.  The third goal-oriented and metric-based method uses the Netgen and Animate \cite{Wallworketal2020} libraries for metric-based mesh adaptation.  Full details are given in Section \ref{sec:viamr}, but here is a high-level view of the methods:
 
 %\renewcommand{\labelenumi}{\emph{\roman{enumi})}}
 \begin{itemize}
@@ -242,7 +242,7 @@ In the classical obstacle problem \eqref{eq:classical:vi}, over $\cX=H^1(\Omega)
 \end{example}
 
 \begin{example}  \label{example:flatsia}
-In glacier model of Section \ref{sec:app}, in the case where the bedrock is flat and the surface mass balance is independent of elevation, the VI problem \eqref{eq:siavi} uses a $4$-Laplacian operator over transformed thicknesses $u\in\cX=W^{1,4}(\Omega)$, namely $F(u)[v] = \int_\Omega \Gamma |\grad u|^2\grad u\cdot \grad v\,dx$ where $\Gamma>0$ is constant.  This operator is $4$-coercive \cite[for example]{JouvetBueler2012}, and it is Lipschitz on bounded subsets of $\cX$.  For details see Section \ref{sec:app}.
+In glacier model of Section \ref{sec:app}, in the case where the bedrock is flat and the surface mass balance is independent of elevation, the VI problem \eqref{eq:sia:vi} uses a $4$-Laplacian operator over transformed thicknesses $u\in\cX=W^{1,4}(\Omega)$, namely $F(u)[v] = \int_\Omega \Gamma |\grad u|^2\grad u\cdot \grad v\,dx$ where $\Gamma>0$ is constant.  This operator is $4$-coercive \cite[for example]{JouvetBueler2012}, and it is Lipschitz on bounded subsets of $\cX$.  For details see Section \ref{sec:app}.
 \end{example}
 
 Note that if the inequality constraint in \eqref{eq:vi} were absent then the residual of the solution $u$ would be zero ($F(u)-\ell=0$); this is the PDE case.  However, for VI \eqref{eq:vi} we only have that $F(u)-\ell=0$ a.e.~within the unknown inactive set $I_u$.  The residual $F(u)-\ell\in \cX'$ might be highly-irregular in the active set $A_u$, but it is nonnegative.  The following lemma states the weak complementarity property associated to VI \eqref{eq:vi}; compare strong-form complementarity \eqref{eq:classical:ncp}.
@@ -472,15 +472,15 @@ All three methods, UDO, VCD, and AVM, run in parallel under the MPI protocol use
 We end this section with two basic Python examples which illustrate how to use the open source VIAMR library (\href{https://github.com/StefanoFochesatto/VI-AMR}{{\small \texttt{github.com/StefanoFochesatto/VI-AMR}}}).
 
 \begin{example} \label{example:AOL}
-Consider now Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The complete code below applies the Firedrake and VIAMR libraries to solve this problem.  First it generates a uniform coarse mesh, then it applies VCD marking for the free boundary, and then it refines to a new mesh (Figure \ref{fig:resultAOL}).  For this example there is no refinement in the inactive set.
+Consider now Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The complete code below applies the Firedrake and VIAMR libraries to solve this problem.  First it generates a uniform coarse mesh, then it applies VCD marking for the free boundary, and then it refines to a new mesh (Figure \ref{fig:resultAOL}).  For this example there is no refinement in the inactive set, but that would be necessary for convergence; compare the next Section.
 \inputminted[linenos, frame=lines]{python}{../examples/aol.py}
 \end{example}
 
 \begin{figure}[ht]
 \centering
-\mbox{\includegraphics[width=0.21\textwidth]{static/aol-mesh.png} \qquad\quad
-\includegraphics[width=0.21\textwidth]{static/aol-marked.png} \qquad\quad
-\includegraphics[width=0.21\textwidth]{static/aol-refinedmesh.png}}
+\mbox{\includegraphics[width=0.19\textwidth]{static/aol-mesh.png} \qquad\qquad
+\includegraphics[width=0.19\textwidth]{static/aol-marked.png} \qquad\qquad
+\includegraphics[width=0.19\textwidth]{static/aol-refinedmesh.png}}
 \caption{The Python code in Example \ref{example:AOL} solves Example 1 from \cite{AinsworthOdenLee1993}: initial mesh (left), marking by the default-parameter VCD scheme (middle), and the refined mesh (right).  The exact free boundary, unknown to the algorithm, is overlaid in black.}
 \label{fig:resultAOL}
 \end{figure}
@@ -501,30 +501,47 @@ Here the $n=1$ case of UDO is used to mark near the free boundary, then the BR e
 
 \section{Results on classical obstacle problems} \label{sec:results}
 
-This section starts with a revised look at how numerical errors should be measured for obstacle problems.  It then presents results on the performance of our new AMR methods from Sections \ref{sec:inactive} and \ref{sec:viamr} on classical obstacle problems \eqref{eq:classical:vi}, first in the case of a problem with known exact solution (Figure \ref{fig:activesizes} middle), and then on other examples to show various features.  Section \ref{sec:app} shows results for a more challenging obstacle problem.
+This section starts with a revised look at how numerical errors should be measured for obstacle problems.  Then we convergence and performance results for our new AMR methods from Sections \ref{sec:inactive} and \ref{sec:viamr} on classical obstacle problems \eqref{eq:classical:vi}.  Section \ref{sec:app} shows results for a mor- challenging obstacle problem.
 
-\subsection{Measuring numerical errors for obstacle problems} \label{subsec:measures}  One goal for numerical solutions of obstacle problems is to accurately locate the free boundary and active/inactive sets.  We seek to measure the quality of the approximate sets \eqref{eq:fe:sets} versus the exact sets \eqref{eq:classical:sets}, and determine rates of geometric convergence.
+\subsection{On measuring numerical errors for obstacle problems} \label{subsec:measures}  One goal for numerical solutions of obstacle problems is to accurately locate the free boundary and active/inactive sets.  In order to measure the quality of the approximate sets \eqref{eq:fe:sets}, versus the exact sets \eqref{eq:classical:sets}, and determine rates of geometric convergence, the VIAMR library computes a distance between sets.
 
-Our library computes an FE version of the \emph{Jaccard similarity index} of (Lebesgue) measurable sets $S,T \subset \Omega$,
+\begin{definition} \label{def:jaccard}
+The \emph{Jaccard distance} \cite{LevandowskyWinter1971} between measurable sets $S,T \subset \Omega$ is
 \begin{equation}
-J(S,T) = \frac{|S \cap T|}{|S \cup T|}, \label{eq:jaccard}
+d(S,T) = 1 - \frac{|S \cap T|}{|S \cup T|}, \label{eq:jaccard}
 \end{equation}
-where $|\cdot|$ is the Lebesgue measure, with $J(S,T)=1$ by definition if $|S \cup T|=0$.  Note $J(S,T) \in [0, 1]$, with $J(S,T)=1$ indicating geometrical agreement of $S$ and $T$ up to a measure zero set.  The computed index \texttt{VIAMR().jaccard(S,T)} is element-wise and based on Firedrake's supermesh concept \cite{Farrelletal2009}; index \eqref{eq:jaccard} is available only for sets $S,T$ which are unions of elements from their respective meshes.
+where $|\cdot|$ is Lebesgue measure, with $d(S,T)=0$ by definition if $|S \cup T|=0$.  If $d(S,T)=0$ then $S$ and $T$ geometrically agree up to a set of measure zero.
+\end{definition}
 
-Note that the computed active set $A_u^h$, in particular, can be defined by an element marking (Definition \ref{def:marking}), so we will restrict the application of \eqref{eq:jaccard} to comparison of active sets.  The quality of the approximation $A_u^h \approx A_u$ will be measured by $J(A_u^h,A_u)$, in cases where $A_u$ is exactly known (and defined by an element marking on a highly-refined mesh).  We will not directly compare free boundary sets, i.e.~$\Gamma_u^h \approx \Gamma_u$.
+We will use Jaccard distance to compare active sets.  A computed active set $A_u^h$ is defined by an element marking (Definition \ref{def:marking}), so we report $d(A_u^h,A_u)$ when $A_u$ is exactly known.  Jaccard distance cannot be used to directly compare free boundary sets, $\Gamma_u^h \approx \Gamma_u$, as these often have measure zero.  Our implementation of \eqref{eq:jaccard} is based on Firedrake's supermesh concept \cite{Farrelletal2009}, so it is computable for sets $S,T$ which are unions of elements from different meshes, and/or for sets defined by algebraic (conditional) expressions in the mesh coordinates.
 
+A second goal for numerical solutions of obstacle problems is to avoid wasted effort in the active set, once the free boundary is well-resolved.  As already discussed, if $\Gamma_u^h \approx \Gamma_u$ is a good approximation then the obstacle data itself, namely $\psi$, should be used to represent the solution in the computed active set $A_u^h$.
 
+\begin{definition} \label{def:preferred}
+Suppose the original VI problem \eqref{eq:vi} has exact obstacle $\psi \in \cX\cap C(\bar\Omega)$.  Consider a computed solution $u_h$ to the FE VI problem \eqref{eq:fe:vi}, over a mesh $\cT_h$ on $\Omega$.  Let $A_u^h$ denote the computed active set \eqref{eq:fe:sets}, as a closed union of elements.  We define the \emph{preferred approximation} $\tilde u_h$ as the measurable function
+\begin{equation}
+\tilde u_h(x) = \begin{cases} \psi(x), & x\in A_u^h \\ u_h(x), & \text{otherwise.} \end{cases}
+\end{equation}
+\end{definition}
 
+For a classical obstacle problem \eqref{eq:classical:vi}, the preferred approximation $\tilde u_h$ is in $L^2(\Omega)$.  However, it is generally discontinuous, even when $\cX_h=\CG_k$, and generally $\tilde u_h \notin H^1(\Omega)$.  Importantly, $\tilde u_h$ is defined \emph{without} reference to, or knowledge of, the exact solution to problem \eqref{eq:vi}; only the continuum data $\psi$ is referenced.
 
-\subsection{Convergence} \label{subsec:convergence}
+\subsection{Convergence for the ball example} \label{subsec:convergence}  Now we consider the classical obstacle problem shown in Figure \ref{fig:ball} and in Figure \ref{fig:activesizes} middle.  This ``ball'' problem has a known exact solution \cite[Chapter 12]{Bueler2021}.  We have applied AMR Algorithms \ref{alg:udo} (UDO) and \ref{alg:vcd} (VCD), combined with inactive-set refinement based on the BR error estimator \eqref{eq:brestimator}.  Note these methods avoid refinement in the active set, away from the estimated free boundary.  We start from a coarse uniform mesh over the square domain, and apply 11 levels of AMR; element counts range over four orders of magnitude.  We have also applied uniform refinement over the whole domain.
+
+As shown in Figure \ref{fig:ballconv} (left), $L^2$ convergence for the UDO$+$BR method apparently stagnates, for the standard error norm $\|u-u_h\|_2$.  However, this stagnation arises from the active set norm $\|\psi - \psi_h\|_2$ over meshes which have \emph{deliberately} not been refined in the active set.  If we compute the $L^2$ error relative to the preferred approximation then the convergence is better than from uniform refinement, in a per-element sense.  The result from applying the VCD$+$BR method is so similar that it is not shown.
 
 % see examples/sphere.py and genfigs/ballconv.py for these runs
 \begin{figure}[ht]
 \noindent\mbox{\includegraphics[width=0.49\textwidth]{genfigs/convball_UDO+BR.png} \, \includegraphics[width=0.49\textwidth]{genfigs/jaccball.png}}
-\caption{For the ball example.  Left: $L^2$ norm errors for the UDO$+$BR method, and uniform refinement.  Right: Active set Jaccard distances.}
+\caption{Left: $L^2$ norm errors for the UDO$+$BR method, versus uniform refinement.  Right: Active set Jaccard distances.}
 \label{fig:ballconv}
 \end{figure}
 
+FIXME Jaccard in Figure \ref{fig:ballconv} right
+
+Next we have applied Algorithm \ref{alg:avm}; these algorithms refine everywhere, but the latter is both anisotropic in the inactive set and free-boundary focussed.
+
+FIXME Figure showing good standard norm and Jaccard for AVM; slightly more time spent in AMR
 
 \subsection{Mesh quality and performance} \label{subsec:performance}
 
@@ -586,12 +603,6 @@ The third is the "L-shaped" problem, which is a homogeneous Dirichlet classical 
 
 
 
-
-
-
-
-
-FIXME \cite{Kosub2016}? \cite{Pratt1991}?
 
 
 \section{Application to determining glaciated land areas} \label{sec:app}
@@ -688,8 +699,6 @@ FIXME VI solver performance can be substantially improved by combining the AMR m
 %\section*{Notes on contributor(s)}
 %An unnumbered Section, e.g.\ \verb"\section*{Notes on contributors}", may be included \emph{in the non-anonymous version} if required. A photograph may be added if requested.
 
-
-\section{References}
 
 \bibliographystyle{tfs}
 \bibliography{viamr}

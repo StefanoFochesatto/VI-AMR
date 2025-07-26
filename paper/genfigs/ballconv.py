@@ -29,7 +29,7 @@ for meth in ["UDO+BR", "VCD+BR"]:
     #plt.ylabel(r"$L^2$ error", fontsize=fs0+2.0)
     plt.xlabel("elements", fontsize=fs0+2.0)
     plt.legend(fontsize=fs0)
-    plt.xlim(2.0e2,1.0e7)
+    plt.xlim(1.0e2,1.0e7)
     #plt.show()
     outname = "convball_" + meth + ".png"
     print(f"writing {outname} ...")
@@ -45,7 +45,7 @@ plt.grid(True)
 #plt.ylabel("active set Jaccard distance", fontsize=fs0)
 plt.xlabel("elements", fontsize=fs0+2.0)
 plt.legend(fontsize=fs0)
-plt.xlim(2.0e2,1.0e7)
+plt.xlim(1.0e2,1.0e7)
 #plt.show()
 outname = "jaccball.png"
 print(f"writing {outname} ...")
