@@ -1,25 +1,14 @@
-from firedrake import *
-from firedrake.output import VTKFile
-from firedrake.petsc import PETSc
 import numpy as np
+from firedrake import *
+from firedrake.petsc import PETSc
 from viamr import VIAMR
 
 print = PETSc.Sys.Print  # enables correct printing in parallel
 
-# mesh complexity at levels, measured in approximate elements:
-#   refine_inactive=False
-#     5: 9e4, 6: 2e5, 7: 4e5, 8: 8e5, 9: 2e6, 10: 3e6, 11: 6e6, 12: ??
-#   refine_inactive=True
-#     5: 4e5, 6: 1e6, 7: 5e6, 8: 2e7, 9: ??
-# FIXME evaluate for BR case ... and make options easier to understand
-
-refine_br = True  # True = mark inactive elements according to B&R method
-refine_inactive = False  # True = mark *all* inactive elements for refinement
-refinements = 4
+levels = 4
 m_initial = 30
 m_data = 500
 outfile = "result_blisters.pvd"
-
 
 def normal2d(mesh, x0, y0, sigma):
     # return UFL expression for one gaussian hump
@@ -79,7 +68,7 @@ amr = VIAMR()
 meshhierarchy = [
     initial_mesh,
 ]
-for i in range(refinements + 1):
+for i in range(levels + 1):
     mesh = meshhierarchy[i]
     print(f"solving on mesh {i} ...")
     amr.meshreport(mesh)
@@ -114,17 +103,14 @@ for i in range(refinements + 1):
     ifrac = assemble(ei * dx)
     print(f"  inactive fraction {ifrac:.6f}")
 
-    # apply VCD AMR, optionally marking all inactive or by B&R indicator
-    if i == refinements:
+    if i == levels:
         break
+
+    # apply VCD+BR AMR
     mark = amr.vcdmark(u, lb, bracket=[0.05, 0.85])
-    if refine_inactive or refine_br:
-        if refine_br:
-            residual = -div(grad(u)) - fsource
-            (imark, _, _) = amr.brinactivemark(u, lb, residual)
-        else:
-            imark = amr.eleminactive(u, lb)
-        mark = amr.unionmarks(mark, imark)
+    residual = -div(grad(u)) - fsource
+    imark, _, _ = amr.brinactivemark(u, lb, residual)
+    mark = amr.unionmarks(mark, imark)
     mesh = amr.refinemarkedelements(mesh, mark)
     meshhierarchy.append(mesh)
 
