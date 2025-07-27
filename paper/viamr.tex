@@ -501,9 +501,9 @@ Here the $n=1$ case of UDO is used to mark near the free boundary, then the BR e
 
 \section{Results on classical obstacle problems} \label{sec:results}
 
-This section starts with a revised look at how numerical errors should be measured for obstacle problems.  Then we convergence and performance results for our new AMR methods from Sections \ref{sec:inactive} and \ref{sec:viamr} on classical obstacle problems \eqref{eq:classical:vi}.  Section \ref{sec:app} shows results for a mor- challenging obstacle problem.
+This section starts with a revised look at how numerical errors should be measured for obstacle problems.  Then we convergence and performance results for our new AMR methods from Sections \ref{sec:inactive} and \ref{sec:viamr} on classical obstacle problems \eqref{eq:classical:vi}.  Section \ref{sec:app} shows results for a more-challenging obstacle problem.
 
-\subsection{On measuring numerical errors for obstacle problems} \label{subsec:measures}  One goal for numerical solutions of obstacle problems is to accurately locate the free boundary and active/inactive sets.  In order to measure the quality of the approximate sets \eqref{eq:fe:sets}, versus the exact sets \eqref{eq:classical:sets}, and determine rates of geometric convergence, the VIAMR library computes a distance between sets.
+One goal for numerical solutions of obstacle problems is to accurately locate the free boundary and active/inactive sets.  In order to measure the quality of the approximate sets \eqref{eq:fe:sets}, versus the exact sets \eqref{eq:classical:sets}, and determine rates of geometric convergence, the VIAMR library computes a distance between sets.
 
 \begin{definition} \label{def:jaccard}
 The \emph{Jaccard distance} \cite{LevandowskyWinter1971} between measurable sets $S,T \subset \Omega$ is
@@ -526,7 +526,9 @@ Suppose the original VI problem \eqref{eq:vi} has exact obstacle $\psi \in \cX\c
 
 For a classical obstacle problem \eqref{eq:classical:vi}, the preferred approximation $\tilde u_h$ is in $L^2(\Omega)$.  However, it is generally discontinuous, even when $\cX_h=\CG_k$, and generally $\tilde u_h \notin H^1(\Omega)$.  Importantly, $\tilde u_h$ is defined \emph{without} reference to, or knowledge of, the exact solution to problem \eqref{eq:vi}; only the continuum data $\psi$ is referenced.
 
-\subsection{Convergence for the ball example} \label{subsec:convergence}  Consider the ``ball'' classical obstacle problem shown in Figure \ref{fig:ball} and Figure \ref{fig:activesizes} (middle), which has a known exact solution \cite[Chapter 12]{Bueler2021}.  Algorithms \ref{alg:udo} (UDO) and \ref{alg:vcd} (VCD) were applied to this problem, but combined with inactive-set marking based on the BR error estimator \eqref{eq:brestimator}.  These methods, denoted UDO$+$BR and VCD$+$BR, respectively, avoid refinement in the active set, except near the estimated free boundary.  We also applied mesh adaptation Algorithm \ref{alg:avm} (AVM), setting mesh complexity targets to closely-match the number of elements from the other Algorithms.  Note that AVM refines everywhere, but the meshes are anisotropic, from the Hessian of $u_h$, and free-boundary focussed.
+We illustrate these principles in the following example.
+
+\begin{example}  \label{example:ball}  Consider the ``ball'' classical obstacle problem shown in Figure \ref{fig:ball} and Figure \ref{fig:activesizes} (middle), which has a known exact solution \cite[Chapter 12]{Bueler2021}.  Algorithms \ref{alg:udo} (UDO) and \ref{alg:vcd} (VCD) were applied to this problem, but combined with inactive-set marking based on the BR error estimator \eqref{eq:brestimator}.  These methods, denoted UDO$+$BR and VCD$+$BR, respectively, avoid refinement in the active set, except near the estimated free boundary.  We also applied mesh adaptation Algorithm \ref{alg:avm} (AVM), setting mesh complexity targets to closely-match the number of elements from the other Algorithms.  Note that AVM refines everywhere, but the meshes are anisotropic, from the Hessian of $u_h$, and free-boundary focussed.
 
 The experiment started from a coarse uniform mesh over the square domain, and applied 11 levels of AMR, so that the number of elements increased by four orders of magnitude.  We also compared uniform refinement.
 
@@ -540,7 +542,7 @@ As shown in Figure \ref{fig:jaccball}, our AMR methods are distinctly superior t
 \label{fig:jaccball}
 \end{figure}
 
-On the other hand, as shown in Figure \ref{fig:ballconv} (left), $L^2$ convergence using the standard error norm $\|u-u_h\|_2$ apparently stagnates for the UDO$+$BR method.  This is entirely due to the contribution from the active set, i.e.~from $|\psi(x) - \psi_h(x)|$ for $x\in A_u^h$, over meshes which have \emph{deliberately} not been refined in $A_u^h$.  If we compute the $L^2$ error relative to the preferred approximation \eqref{eq:preferredapprox}, namely $\|u-\tilde u_h\|_2$, then the convergence is actually slightly better than from uniform refinement, in a per-element sense.  As shown in Figure \ref{fig:ballconv} (right) for the AVM algorithm, because of its active set refinement, the standard ($\|u-u_h\|_2$) and preferred ($\|u-\tilde u_h\|_2$) error norms are comparable.
+On the other hand, as shown in Figure \ref{fig:ballconv} (left), $L^2$ convergence using the standard error norm $\|u-u_h\|_2$ apparently stagnates for the UDO$+$BR method.  This is entirely due to the contribution from the active set, i.e.~from $|\psi(x) - \psi_h(x)|$ for $x\in A_u^h$, over meshes which have \emph{deliberately} not been refined in $A_u^h$.  If we compute the $L^2$ error relative to the preferred approximation \eqref{eq:preferredapprox}, namely $\|u-\tilde u_h\|_2$, then the convergence is actually slightly better than from uniform refinement, in a per-element sense.  As shown in Figure \ref{fig:ballconv} (right) for the AVM algorithm, because of its active set refinement, the standard ($\|u-u_h\|_2$) and preferred ($\|u-\tilde u_h\|_2$) error norms are comparable. \end{example}
 
 % see examples/sphere.py and genfigs/ballconv.py for these runs
 \begin{figure}[ht]
@@ -549,20 +551,19 @@ On the other hand, as shown in Figure \ref{fig:ballconv} (left), $L^2$ convergen
 \label{fig:ballconv}
 \end{figure}
 
+To illustrate some additional mesh and performance features of our AMR approaches, we consider three more classical obstacle problem examples.  These do not have known exact solutions.
 
-\subsection{Mesh results and performance} \label{subsec:performance}  To illustrate some mesh and performance features of our AMR approaches, we consider three example problems which do not have known exact solutions.
-
-\begin{example}  Consider the ``spiral'' example from \cite[subsection 7.1.1]{GraeserKornhuber2009}, shown already in Figure \ref{fig:activesizes} (left).  This example on $\Omega=(-1,1)^2$ has source term $f=0$, homogeneous boundary values $g=0$, and a nontrivial obstacle $\psi$ \cite{GraeserKornhuber2009} in problem \eqref{eq:classical:vi}.  The active set is small in area while the free boundary is long.  A result from applying the UDO$+$BR approach is shown in Figure \ref{fig:spiralmesh}.  (Results from VCD$+$BR and AVM approaches are very similar and not shown.)  At this resolution the free boundary appears to be well-resolved, but for this example we see no performance advantage from avoidance of refinement in the small active set. \end{example}
+\begin{example}  \label{example:spiral}  Consider the ``spiral'' example from \cite[subsection 7.1.1]{GraeserKornhuber2009}, shown already in Figure \ref{fig:activesizes} (left).  This example on $\Omega=(-1,1)^2$ has source term $f=0$, homogeneous boundary values $g=0$, and a nontrivial obstacle $\psi$ \cite{GraeserKornhuber2009} in problem \eqref{eq:classical:vi}.  The active set is small in area while the free boundary is long.  A result from applying the UDO$+$BR approach is shown in Figure \ref{fig:spiralmesh}.  (Results from VCD$+$BR and AVM approaches are very similar and not shown.)  At this resolution the free boundary appears to be well-resolved, but in this example there is no performance advantage from avoiding refinement in the small active set. \end{example}
 
 % generated from examples/spiral.py at levels=7
 \begin{figure}[ht]
 \centering
 \includegraphics[height=65mm]{static/spiralmesh.png}
-\caption{Mesh resulting from seven levels of the UDO$+$BR approach, starting from a coarse uniform mesh of 200 elements.  This mesh with $2\times 10^5$ elements has element diameter (resolution) $h=10^{-3}$ along the free boundary.}
+\caption{A refined mesh for Example \ref{example:spiral}, with $2\times 10^5$ elements, from seven levels of the UDO$+$BR approach, starting from an initial uniform mesh of 200 elements.  Element diameter (resolution) is about $h=10^{-3}$ along the free boundary.}
 \label{fig:spiralmesh}
 \end{figure}
 
-\begin{example}  The example shown in Figure \ref{fig:activesizes} (right), by contrast, has a large active set.  Here $\Omega=(0,1)^2$ and $\psi = g = 0$ in problem \eqref{eq:classical:vi}, but the source term $f$ is a sum of small-variance gaussian peaks against a negative background value; see the code for details.  The inactive set has six components, but this is only revealed at reasonably high resolution.  Figure \ref{fig:blistersmesh} shows the result of applying the VCD$+$BR method, a mesh with 100 times fewer elements than a uniform mesh of the same free boundary resolution.  Similar to the glacier example in the next Section, in this case the avoidance of active-set refinement gives a distinct performance advantage.  \end{example}
+\begin{example}  \label{example:blisters}   The example shown in Figure \ref{fig:activesizes} (right), by contrast, has a large active set.  Here $\Omega=(0,1)^2$ and $\psi = g = 0$ in problem \eqref{eq:classical:vi}, but the source term $f$ is a sum of small-variance gaussian peaks against a negative background value; see the code for details.  The blistering property (Appendix \ref{app:blistering}) applies here, so inactive set components must include some area where $f>0$.  The inactive set has six components, but this is only revealed at reasonably high resolution.  Figure \ref{fig:blistersmesh} shows the result of applying the VCD$+$BR method, a mesh with 100 times fewer elements than a uniform mesh of the same free boundary resolution.  Similar to the glacier example in the next Section, in this case the avoidance of active-set refinement gives a distinct performance advantage.  \end{example}
 
 % generated from examples/blisters.py at levels=4
 \begin{figure}[ht]
@@ -571,23 +572,24 @@ On the other hand, as shown in Figure \ref{fig:ballconv} (left), $L^2$ convergen
 \includegraphics[height=60mm]{static/blistersmesh.png} \qquad
 \includegraphics[height=60mm]{static/blisterszoomed.png}
 }
-\caption{Mesh of $4.7\times 10^5$ elements, with resolution $h=10^{-3}$ along the free boundary, resulting from four levels of the VCD$+$BR approach, starting from a uniform mesh of 1800 elements.  The right sub-figure shows a detail which reveals separation in two components of the inactive set.}
+\caption{Left: A mesh for Example \ref{example:blisters} of $4.7\times 10^5$ elements, with resolution $h=10^{-3}$ along the free boundary, from four levels of the VCD$+$BR approach, starting from a uniform mesh of 1800 elements.  Right: Zooming-in reveals separation of inactive-set components.}
 \label{fig:blistersmesh}
 \end{figure}
 
-\begin{example}  FIXME The third is the "L-shaped" problem, which is a homogeneous Dirichlet classical Laplacian obstacle problem with an L-shaped domain. The interior corner of this domain, demonstrates the need to both refine the mesh with a FB aware strategy and use a traditional a posteriori AMR technique on the inactive set to capture the singularity. \end{example}
+\begin{example}  \label{example:lshaped}  Our third example is a free-boundary variation of the classic L-shaped Laplace equation problem with an interior corner.  Here the obstacle $\psi$ is the upper unit hemisphere, centered at the origin, and the domain is $\Omega = (-2,5)^2 \setminus S$ where $S$ is a $3\times 3$ square in the lower right corner.  Since $f=0$ and $g=-1$, the Laplace equation is solved in the inactive set, but the Hessian of the solution is singular in the interior corner.  A result from the VCD$+$BR algorithm, starting from a coarse unstructured mesh, is shown  in Figure \ref{fig:lshapedmesh}.  Though the exact free boundary is not known, it has been resolved into a smooth nearly-circular curve, while at the same time there is refinement in the interior corner.  Thus the goals of free-boundary localization and classical PDE AMR are simultaneously addressed. \end{example}
 
+% figure generated from meshfigs/lshaped.pvd
 \begin{figure}[ht]
 \centering
-\includegraphics[height=65mm]{meshfigs/lshaped.png}
-\caption{FIXME}
+\includegraphics[height=65mm]{static/lshaped.png}
+\caption{A refined mesh from five levels of the VCD$+$BR algorithm on Example \ref{example:lshaped}, showing a well-resolved free boundary and refinement in the interior corner.}
 \label{fig:lshapedmesh}
 \end{figure}
 
 
 \section{Application to determining glaciated land areas} \label{sec:app}
 
-In this section we apply AMR techniques from Sections \ref{sec:inactive} and \ref{sec:viamr} to a model for the steady geometry of a glacier, over a given bedrock topography and subject to a given climate.  This model finds which land is covered by ice and what is the ice volume.  Though glacier will cover any land on which snowfall exceeds melt, ice flow expands the ice-covered area out to a free boundary, the glacier margin, which can only be found by solving conservation equations.  Any fluid layer subject to surface processes which add or remove mass is governed by such a model \cite{Bueler2021b}.  In these VI problems, which generally are \emph{not} of optimization type, the unknown fluid thickness must be nonnegative, the operator is nonlinear, and the blistering property (Appendix \ref{app:blistering}) applies.
+In this section we apply our AMR techniques to a model for the steady geometry of a glacier, over a given bedrock topography and subject to a given climate.  In particular, this model solves for which land is covered by ice.  Though glacier will cover any land on which snowfall exceeds melt, ice flow expands the ice-covered area out to a free boundary, the glacier margin, which can only be found from conservation equations.  Any fluid layer subject to surface processes which add or remove mass is governed by a similar model \cite{Bueler2021b}.  In these VI problems, which generally are \emph{not} of optimization type, the unknown fluid thickness must be nonnegative, the operator is nonlinear, and the blistering property (Appendix \ref{app:blistering}) applies.
 
 Let $\Omega \subset \RR^2$ be a fixed land region, with bedrock elevation $b=b(x,y) \in C^1(\Omega)$.  Assume there is a surface mass-balance \cite{GreveBlatter2009} function $a:\Omega \times \RR \to \RR$.  This climatic function models the annually-averaged rate of ice accumulation (snow) minus melt and runoff.  If $a$ depends on the surface elevation $s$ then we suppose that $a(x,y,s)\in L^\infty(\Omega)$ for any $s=s(x,y) \in L^\infty(\Omega)$, and additionally that $a$ is Lipschitz continuous in $s$.
 
@@ -609,7 +611,7 @@ We apply a conforming, continuous, piecewise-linear FE method \eqref{eq:fe:vi}, 
 We consider two particular problems, each over a square domain $\Omega=(0,L)^2$, $L=1800$ kilometers.  The first ``dome'' problem has a flat bed, elevation-independent source, and a known exact solution \cite{Bueler2016}; this is used for verification and to compare AMR algorithms.  The second ``realistic'' problem has a bumpy bed and an elevation-dependent surface mass balance function.
 
 \begin{example} \label{example:dome}
-The dome problem was solved with 13 levels of refinement from an initial, uniform $h_0=360$ kilometer mesh to a final mesh with glacier margin resolution of $h_{13}\approx 30$ meters.  Both UDO and VCD methods (Section \ref{sec:viamr}) were applied, with GR marking in the inactive set (Section \ref{sec:inactive}).  Figure \ref{fig:domenormresults} shows relative $H^1$ errors in the solution ($\|u-u_h\|_{H^1}/\|u\|_{H^1}$) and absolute $L^\infty$ errors in the corresponding ice thickness ($\|H-H_h\|_{L^\infty}$), versus number of elements.  The latter errors are much more responsive to AMR because the physical ice thickness gradient is singular at the free boundary, so (lateral) margin location error is effectively being measured.  Figure \ref{fig:domeradiusresults} shows the maximum radial error for the numerical margin, directly addressing free-boundary localization for the same runs.  We see that AMR methods are much more efficient for this purpose, compared to uniform refinement, and that the UDO and VCD variants perform very similarly.
+The dome problem was solved with 13 levels of refinement from an initial, uniform $h_0=360$ kilometer mesh to a final mesh with glacier margin resolution of $h_{13}\approx 30$ meters.  Both UDO and VCD methods (Section \ref{sec:viamr}) were applied, with GR marking in the inactive set (Section \ref{sec:inactive}).  Because the obstacle is $\psi=0$, the preferred and standard numerical solutions agree (see \eqref{eq:preferredapprox}), and numerical errors can be computed in the usual manner.  Figure \ref{fig:domenormresults} shows relative $H^1$ errors in the solution ($\|u-u_h\|_{H^1}/\|u\|_{H^1}$) and absolute $L^\infty$ errors in the corresponding ice thickness ($\|H-H_h\|_{L^\infty}$), versus number of elements.  The latter errors are much more responsive to AMR because the physical ice thickness gradient is singular at the free boundary, so (lateral) margin location error is effectively being measured.  Figure \ref{fig:domeradiusresults} shows the maximum radial error for the numerical margin, illustrating the free-boundary localization for the same runs.  We see that AMR methods are much more efficient for this purpose, compared to uniform refinement, similarly to the ball problem result in Section \ref{sec:results}, and again that the UDO and VCD variants perform very similarly.
 \end{example}
 
 % see examples/glacier/README.md for these runs
@@ -714,8 +716,8 @@ Any classical problem \eqref{eq:classical:vi} with a smooth obstacle $\psi\in C^
 \end{equation}
 For VI problem \eqref{eq:classical:vi:blister}, if $x\in A_{\tilde u} = \{\tilde u(x)=0\}$ then $\tilde f(x)= f(x)+\grad^2\psi(x)\le 0$.
 
-For blistering-property problems, AMR costs can be reduced by avoiding refinement in the computed active sets.  From a computed solution $u_h$, one starts by identifying the elements $K\in \cT_h$ in the computed active set $A_u^h$.  (In our implementation we require that every node in the closure of $K$ is active, according to some tolerance.)  To identify $K$ where no refinement would be beneficial, the degenerate case must be excluded, so we require $K \subset \Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$; note this uses only the data of the problem.  If later refinements move the free boundary to be incident to $K$ then refinement of $K$ becomes appropriate.
+For blistering-property problems, AMR costs can be reduced by avoiding refinement in the computed active sets.  From a computed solution $u_h$, one starts by identifying the elements $K\in \cT_h$ in the computed active set $A_u^h$.  (In our implementation we require that every node in the closure of $K$ is active, according to some tolerance.)  To identify $K$ where no refinement would be beneficial, the degenerate case must be excluded, so we require $K \subset \Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$; this uses only the data of the problem.  If later refinements move the free boundary to be incident to $K$ then refinement of $K$ becomes appropriate.
 
-In summary, if a problem has the blistering property, if $f < 0$ on a currently-active element $K$, and if $K$ is far from the free boundary, then $K$ can likely remain unrefined without affecting solution accuracy.  Note that the techniques of Section \ref{sec:viamr} are designed to mark for refinement those active-set elements which are near $\Gamma_u^h$ in a geometrical sense.  Also recall the necessity of refinement in the inactive set, e.g.~based on indicators from Section \ref{sec:inactive}, to give accuracy $\Gamma_u^h \approx \Gamma_u$.
+In summary, if a problem has the blistering property, and if $f < 0$ on a currently-active element $K$, then $K$ can likely remain unrefined without affecting solution accuracy.  Section \ref{sec:viamr} techniques are designed to mark active-set elements which are near $\Gamma_u^h$, in a geometrical sense, for refinement.  Refinement in the inactive set, e.g.~based on indicators from Section \ref{sec:inactive}, is also necessary to give accuracy $\Gamma_u^h \approx \Gamma_u$.
 
 \end{document}
