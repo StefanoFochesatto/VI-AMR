@@ -1,6 +1,6 @@
 all: viamr.pdf
 
-_figures := drmax herrinf uerrh1 transect convball_UDO+BR jaccball
+_figures := drmax herrinf uerrh1 transect convball_UDO+BR convball_AVM jaccball
 figures := $(addprefix genfigs/, $(addsuffix .png, $(_figures)))
 
 viamr.pdf: viamr.log viamr.tex viamr.bib $(figures)
@@ -15,7 +15,7 @@ genfigs/drmax.png genfigs/herrinf.png genfigs/uerrh1.png: genfigs/glacierconv.py
 genfigs/transect.png: genfigs/transect.py
 	(cd genfigs/ && python3 transect.py && mogrify -trim transect.png)
 
-genfigs/convball_UDO+BR.png genfigs/jaccball.png: genfigs/ballconv.py
+genfigs/convball_UDO+BR.png genfigs/convball_AVM.png genfigs/jaccball.png: genfigs/ballconv.py
 	(cd genfigs/ && python3 ballconv.py && mogrify -trim *ball*.png)
 
 convergence/lshapeddomain/h1.png convergence/lshapeddomain/l2.png convergence/lshapeddomain/jaccard.png: convergence/lshapeddomain/generateplots.py
