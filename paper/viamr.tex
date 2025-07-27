@@ -552,8 +552,9 @@ On the other hand, as shown in Figure \ref{fig:ballconv} (left), $L^2$ convergen
 
 \subsection{Mesh results and performance} \label{subsec:performance}  To illustrate some mesh and performance features of our AMR approaches, we consider three example problems which do not have known exact solutions.
 
-\begin{example}  Consider the ``spiral'' example from \cite[subsection 7.1.1]{GraeserKornhuber2009}, on the square $\Omega=(-1,1)^2$, shown already in Figure \ref{fig:activesizes} (left).  The active set is small in area while the free boundary is long.  A result from applying the UDO$+$BR approach is shown in Figure \ref{fig:spiralmesh}.  (Results from VCD$+$BR and AVM approaches are very similar and not shown.)  At this resolution the free boundary appears to be well-resolved, but for this example we see no performance advantage from avoidance of refinement in the small active set. \end{example}
+\begin{example}  Consider the ``spiral'' example from \cite[subsection 7.1.1]{GraeserKornhuber2009}, shown already in Figure \ref{fig:activesizes} (left).  This example on $\Omega=(-1,1)^2$ has source term $f=0$, homogeneous boundary values $g=0$, and a nontrivial obstacle $\psi$ \cite{GraeserKornhuber2009} in problem \eqref{eq:classical:vi}.  The active set is small in area while the free boundary is long.  A result from applying the UDO$+$BR approach is shown in Figure \ref{fig:spiralmesh}.  (Results from VCD$+$BR and AVM approaches are very similar and not shown.)  At this resolution the free boundary appears to be well-resolved, but for this example we see no performance advantage from avoidance of refinement in the small active set. \end{example}
 
+% generated from examples/spiral.py at levels=7
 \begin{figure}[ht]
 \centering
 \includegraphics[height=65mm]{static/spiralmesh.png}
@@ -561,15 +562,16 @@ On the other hand, as shown in Figure \ref{fig:ballconv} (left), $L^2$ convergen
 \label{fig:spiralmesh}
 \end{figure}
 
-\begin{example}  The example shown in Figure \ref{fig:activesizes} (right), by contrast, has a large active set. FIXME $\psi = 0$, and nonegative source term $f$ with homogeneous Dirichlet conditions  \end{example}
+\begin{example}  The example shown in Figure \ref{fig:activesizes} (right), by contrast, has a large active set.  Here $\Omega=(0,1)^2$ and $\psi = g = 0$ in problem \eqref{eq:classical:vi}, but the source term $f$ is a sum of small-variance gaussian peaks against a negative background value; see the code for details.  The inactive set has six components, but this is only revealed at reasonably high resolution.  Figure \ref{fig:blistersmesh} shows the result of applying the VCD$+$BR method, a mesh with 100 times fewer elements than a uniform mesh of the same free boundary resolution.  Similar to the glacier example in the next Section, in this case the avoidance of active-set refinement gives a distinct performance advantage.  \end{example}
 
+% generated from examples/blisters.py at levels=4
 \begin{figure}[ht]
 \centering
 \mbox{
-\includegraphics[height=60mm]{meshfigs/blisters.png} \qquad
-\includegraphics[height=60mm]{meshfigs/blisterszoomed.png}
+\includegraphics[height=60mm]{static/blistersmesh.png} \qquad
+\includegraphics[height=60mm]{static/blisterszoomed.png}
 }
-\caption{FIXME}
+\caption{Mesh of $4.7\times 10^5$ elements, with resolution $h=10^{-3}$ along the free boundary, resulting from four levels of the VCD$+$BR approach, starting from a uniform mesh of 1800 elements.  The right sub-figure shows a detail which reveals separation in two components of the inactive set.}
 \label{fig:blistersmesh}
 \end{figure}
 
