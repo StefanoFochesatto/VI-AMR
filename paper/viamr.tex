@@ -550,63 +550,37 @@ On the other hand, as shown in Figure \ref{fig:ballconv} (left), $L^2$ convergen
 \end{figure}
 
 
-\subsection{Mesh quality and performance} \label{subsec:performance}  FIXME  To demonstrate the use of the Jaccard index, and the effectiveness of our proposed methods we consider two particular problems. 
+\subsection{Mesh results and performance} \label{subsec:performance}  To illustrate some mesh and performance features of our AMR approaches, we consider three example problems which do not have known exact solutions.
 
+\begin{example}  Consider the ``spiral'' example from \cite[subsection 7.1.1]{GraeserKornhuber2009}, on the square $\Omega=(-1,1)^2$, shown already in Figure \ref{fig:activesizes} (left).  The active set is small in area while the free boundary is long.  A result from applying the UDO$+$BR approach is shown in Figure \ref{fig:spiralmesh}.  (Results from VCD$+$BR and AVM approaches are very similar and not shown.)  At this resolution the free boundary appears to be well-resolved, but for this example we see no performance advantage from avoidance of refinement in the small active set. \end{example}
 
+\begin{figure}[ht]
+\centering
+\includegraphics[height=65mm]{static/spiralmesh.png}
+\caption{Mesh resulting from seven levels of the UDO$+$BR approach, starting from a coarse uniform mesh of 200 elements.  This mesh with $2\times 10^5$ elements has element diameter (resolution) $h=10^{-3}$ along the free boundary.}
+\label{fig:spiralmesh}
+\end{figure}
 
-
-%% Qualitative assesment of AMR methods. 
-We will present the three 2D classical obstacle problems whose active sets are depicted in Example 1.2. The first is the is the "spiral" problem, which is a modification of the homogeneous Dirichlet classical Laplacian obstacle problem as described in Section 1 in which the obstacle formulation is given by, 
-\begin{equation}
-  \psi(r, \theta) = \sin(2\pi/r + \pi/2 - \theta) + \frac{r(r + 1)}{r - 2} - 3r + 3.6,
-\end{equation}
-and $\psi(0, \theta) = 3.6$. 
+\begin{example}  The example shown in Figure \ref{fig:activesizes} (right), by contrast, has a large active set. FIXME $\psi = 0$, and nonegative source term $f$ with homogeneous Dirichlet conditions  \end{example}
 
 \begin{figure}[ht]
 \centering
 \mbox{
-\includegraphics[width = .75\textwidth]{meshfigs/spiral.png}
+\includegraphics[height=60mm]{meshfigs/blisters.png} \qquad
+\includegraphics[height=60mm]{meshfigs/blisterszoomed.png}
 }
-\caption{}
-\label{fig:spiralmeshfig}
+\caption{FIXME}
+\label{fig:blistersmesh}
 \end{figure}
 
-
-
-
-The second is the "blisters" problem, which is another unilateral obstacle problem but with the "blistering" property as described in Appendix A. To summarize this example has $\psi = 0$, and nonegative source term $f$ with homogeneous Dirichlet conditions. 
-
-
+\begin{example}  FIXME The third is the "L-shaped" problem, which is a homogeneous Dirichlet classical Laplacian obstacle problem with an L-shaped domain. The interior corner of this domain, demonstrates the need to both refine the mesh with a FB aware strategy and use a traditional a posteriori AMR technique on the inactive set to capture the singularity. \end{example}
 
 \begin{figure}[ht]
 \centering
-\mbox{
-\includegraphics[width = .50\textwidth]{meshfigs/blisters.png}\quad\quad
-\includegraphics[width = .50\textwidth]{meshfigs/blisterszoomed.png}
-}
-\caption{}
-\label{fig:blistersmeshfig}
+\includegraphics[height=65mm]{meshfigs/lshaped.png}
+\caption{FIXME}
+\label{fig:lshapedmesh}
 \end{figure}
-
-
-
-
-
-The third is the "L-shaped" problem, which is a homogeneous Dirichlet classical Laplacian obstacle problem with an L-shaped domain. The interior corner of this domain, demonstrates the need to both refine the mesh with a FB aware strategy and use a traditional a posteriori AMR technique on the inactive set to capture the singularity. 
-
-
-\begin{figure}[ht]
-\centering
-\mbox{
-\includegraphics[width = .70\textwidth]{meshfigs/lshaped.png}
-}
-\caption{}
-\label{fig:lshapedmeshfig}
-\end{figure}
-
-
-
-
 
 
 \section{Application to determining glaciated land areas} \label{sec:app}

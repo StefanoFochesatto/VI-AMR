@@ -10,7 +10,7 @@ from firedrake.petsc import PETSc
 print = PETSc.Sys.Print  # enables correct printing in parallel
 from viamr import VIAMR
 
-levels = 9
+levels = 7
 m0 = 10
 
 # setting distribution parameters should not be necessary ... but bug in netgen
