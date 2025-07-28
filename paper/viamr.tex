@@ -1,20 +1,19 @@
-\documentclass[]{interact}
+\documentclass[final,hidelinks,onefignum,onetabnum]{siamart250211}
+%\documentclass[review,hidelinks,onefignum,onetabnum]{siamart250211}
 
-%\usepackage[caption=false]{subfig}% Support for small, `sub' figures and tables
-%\usepackage[nolists,tablesfirst]{endfloat}% To `separate' figures and tables from text if required
-%\usepackage[doublespacing]{setspace}% To produce a `double spaced' document if required
-%\setlength\parindent{24pt}% To increase paragraph indentation when line spacing is doubled
-%\setlength\bibindent{2em}% To increase hanging indent in bibliography when line spacing is doubled
+\usepackage{amsfonts,amssymb,bbold,stmaryrd,bm}
 
-\usepackage[numbers,sort&compress]{natbib}% Citation support using natbib.sty
-\bibpunct[, ]{[}{]}{,}{n}{,}{,}% Citation support using natbib.sty
-\renewcommand\bibfont{\fontsize{10}{12}\selectfont}% Bibliography support using natbib.sty
+\usepackage{graphicx}
+\ifpdf
+  \DeclareGraphicsExtensions{.eps,.pdf,.png,.jpg}
+\else
+  \DeclareGraphicsExtensions{.eps}
+\fi
 
-\usepackage{amsmath,amssymb,bbold}
-\usepackage{stmaryrd}  % \llbracket, \rrbracket
+\usepackage{tikz}
+\usetikzlibrary{math,positioning}
 
 \usepackage[T1]{fontenc}
-\usepackage{caption,subcaption}
 
 \usepackage{pgfplots}
 \usetikzlibrary{arrows}
@@ -24,23 +23,14 @@
 \usepackage[noend]{algpseudocode}
 
 \usepackage{minted}
+\setminted{fontsize=\small}
 
-\usepackage[hidelinks]{hyperref}
+% Add a serial/Oxford comma by default.
+\newcommand{\creflastconjunction}{, and~}
 
-\theoremstyle{plain}% Theorem-like structures provided by amsthm.sty
-\newtheorem{theorem}{Theorem}[section]
-\newtheorem{lemma}[theorem]{Lemma}
-
-\newtheorem{corollary}[theorem]{Corollary}
-\newtheorem{proposition}[theorem]{Proposition}
-
-\theoremstyle{definition}
-\newtheorem{definition}[theorem]{Definition}
-\newtheorem{example}[theorem]{Example}
-
-\theoremstyle{remark}
-\newtheorem{remark}{Remark}
-\newtheorem{notation}{Notation}
+% Used for creating new theorem and remark environments
+\newsiamremark{example}{Example}
+\newsiamthm{conjecture}{Conjecture}
 
 \newcommand{\RR}{\mathbb{R}}
 
@@ -66,17 +56,42 @@
 
 \newcommand{\oneh}{\mathbb{1}_h}
 
+% Optional PDF information
+\ifpdf
+\hypersetup{
+  pdftitle={Adaptive mesh refinement for obstacle problems},
+  pdfauthor={G.~Stefano Fochesatto and E. Bueler}
+}
+\fi
+
+% Sets running headers as well as PDF title and authors
+\headers{Adaptive mesh refinement for obstacle problems}{G.~Stefano Fochesatto and E. Bueler}
+
+% Title.
+\title{Adaptive mesh refinement for obstacle problems\thanks{Submitted to the editors DATE (draft \today).}}
+
+% Authors: full names plus addresses.
+\author{%
+G.~Stefano Fochesatto\thanks{Dept.~of Mathematics and Statistics, University of Alaska Fairbanks, USA (\email{gsfochesatto@alaska.edu})}
+\and
+Ed Bueler\footnotemark[2]%
+}
+
+% FundRef data to be entered by SIAM
+%<funding-group specific-use="FundRef">
+%<award-group>
+%<funding-source>
+%<named-content content-type="funder-name">
+%</named-content>
+%<named-content content-type="funder-identifier">
+%</named-content>
+%</funding-source>
+%<award-id> </award-id>
+%</award-group>
+%</funding-group>
+
 
 \begin{document}
-
-%\articletype{ARTICLE TEMPLATE}% Specify the article type or omit as appropriate
-
-\title{Adaptive mesh refinement for obstacle problems}
-
-\author{
-\name{G.~Stefano Fochesatto\thanks{CONTACT G.~Stefano Fochesatto Email: gsfochesatto@alaska.edu} and Ed Bueler}
-\affil{Dept.~of Mathematics and Statistics, University of Alaska Fairbanks, USA}
-}
 
 \maketitle
 
@@ -104,14 +119,14 @@ From a solution of \eqref{eq:classical:ncp}, or rather of its weak form below, w
   I_u = \{x \in \Omega \,:\, u(x) > \psi(x)\}, \quad A_u = \Omega \setminus I_u, \quad \Gamma_u = \Omega \cap \partial I_u. \label{eq:classical:sets}
 \end{equation}
 
-For the example shown in Figure \ref{fig:ball}, the obstacle $\psi$ is an upper hemisphere, the active set $A_u$ (white mesh) is a disc, and the free boundary $\Gamma_u$ is a circle.  Note that $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$; this ``interior condition'' of the problem is the black mesh in the Figure.  While both Dirichlet ($u=\psi$) and Neumann ($\partial u/\partial n = \partial \psi/\partial n$) conditions apply along the unknown free boundary $\Gamma_u$, only Dirichlet conditions hold on $\partial\Omega$.
-
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{static/obstacle.png}
+\includegraphics[width=0.7\textwidth]{static/obstacle.png}
 \caption{Solution, as wireframe, to a problem with a (hemi)spherical obstacle.}
 \label{fig:ball}
 \end{figure}
+
+For the example shown in Figure \ref{fig:ball}, the obstacle $\psi$ is an upper hemisphere, the active set $A_u$ (white mesh) is a disc, and the free boundary $\Gamma_u$ is a circle.  Note that $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$; this ``interior condition'' of the problem is the black mesh in the Figure.  While both Dirichlet ($u=\psi$) and Neumann ($\partial u/\partial n = \partial \psi/\partial n$) conditions apply along the unknown free boundary $\Gamma_u$, only Dirichlet conditions hold on $\partial\Omega$.
 
 Another physical interpretation of problem \eqref{eq:classical:ncp} is that $u$ models the water pressure, which cannot go below zero ($\psi=0$), in a porous dam \cite[for example]{AinsworthOdenLee1993}.  Section \ref{sec:app} will present another obstacle problem with a highly-nonlinear operator.  In that problem the solution is the surface elevation of a glacier, which is constrained to be above the bedrock (elevation) on which the glacier sits.
 
@@ -147,6 +162,7 @@ In this work we consider only $P_1$ element spaces over meshs of triangles or te
 
 Three AMR methods for VIs are described in Section \ref{sec:viamr}.  Our implementations use the Firedrake FE library \cite{Rathgeberetal2016} and produce conforming meshes with no hanging nodes.  The first two methods are of tag-and-refine type, only differing by which elements are tagged, with skeleton-based refinement (SBR) \cite{PlazaCarey2000} applied after tagging.  Note that SBR is implemented within PETSc's DMPlex component \cite{petsc-user-ref} and in the Netgen library \cite{Betteridgeetal2024}.  These two methods also require a complementary AMR approach for the PDE problem in the inactive set to achieve convergence; see Section \ref{sec:inactive}.  The third goal-oriented and metric-based method uses the Netgen and Animate \cite{Wallworketal2020} libraries for metric-based mesh adaptation.  Full details are given in Section \ref{sec:viamr}, but here is a high-level view of the methods:
 
+\smallskip
 %\renewcommand{\labelenumi}{\emph{\roman{enumi})}}
 \begin{itemize}
 \item[UDO:] The unstructured dilation operator method discretely identifies elements adjacent to the computed free boundary, employing a graph-based approach to tag neighboring elements for refinement.  It generalizes the image processing operation of dilation \cite{Pratt1991} to unstructured meshes.
@@ -154,6 +170,7 @@ Three AMR methods for VIs are described in Section \ref{sec:viamr}.  Our impleme
 \item[AVM:] The averaged-metric method computes an intermediate representation of the size, shape, and orientation of the new mesh, as a tensor-valued Riemannian metric \cite{Alauzet2010}.  The metric is an average of an anisotropic metric, from the Hessian of the computed solution \cite{Wallworketal2020}, and an isotropic metric, from the diffused active set indicator of the VCD method.  This method approximately maintains mesh complexity, and it adjusts both inactive and active set meshes simultaneously.
 \end{itemize}
 
+\smallskip
 Example meshes are shown in Figure \ref{fig:threeballmeshes}, generated by 3 levels of refinement using the above three methods, starting from a coarse uniform mesh, on the obstacle problem shown in Figures \ref{fig:activesizes} (middle).  These AMR methods successfully increase the resolution both near the free boundary and where helpful in the inactive set.
 
 % result from examples/sphere.py; note: -n 1 UDO; default VCD; default AVM; theta=0.7 in BR
@@ -348,7 +365,7 @@ In order for $\Gamma_u^h\approx \Gamma_u$ to be an accurate approximation, the i
 
 For $u\in\cX$ solving VI \eqref{eq:vi}, an interior condition PDE holds in the inactive set $I_u$ \cite{KinderlehrerStampacchia1980}.  Our AMR strategies (Section \ref{sec:viamr}) do \emph{a posteriori} refinement in the geometric vicinity of the free boundary, but they also exploit \emph{a posteriori} error indicators for this interior condition.  We consider two such PDE indicators here.
 
-\begin{example}  \label{example:gradrecovery}  Suppose $\cX_h=\CG_k$ is the continuous, piecewise-polynomial FE space of degree $k$, and consider $u_h\in\cX_h$.  Generally $\grad u_h$ is discontinuous but well-defined on each element.  If $\cY_h=\DG_{k-1}$ denotes the (scalar) discontinuous space with polynomial degree $k-1$ then $\grad u_h \in \cY_h^d$.  Suppose there is a linear operator $G : \cX_h \to \cX_h^d$, called \emph{gradient recovery} (GR) \citep[Chapter 4]{AinsworthOden2000}, so that $G(u_h)\approx \grad u$ in some sense, assuming of course that $u_h\approx u$ in $\cX$.  Then, over an element $K \in\cT_h$, the error indicator $\eta_K\ge 0$ for this GR method is
+\begin{example}  \label{example:gradrecovery}  Suppose $\cX_h=\CG_k$ is the continuous, piecewise-polynomial FE space of degree $k$, and consider $u_h\in\cX_h$.  Generally $\grad u_h$ is discontinuous but well-defined on each element.  If $\cY_h=\DG_{k-1}$ denotes the (scalar) discontinuous space with polynomial degree $k-1$ then $\grad u_h \in \cY_h^d$.  Suppose there is a linear operator $G : \cX_h \to \cX_h^d$, called \emph{gradient recovery} (GR) \cite[Chapter 4]{AinsworthOden2000}, so that $G(u_h)\approx \grad u$ in some sense, assuming of course that $u_h\approx u$ in $\cX$.  Then, over an element $K \in\cT_h$, the error indicator $\eta_K\ge 0$ for this GR method is
 \begin{equation} \label{eq:gradrecoveryindicator}
 \eta_K^2 = \int_K \left|G(u_h) - \grad u_h\right|^2.
 \end{equation}
@@ -537,7 +554,7 @@ As shown in Figure \ref{fig:jaccball}, our AMR methods are distinctly superior t
 % see examples/sphere.py and genfigs/ballconv.py for these runs
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.55\textwidth]{genfigs/jaccball.png}
+\includegraphics[width=0.51\textwidth]{genfigs/jaccball.png}
 \caption{Active set Jaccard distances $d(A_u^h,A_u)$.}
 \label{fig:jaccball}
 \end{figure}
@@ -558,7 +575,7 @@ To illustrate some additional mesh and performance features of our AMR approache
 % generated from examples/spiral.py at levels=7
 \begin{figure}[ht]
 \centering
-\includegraphics[height=65mm]{static/spiralmesh.png}
+\includegraphics[height=62mm]{static/spiralmesh.png}
 \caption{A refined mesh for Example \ref{example:spiral}, with $2\times 10^5$ elements, from seven levels of the UDO$+$BR approach, starting from an initial uniform mesh of 200 elements.  Element diameter (resolution) is about $h=10^{-3}$ along the free boundary.}
 \label{fig:spiralmesh}
 \end{figure}
@@ -581,7 +598,7 @@ To illustrate some additional mesh and performance features of our AMR approache
 % figure generated from meshfigs/lshaped.pvd
 \begin{figure}[ht]
 \centering
-\includegraphics[height=65mm]{static/lshaped.png}
+\includegraphics[height=62mm]{static/lshaped.png}
 \caption{A refined mesh from five levels of the VCD$+$BR algorithm on Example \ref{example:lshaped}, showing a well-resolved free boundary and refinement in the interior corner.}
 \label{fig:lshapedmesh}
 \end{figure}
@@ -678,15 +695,11 @@ FIXME VI solver performance can be substantially improved by combining the AMR m
 
 %\section*{Acknowledgements}
 
-%\section*{Notes on contributor(s)}
-%An unnumbered Section, e.g.\ \verb"\section*{Notes on contributors}", may be included \emph{in the non-anonymous version} if required. A photograph may be added if requested.
 
-
-\bibliographystyle{tfs}
+\bibliographystyle{siamplain}
 \bibliography{viamr}
 
 
-%Any appendices should be placed after the list of references, beginning with the command \verb"\appendix" followed by the command \verb"\section" for each appendix title, e.g.
 \appendix
 \section{Unilateral obstacle problems with the blistering property} \label{app:blistering}
 
