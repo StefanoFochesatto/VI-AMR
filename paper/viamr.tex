@@ -232,22 +232,22 @@ VI        & variational inequality
 
 \section{Variational inequalities and their finite element approximations} \label{sec:vifem}
 
-We consider unilateral obstacle problems in Banach spaces.  Let $\Omega \subset \RR^d$, $d=2,3$, be a bounded, polygonal domain.  Let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable weak gradients \cite{Evans2010}.  We will assume continuous problem data, with well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$ and $g\in C(\partial \Omega)$ satisfy $g \ge \psi|_{\partial\Omega}$.  Define the closed and convex admissible subset
+We consider unilateral obstacle problems in Banach spaces.  Let $\Omega \subset \RR^d$, $d\ge 1$, be a bounded, polygonal domain.  Let $\cX = W^{1,p}(\Omega)$, $p>1$, be the Sobolev space of measurable functions with $p$th-integrable weak gradients \cite{Evans2010}.  We will assume continuous problem data, with well-defined point values, so suppose $\psi \in \cX \cap C(\bar\Omega)$ and $g\in C(\partial \Omega)$ satisfy $g \ge \psi|_{\partial\Omega}$.  Define the closed and convex admissible subset
 \begin{equation} \label{eq:admissible}
 \cK = \{v \in \cX \,:\, v \ge \psi \text{ and } v|_{\partial \Omega} = g\} \subset \cX,
 \end{equation}
-as in \eqref{eq:classical:admissible}.  Observe that generally $\psi\notin\cK$.
+same as in \eqref{eq:classical:admissible}.  Observe that generally $\psi\notin\cK$.
 
-Let $\cX'$ be the dual space of $\cX$, and denote the application of $\omega \in \cX'$ to $v\in \cX$ by $\omega[v] \in \RR$.  The norm on $\cX$ is denoted $\|\cdot\|$, and for $\cX'$ the norm is $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:\cK \to \cX'$ be a given operator, generally nonlinear, and let $\ell\in \cX'$ be given.  (While $F$ in Example \ref{example:classicalobstacle} is defined on all of $\cX$, the general operator $F$ might be only defined on $\cK$; Section \ref{sec:app} gives an example.)  The VI associated to this data, a unilateral obstacle problem, is to find $u\in \cK$ so that
+Let $\cX'$ be the dual space of $\cX$, and denote the application of $\omega \in \cX'$ to $v\in \cX$ by $\omega[v] \in \RR$.  The norm on $\cX$ is denoted $\|\cdot\|$, and for $\cX'$ the norm is $\|\omega\|' = \sup_{\|v\|=1} |\omega[v]|$.  Let $F:\cK \to \cX'$ be a given operator, generally nonlinear, and let $\ell\in \cX'$ be given.  (While $F$ in Example \ref{example:classicalobstacle} is defined on all of $\cX$, the problem in Section \ref{sec:app} shows how $F$ might be defined only on $\cK$.)  The VI associated to this data, a unilateral obstacle problem, finds $u\in \cK$ so that
 \begin{equation} \label{eq:vi}
 F(u)[v - u] \ge \ell[v - u] \quad \text{ for all } v \in \cK.
 \end{equation}
 
-The VI problems in this paper can be analyzed within the framework of coercivity and Lipschitz continuity.  We say $F$ is $q$-coercive, $1<q<\infty$, if there is $\alpha>0$ so that
+The problems in this paper can be analyzed within the framework of coercivity and Lipschitz continuity.  We say $F$ is $q$-coercive, $1<q<\infty$, if there is $\alpha>0$ so that
 \begin{equation} \label{eq:coercive}
 (F(v) - F(w))[v - w] \ge \alpha \|v-w\|^q
 \end{equation}
-for all $v,w \in \cK$.  Note that if $F$ is $q$-coercive then it is also strictly monotone: $(F(v) - F(w))[v - w] > 0$ for $v\ne w$.  Let $B_R(0)$ be the origin-centered open ball in $\cX$ of radius $R>0$.  We say $F$ is Lipschitz on bounded subsets if there is $C(R)>0$ so that
+for all $v,w \in \cK$.  Note that if $F$ is $q$-coercive then it is also strictly monotone: $(F(v) - F(w))[v - w] > 0$ for $v\ne w$.  Let $B_R(0)$ be the open ball at $0\in \cX$ of radius $R>0$.  We say $F$ is Lipschitz on bounded subsets if there is $C(R)>0$ so that
 \begin{equation} \label{eq:lipschitz}
 \|F(v)-F(w)\|' \le C(R) \|v-w\|
 \end{equation}
@@ -261,19 +261,19 @@ In the classical obstacle problem \eqref{eq:classical:vi}, over $\cX=H^1(\Omega)
 In the glacier model of Section \ref{sec:app}, when the bedrock is flat and the surface mass balance is independent of elevation the VI problem \eqref{eq:sia:vi} uses a $4$-Laplacian operator over transformed thicknesses $u\in\cX=W^{1,4}(\Omega)$: $F(u)[v] = \int_\Omega \Gamma |\grad u|^2\grad u\cdot \grad v\,dx$ where $\Gamma>0$ is constant.  This operator is $4$-coercive \cite[for example]{JouvetBueler2012}, and Lipschitz on bounded subsets of $\cX$.
 \end{example}
 
-Note that if the inequality constraint in \eqref{eq:vi} were absent then the residual of the solution $u$ would be zero ($F(u)-\ell=0$); this is the PDE case.  However, for VI \eqref{eq:vi} we only have that $F(u)-\ell=0$ a.e.~within the unknown inactive set $I_u$.  The residual $F(u)-\ell\in \cX'$ might be highly-irregular in the active set $A_u$, but it is nonnegative.  The following lemma states the weak complementarity property associated to VI \eqref{eq:vi}; compare strong-form complementarity \eqref{eq:classical:ncp}.
+Note that if the inequality constraint in \eqref{eq:vi} were absent then the residual of the solution $u$ would be zero ($F(u)-\ell=0$); this is the PDE case.  However, for VI \eqref{eq:vi} we only have that $F(u)-\ell=0$ a.e.~within an unknown inactive set $I_u$.  The residual $F(u)-\ell\in \cX'$ might be highly-irregular in the active set $A_u$, but it is nonnegative.  In fact, the following lemma states the weak complementarity property associated to obstacle problems \eqref{eq:vi}; compare strong-form complementarity \eqref{eq:classical:ncp}.
 
-\begin{lemma} \label{lem:measure}\cite[Theorem II.6.9]{KinderlehrerStampacchia1980}.  Suppose $u\in \cK$ solves \eqref{eq:vi}.  Then $F(u)-\ell=d\mu_u$ is a positive Radon measure supported in the active set $A_u$.  Thus for $w\in\cX$ we have
+\begin{lemma} \label{lem:measure}\cite[Theorem II.6.9]{KinderlehrerStampacchia1980}.  Suppose $u\in \cK$ solves \eqref{eq:vi}.  Then $F(u)-\ell=d\mu_u$ is a positive Radon measure supported in $A_u$.  Thus for $w\in\cX$ we have
 \begin{equation}
 (F(u)-\ell)[w] = \int_{A_u} w\, d\mu_u. \label{eq:measure}
 \end{equation}
 \end{lemma}
 
-Now let $\cT_h$ be a shape-regular mesh partition (triangulation, etc.) of $\Omega$ \cite{AinsworthOden2000,ElmanSilvesterWathen2014}.  Let $\cX_h \subset \cX \cap C(\bar\Omega)$ be a conforming finite-dimensional FE subspace over $\cT_h$.  Our examples will be piecewise-linear over triangles and tetrahedra: $\cX_h=P_1$.  Assume that there is $g_h\in\cX_h$ such that $g_h=g$ along $\partial \Omega$.  Let $\psi_h \in \cX_h$ be the FE obstacle, which satisfies the compatibility requirement $\psi_h \le g_h$ along $\partial\Omega$; for the moment, $\psi_h$ may be unrelated to $\psi$.  Define the (nonempty) FE admissible set
+Now let $\cT_h$ be a shape-regular mesh partition (triangulation, etc.) of $\Omega$ \cite{AinsworthOden2000,ElmanSilvesterWathen2014}.  Let $\cX_h \subset \cX \cap C(\bar\Omega)$ be a conforming finite-dimensional FE subspace over $\cT_h$.  (Our examples will be piecewise-linear over triangles and tetrahedra: $\cX_h=P_1$.)  Assume that there is $g_h\in\cX_h$ such that $g_h=g$ along $\partial \Omega$.  Let $\psi_h \in \cX_h$ be the FE obstacle, which satisfies the compatibility requirement $\psi_h \le g_h$ along $\partial\Omega$.  Define the (nonempty) FE admissible set
 \begin{equation} \label{eq:fe:admissible}
 \cK_h = \{v_h \in \cX_h \,:\, v_h \ge \psi_h \text{ and } v_h|_{\partial \Omega} = g_h|_{\partial\Omega}\}.
 \end{equation}
-Our FE method seeks $u_h\in\cK_h$ satisfying the VI problem which approximates \eqref{eq:vi}:
+Our FE method seeks $u_h\in\cK_h$ satisfying a VI problem which approximates \eqref{eq:vi}:
 \begin{equation} \label{eq:fe:vi}
 F(u_h)[v_h - u_h] \ge \ell[v_h - u_h] \quad \text{ for all } v_h \in \cK_h.
 \end{equation}
@@ -281,20 +281,20 @@ The same argument given for \eqref{eq:vi} shows that this has a unique solution 
 \begin{equation}
   I_u^h = \{x \in \Omega \,:\, u_h(x) > \psi_h(x)\}, \quad A_u^h = \Omega \setminus I_u^h, \quad \Gamma_u^h = \Omega \cap \partial I_u^h, \label{eq:fe:sets}
 \end{equation}
-the numerical sets, corresponding to \eqref{eq:classical:sets}, defined \emph{a posteriori} from solving \eqref{eq:fe:vi}.
+the numerical sets corresponding to \eqref{eq:classical:sets}, defined \emph{a posteriori} from solving \eqref{eq:fe:vi}.
 
-Because $\cK_h \subset \cX_h \subset \cX$, we might regard \eqref{eq:fe:vi} as a conforming FE method for \eqref{eq:vi}.  However, this is subtle for an obstacle problem as it depends on the relationship between $\psi$ and $\psi_h$.  If $\psi_h$ is an interpolant of $\psi$ then $\cK_h \approx \cK$ in some sense, but one might distinguish three levels of increasingly ``conforming'' admissibility:
+Because $\cK_h \subset \cX_h \subset \cX$, we might regard \eqref{eq:fe:vi} as a conforming FE method for \eqref{eq:vi}.  However, this is subtle for an obstacle problem as it depends on the relationship between $\psi$ and $\psi_h$.  If $\psi_h$ is an interpolant of $\psi$ then $\cK_h \approx \cK$ in some sense.  Actually, one should distinguish three levels of increasingly ``conforming'' admissibility:
 \renewcommand{\labelenumi}{\emph{\roman{enumi})}}
 \begin{enumerate}
 \item $\cK_h \not \subset \cK$
 \item $\cK_h \subset \cK$
 \item $\cK_h = \cK \cap \cX_h$
 \end{enumerate}
-Ciarlet \cite[Figure 5.1.3]{Ciarlet2002} observes that situation \emph{i)} generally applies for an interpolated obstacle $\psi_h = \Pi_h \psi$, e.g.~for $\cX_h=P_1$ and when $\psi$ is not convex.  Situation \emph{ii)} holds when $\psi_h \ge \psi$, which can be imposed by using a monotone injection operator, e.g.~``$\psi_h = R^\oplus \psi$'' in the notation from \cite{BuelerFarrell2024}.  (For related ideas, see \cite{GraeserKornhuber2009} and the proof of Theorem 5.1.2 in \cite{Ciarlet2002}.)  The strongest condition \emph{iii)} holds if $\psi_h=\psi$ exactly, for example when $\psi=0$ in the porous dam problems considered by \cite{AinsworthOdenLee1993}.
+Ciarlet \cite[Figure 5.1.3]{Ciarlet2002} observed early on that situation \emph{i)} generally applies for an interpolated obstacle $\psi_h = \Pi_h \psi$, e.g.~for $\cX_h=P_1$ and when $\psi$ is not convex.  Situation \emph{ii)} holds when $\psi_h \ge \psi$, which can be imposed by using a monotone injection operator, e.g.~``$\psi_h = R^\oplus \psi$'' in the notation from \cite{BuelerFarrell2024}.  (For related ideas, see \cite{GraeserKornhuber2009} and the proof of Theorem 5.1.2 in \cite{Ciarlet2002}.)  The strongest condition \emph{iii)} holds if $\psi_h=\psi$ exactly, for example when $\psi=0$ in the porous dam problems considered by \cite{AinsworthOdenLee1993}, and in Section \ref{sec:app}.
 
-In any case, the obstacle $\psi$ is given \emph{as data} for VI problem \eqref{eq:vi} over $\cK$.  Point values of $\psi$ can be evaluated as desired to better-represent $u_h$ within the numerical active set $A_u^h$.  That is, over elements where there is active-set correctness, i.e.~$K\in\cT_h$ such that $K \subset A_u \cap A_u^h$, the error $e=u-u_h=\psi-u_h$ can be regarded as zero, or the approximation $\psi_h \approx \psi$ can be improved at will by better interpolation of the data $\psi$ (Section \ref{sec:results}).  As the goal for a refined mesh is to more-accurately solve the FE problem, refinement within a stabilized active set, with a refined and accurate free boundary, is wasted effort.
+In any case, the obstacle $\psi$ is given \emph{as data} for VI problem \eqref{eq:vi} over $\cK$.  As illustrated in Section \ref{sec:results}, point values of $\psi$ can be evaluated as desired to better-represent $u_h$ within the numerical active set $A_u^h$.  Over elements where there is active-set correctness, namely $K\in\cT_h$ such that $K \subset A_u \cap A_u^h$, the error $e=u-u_h=\psi-\psi_h$ can simply be regarded as unimportant.  Alternatively, the approximation $\psi_h \approx \psi$ can be improved as needed by better interpolation of the data $\psi$.  As the goal for AMR is to more-accurately solve the FE problem, refinement within a stabilized active set, once an accurate free boundary has been found, is wasted effort.
 
-These ideas already arise in \emph{a priori} bounds for FE error in VI problems.  The following theorem generalizes the Falk bound \cite{Falk1974}; see also \cite[Theorem 5.1.1]{Ciarlet2002}.  It can be extended further to address $F_h\approx F$ \cite[Theorem 6.3]{Bueler2024}, but we will not need such an operator approximation for our examples.
+These ideas are already implicit in \emph{a priori} bounds for FE error in VI problems.  The following theorem generalizes the Falk bound \cite{Falk1974}; see also \cite[Theorem 5.1.1]{Ciarlet2002}.  It can be extended further to address $F_h\approx F$ \cite[Theorem 6.3]{Bueler2024}, but we will not need such an operator approximation for our examples.
 
 \begin{theorem} \label{thm:genfalk}  For $1<q<\infty$, define the conjugate exponent $q'=q/(q-1)$.  Assume that $F$ is $q$-coercive and Lipschitz on bounded subsets of its domain.  Suppose $u\in\cK$ solves \eqref{eq:vi} and $u_h\in\cK_h$ solves \eqref{eq:fe:vi}.  Let $R_h=\max\{\|u\|,\|u_h\|\}$.  Then there is a constant $c(R_h)>0$, not otherwise depending on $u$ or $u_h$, so that
 \begin{align}
@@ -303,7 +303,8 @@ These ideas already arise in \emph{a priori} bounds for FE error in VI problems.
 \end{align}
 \end{theorem}
 
-\begin{proof}  For arbitrary $v\in\cK$ and $v_h\in\cK_h$, rewrite \eqref{eq:vi} and \eqref{eq:fe:vi} as $F(u)[u] \le F(u)[v] + \ell[u-v]$ and $F(u_h)[u_h] \le F(u_h)[v_h] + \ell[u_h-v_h]$, respectively.  It follows from these inequalities, and $q$-coercivity of $F$, that
+\begin{proof}
+For arbitrary $v\in\cK$ and $v_h\in\cK_h$, rewrite \eqref{eq:vi} and \eqref{eq:fe:vi} as $F(u)[u] \le F(u)[v] + \ell[u-v]$ and $F(u_h)[u_h] \le F(u_h)[v_h] + \ell[u_h-v_h]$, respectively.  It follows from these inequalities, and $q$-coercivity of $F$, that
 \begin{align}
 \alpha \|u-u_h\|^q &\le \left(F(u)-F(u_h)\right)[u-u_h] \label{eq:falkdance} \\
   &= F(u)[u] + F(u_h)[u_h] - F(u)[u_h] - F(u_h)[u] \notag \\
@@ -323,41 +324,33 @@ Now use Young's inequality with $\eps>0$ \cite[Appendix B.2]{Evans2010} on \eqre
   &\qquad + C(R_h) \left(\eps\|u-u_h\|^q + \tilde C(\eps) \|u-v_h\|^{q'}\right) \notag
 \end{align}
 where $\tilde C(\eps) = (\eps q)^{-q'/q} {q'}^{-1}$.  Choose $\eps>0$ so that $C(R_h) \eps \le \alpha/2$.  Then
-\begin{align}
-\frac{\alpha}{2} \|u-u_h\|^q &\le \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u]  \label{eq:falkalmost} \\
-  &\qquad + C(R_h) \tilde C(\eps) \|u-v_h\|^{q'} \notag
-\end{align}
-Apply Lemma \ref{lem:measure} to \eqref{eq:falkalmost}, note $u=\psi$ a.e.~in $A_u$, and take infimums to show \eqref{eq:falk}.\end{proof}
+\begin{equation} \label{eq:falkalmost}
+\frac{\alpha}{2} \|u-u_h\|^q \le \left(F(u)-\ell\right)[v-u_h] + \left(F(u)-\ell\right)[v_h-u] + C(R_h) \tilde C(\eps) \|u-v_h\|^{q'}
+\end{equation}
+Apply Lemma \ref{lem:measure} and take infimums to show \eqref{eq:falk}.
+\end{proof}
 
-Consider the unconstrained PDE case of \eqref{eq:falk}, namely with $A_u=\emptyset$ and $d\mu_u=0$.  In this case the bound is simply Cea's lemma (quasi-optimality) for $q$-coercive operators, namely $\|u-u_h\| \lesssim \inf_{v_h\in\cK_h} \|v_h - u\|^{1/(q-1)}$.  It is standard in FE theory \cite{AinsworthOden2000,ElmanSilvesterWathen2014} to address the final term in \eqref{eq:falk} by solution regularity and interpolation theory.
+Consider the unconstrained PDE case of \eqref{eq:falk}, namely when $A_u=\emptyset$.  In this case the bound is simply Cea's lemma (quasi-optimality) for $q$-coercive operators: $\|u-u_h\| \lesssim \inf_{v_h\in\cK_h} \|v_h - u\|^{1/(q-1)}$.  It is standard in FE theory \cite{AinsworthOden2000,ElmanSilvesterWathen2014} to address this bound by solution regularity and interpolation theory.
 
-If $\psi_h\ge \psi$ then $\cK_h\subset \cK$, and so the first term on the right of \eqref{eq:falk} is zero.  In this case bound \eqref{eq:falk} adds a nonnegative infimum, of an integral over $A_u$, to the above Cea's lemma term.  The addition is large if $v_h\in\cK_h$ is significantly blocked by $\psi_h$ from descending close to the continuum obstacle $\psi$ in the active set $A_u$, and/or if the residual measure $d\mu_u$ is large in $A_u$.
+If $\psi_h\ge \psi$ then $\cK_h\subset \cK$, and so the first term on the right of \eqref{eq:falk} can be replaced by zero.  In this case bound \eqref{eq:falk} adds a single term to Cea's lemma, which is nonzero when $v_h\in\cK_h$ is blocked by $\psi_h$ from descending close to the continuum obstacle $\psi$ in the active set $A_u$.  Thus this term is large if $\psi_h$ is substantially above $\psi$ in $A_u$, or if $d\mu_u$ is large in $A_u$.  However, if the FE method has generated a numerical active set which is accurate, $A_u^h\approx A_u$, the errors in the active set are irrelevant because the data $\psi$ is available to the solver.
 
-\emph{A priori} error bound \eqref{eq:falk} is further clarified in the $p=2$ and $q=q'=2$ case, i.e.~for the classical obstacle problem.  The bound can then be split between integrals over the (exact) active set and inactive sets.
+\emph{A priori} error bound \eqref{eq:falk} is further clarified in the $p=2$ and $q=q'=2$ case, the classical obstacle problem.  The bound can then be split between integrals over the (exact) active set and inactive sets.
 
 \begin{corollary} \label{cor:falktwo}
 Suppose all the hypotheses of Theorem \ref{thm:genfalk}.  Assume that $p=q=2$, and that $\psi \in C^1(\Omega)$.  Up to constants which depend on $u$ and $u_h$, we may write the \emph{a priori} bound with four integrals,
-\begin{subequations}
-\label{eq:falktwo}
 \begin{align}
-\|u-u_h\|^2 \lesssim &\inf_{v\in\cK} \int_{A_u} (v-u_h)\,d\mu_u \label{eq:falktwo:a} \\
-&\, + \inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u \label{eq:falktwo:b} \\
-&\, + \inf_{v_h\in\cK_h} \left(\int_{A_u} |\grad v_h - \grad \psi|^2\,dx + \int_{I_u} |\grad v_h - \grad u|^2\,dx\right) \label{eq:falktwo:c}
+\|u-u_h\|^2 \lesssim &\inf_{v\in\cK} \int_{A_u} (v-u_h)\,d\mu_u + \inf_{v_h\in\cK_h} \int_{A_u} (v_h-\psi)\,d\mu_u \label{eq:falktwo} \\
+&\, + \inf_{v_h\in\cK_h} \left(\int_{A_u} |\grad v_h - \grad \psi|^2\,dx + \int_{I_u} |\grad v_h - \grad u|^2\,dx\right) \notag
 \end{align}
-\end{subequations}
 \end{corollary}
 
 \begin{proof}
 Apply Poincare's inequality to the final term in \eqref{eq:falk}.
 \end{proof}
 
-We now consider bbound \eqref{eq:falktwo} from the point of view of AMR.  The first term \eqref{eq:falktwo:a}, which can be of either sign, is controlled by the choice of $\psi_h$.  Since we are assuming $\cX_h\subset \cX$, this term relates only to discrete admissibility.  This term is zero if $\cK_h \subset \cK$.  The second term \eqref{eq:falktwo:b}, also generally of either sign, relates both to discrete admissibility and to the approximation of $\psi$ using functions from $\cX_h$.  It is nonnegative if $\psi_h\ge \psi$.
+Consider the first two integrals in bound \eqref{eq:falktwo} from the point of view of AMR.  Their size is determined partly by the action of $F$ on the continuum obstacle, and partly by the source term $\ell$.  However, because they are over the active set $A_u$, neither integral, nor the third $A_u$ integral, requires mesh refinement so as to improve the quality of the FE solution, \emph{as long as the mesh and solver have accurately located the free boundary}.  This observation suggests why the primary goal of AMR for VIs should be to generate close approximation $\Gamma_u^h\approx \Gamma_u$.  Computation expended on better approximation of the data $\psi$ in $A_u$ can be avoided if the free boundary is accurately resolved.  This is easiest to exploit within the class of unilateral obstacle problems described in Appendix \ref{app:blistering}, which includes the $\psi=0$ case of the classical obstacle problem \eqref{eq:classical:vi} and the glacier problem of Section \ref{sec:app}.  In such problems one may preprocess the data, noting all the areas where the source term is negative, and then systematically avoid unnecessary active set refinement.
 
-Both integrals \eqref{eq:falktwo:a} and \eqref{eq:falktwo:b} are with respect to the residual measure $d\mu_u$, so their size is determined partly by the action of $F$ on the continuum obstacle, and partly by the source term $\ell$.  However, because they are over the active set $A_u$, neither integral \eqref{eq:falktwo:a} nor \eqref{eq:falktwo:b}, nor the $A_u$ integral in \eqref{eq:falktwo:c}, requires mesh refinement so as to improve the quality of the FE solution, \emph{as long as the mesh and solver have accurately located the free boundary}.  Corollary \ref{cor:falktwo} thus suggests why a primary goal of AMR for VIs is to use refinement to generate close approximation $\Gamma_u^h\approx \Gamma_u$.  Computation expended on better approximation of the data $\psi$ in $A_u$, during the solution process, can be avoided if the free boundary is accurately resolved.
-
-These observations are especially easy to exploit within the class of unilateral obstacle problems described in Appendix \ref{app:blistering}.  This class which includes the $\psi=0$ case of the classical obstacle problem \eqref{eq:classical:vi} and the glacier problem of Section \ref{sec:app}.  In such problems one may preprocess the data, marking all the areas where the source term is negative, and then systematically avoid unnecessary active set refinement.
-
-In order for $\Gamma_u^h\approx \Gamma_u$ to be an accurate approximation, the interior condition of the VI, over $I_u$, must be accurately solved, which of course gives the significance of the final integral in \eqref{eq:falktwo:c}.  Our AMR approaches will simultaneously refine near the computed free boundary $\Gamma_u^h$ and in the (computed) inactive set $I_u^h$.
+However, in order for $\Gamma_u^h\approx \Gamma_u$ to be an accurate approximation, the interior condition of the VI, over $I_u$, must be accurately solved.  (This gives the significance of the final integral in \eqref{eq:falktwo}.)  Our AMR approaches will systematically refine on both sides of the computed free boundary $\Gamma_u^h$, and generally in the inactive set $I_u^h$.
 
 
 \section{\emph{A posteriori} error estimation in the inactive set} \label{sec:inactive}
@@ -698,7 +691,7 @@ FIXME VI solver performance can be substantially improved by combining the AMR m
 
 
 \appendix
-\section{Unilateral obstacle problems with the blistering property} \label{app:blistering}
+\section{Obstacle problems with the blistering property} \label{app:blistering}
 
 In a classical, unilateral obstacle problem \eqref{eq:classical:vi} an upward force $f(x)>0$ may occur in the active set $A_u$.  Physically speaking, in such a case the upward force was insufficient to lift $u$ off the obstacle $\psi$.  However, in certain problems this situation cannot occur.  The hypotheses of Lemma \ref{lem:blister} hold for classical problems \eqref{eq:classical:vi} when $\psi=0$, for the porous dam saturation free-boundary problem \cite[for example]{AinsworthOdenLee1993}, and for the glacier problem in Section \ref{sec:app}.
 
