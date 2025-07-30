@@ -670,18 +670,26 @@ Figure \ref{fig:insetmeshes} shows details of the resulting meshes along sample 
 \end{example}
 
 
-\section{Discussion and conclusion} \label{sec:conclusion}
+\section{Discussion} \label{sec:discussion}
 
-FIXME \emph{Grid Sequencing + AMR targeting the free boundary} is the iterative process for how we are converging to the FB.  The bulk of vinewton iterations are coming from stabilizing the initial iterate's FB and thereafter Grid Sequencing is allowing us to make small adjustments as we refine.  the grid sequencing works best on hierarchal meshes, while with metric method the "grid sequencing" is done through cross-mesh interpolation.
+It is well-known that inequality-constrained obstacle problems are intrinsically nonlinear, thus that solution methods must be iterative.  At a basic level our AMR methods simply extend this mandatory iteration idea to the generation of sequences of well-adapted unstructured meshes.  The UDO and VCD Algorithms from Section \ref{sec:viamr}, when applied in practice, combine two specific tagging strategies based \emph{a posteriori} on the numerical solution $u_h$ in simple ways:
 
-FIXME We have no quantitative theory (norm bounds) telling us how the two strategies interact.  We are applying two different, well-defined, marking strategies:
+\smallskip
 \begin{enumerate}
-\item assuming $u_h$ gives an estimate of the free boundary, mark nearby elements on both sides of the free boundary
-\item assuming $u_h$ gives an estimate of the inactive set, mark in this approximate inactive set according to PDE principles
+\item assuming $u_h$ and $\psi_h$ imply an estimate of the true free boundary $\Gamma_u$, mark nearby elements on both sides of the computed free boundary $\Gamma_u^h$, and
+\item assuming $u_h$ approximates the true solution $u$ in the computed inactive set $I_u^h$, mark elements in this set using PDE-type error estimates (Section \ref{sec:inactive}).
 \end{enumerate}
-Note that i) has nothing directly to do with the regularity (or residual) in $u_h$.  Regardless of the smoothness of $u_h$ near the free boundary, or the magnitude of the residual from $u_h$, we want to mark near the free boundary.
 
-FIXME VI solver performance can be substantially improved by combining the AMR meshing strategies here with a multilevel approach.  The solver in \cite{BuelerFarrell2024}, for example, uses coarse meshes to make large geometrical corrections in the free boundary.  This path, which promises highly-scalable solutions of obstacle problems, is for future research.
+\smallskip
+\noindent The third , AVM Algorithm \ref{alg:avm}, generates a metric according to the same essential heuristics, allowing mesh adaptation.
+
+Observe that \emph{i)} has nothing directly to do with the regularity or residual of $u_h$; refinement is geometrical in the domain.  Also note that \emph{ii)} could be done methods of arbitrary sophistication, specifically including dual weighted residual methods \cite{BangerthRannacher2003,Suttmeier2008}.  However, the weights in these methods are incapable of communicating information between disconnected components of the inactive set, the number and geometry of which is only found at solution time; Example \ref{example:blisters} shows this.
+
+For classical obstacle problems, the mesh sequences built by our AMR techniques allow the bulk of the Newton iterations to occur inexpensively on the coarse early meshes. However, for harder problems, specifically the glaciation obstacle problem in Section \ref{sec:app}, the solver and AMR components nontrivially interact.  Nontrivial solver iterations are needed on intermediate meshes, to find and stabilize the free boundary.
+
+Our AMR strategies are tied to the \emph{a priori} theory in Section \ref{sec:vifem}.  On the other hand, we have no direct, quantitative theory of how they reduce numerical error.
+
+An important extension of our work would be to find effective refinement strategies for time-dependent obstacle problems and parabolic VI problems.  Also, performance could be improved by combining AMR with a multilevel solver approach, but this is also for future research.  The solver in \cite{BuelerFarrell2024} uses coarse meshes to make large corrections inside the solver, including geometrically to the free boundary.  Combining this solver with AMR promises highly-scalable solutions of difficult obstacle problems.
 
 %\section*{Acknowledgements}
 
