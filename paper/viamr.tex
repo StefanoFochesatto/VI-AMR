@@ -704,14 +704,14 @@ FIXME VI solver performance can be substantially improved by combining the AMR m
 \appendix
 \section{Unilateral obstacle problems with the blistering property} \label{app:blistering}
 
-In classical obstacle problem \eqref{eq:classical:vi} an upward force $f(x)>0$ may generally occur in the active set $A_u$.  Physically speaking, an upward force may be insufficient to lift $u$ off a concave obstacle $\psi$.  However, in certain problems this situation cannot occur.  The hypotheses of Lemma \ref{lem:blister} hold for porous dam saturation free-boundary problems \cite[for example]{AinsworthOdenLee1993} and the glacier problem in Section \ref{sec:app}.
+In a classical, unilateral obstacle problem \eqref{eq:classical:vi} an upward force $f(x)>0$ may occur in the active set $A_u$.  Physically speaking, in such a case the upward force was insufficient to lift $u$ off the obstacle $\psi$.  However, in certain problems this situation cannot occur.  The hypotheses of Lemma \ref{lem:blister} hold for classical problems \eqref{eq:classical:vi} when $\psi=0$, for the porous dam saturation free-boundary problem \cite[for example]{AinsworthOdenLee1993}, and for the glacier problem in Section \ref{sec:app}.
 
 \begin{lemma} \label{lem:blister}
 Suppose that $\psi=0$ and $\ell[v] = \int_\Omega fv\,dx$ for $f\in L^2(\Omega)$.  Suppose also that the operator $F$ is given by measurable densities,
 \begin{equation} \label{eq:densitiesform}
 F(w)[v] = \int_\Omega \phi(w(x),\grad w(x)) v(x) + \Phi(w(x),\grad w(x)) \cdot \grad v(x)\,dx,
 \end{equation}
-satisfying $\phi(0,0)=0$ and $\Phi(0,0)=0$.  Then for $u$ solving \eqref{eq:vi}, $f\le 0$ a.e.~in $A_u$.
+satisfying $\phi(0,0)=0$ and $\Phi(0,0)=0$.  Then for $u$ solving VI \eqref{eq:vi}, $f\le 0$ a.e.~in $A_u$.
 \end{lemma}
 
 \begin{proof}
@@ -719,11 +719,11 @@ Let $S\subset A_u$ be a Borel set, and denote its indicator function by $\chi_S 
 \begin{equation*}
 0 \le d\mu_u(S) = F(u)[\chi_S]-\ell[\chi_S] = 0 - \ell[\chi_S] = -\int_S f\,dx.
 \end{equation*}
-This shows $f\le 0$ a.e.~(with respect to Lebesgue measure).
+This shows $f\le 0$ a.e.~with respect to Lebesgue measure.
 \end{proof}
 
 \begin{definition}
-For a unilateral obstacle problem \eqref{eq:vi} with source term $\ell[v] = \int_\Omega fv\,dx$, $f\in C(\bar \Omega)$, we say that \emph{blistering property} holds if $A_u \subset \{x \in \Omega\, :\, f(x)\le 0\}$ \cite{JouvetBueler2012}, that is, if the conclusion of Lemma \ref{lem:blister} holds.
+For a unilateral obstacle problem \eqref{eq:vi} with source term $\ell[v] = \int_\Omega fv\,dx$ and $f\in C(\bar \Omega)$, we say that the \emph{blistering property} holds if $A_u \subset \{x \in \Omega\, :\, f(x)\le 0\}$ \cite{JouvetBueler2012}, that is, if the conclusion of Lemma \ref{lem:blister} holds.
 \end{definition}
 
 To explain the language, if $f(x)>0$ for some $x\in\Omega$ then, assuming this property, the inactive set $I_u$ must be non-empty, and $x\in I_u$.  That is, even a small upward force ``blisters'' the membrane off the obstacle.
@@ -734,8 +734,6 @@ Any classical problem \eqref{eq:classical:vi} with a smooth obstacle $\psi\in C^
 \end{equation}
 For VI problem \eqref{eq:classical:vi:blister}, if $x\in A_{\tilde u} = \{\tilde u(x)=0\}$ then $\tilde f(x)= f(x)+\grad^2\psi(x)\le 0$.
 
-For blistering-property problems, AMR costs can be reduced by avoiding refinement in the computed active sets.  From a computed solution $u_h$, one starts by identifying the elements $K\in \cT_h$ in the computed active set $A_u^h$.  (In our implementation we require that every node in the closure of $K$ is active, according to some tolerance.)  To identify $K$ where no refinement would be beneficial, the degenerate case must be excluded, so we require $K \subset \Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$; this uses only the data of the problem.  If later refinements move the free boundary to be incident to $K$ then refinement of $K$ becomes appropriate.
-
-In summary, if a problem has the blistering property, and if $f < 0$ on a currently-active element $K$, then $K$ can likely remain unrefined without affecting solution accuracy.  Section \ref{sec:viamr} techniques are designed to mark active-set elements which are near $\Gamma_u^h$, in a geometrical sense, for refinement.  Refinement in the inactive set, e.g.~based on indicators from Section \ref{sec:inactive}, is also necessary to give accuracy $\Gamma_u^h \approx \Gamma_u$.
+For blistering-property problems, AMR costs can be reduced by systematically avoiding refinement in the computed active sets.  From a computed solution $u_h$, one identifies elements $K\in \cT_h$ such that $K \subset A_u^h$.  (In our implementation we require that every node in the closure of $K$ is active, according to some tolerance.)  The degenerate case must be excluded, so we also require $K \subset \Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$; note this uses only the data of the problem.  Then for $K\subset \Omega_- \cap A_u^h$ no refinement is needed \emph{if} $K$ is geometrically far from the free boundary.  However, if later refinements move the free boundary to be incident to $K$ then refinement of $K$ becomes appropriate.
 
 \end{document}
