@@ -1,7 +1,7 @@
 from firedrake import *
 from firedrake.output import VTKFile
 from viamr import VIAMR
-from paper.convergence.utility import LShapedDomainProblem
+from utility import LShapedDomainProblem
 import os
 
 
@@ -28,14 +28,18 @@ for i in range(4):
     DG0 = FunctionSpace(ExactMesh, "DG", 0)
     resUFL = -div(grad(ExactU))
     (BRmark, _, _) = amr.brinactivemark(ExactU, lb, resUFL,method = "max", theta=0.7)
-
     ExactMesh = amr.refinemarkedelements(ExactMesh, BRmark)
+
+amr.setmetricparameters(target_complexity=15000, h_min=1.0e-8, h_max=10.0)
+ExactU, lb = problem.solveProblem(mesh=ExactMesh, u=ExactU)
+ExactMesh = amr.adaptaveragedmetric(ExactMesh, ExactU, lb, gamma = .95)
+ExactU, lb = problem.solveProblem(mesh=ExactMesh, u=ExactU)
+
 
 
 
 
 active = amr.elemactive(ExactU, lb)
-
 mesh = ExactU.function_space().mesh()
 # Get the spatial coordinates from the mesh
 x = ufl.SpatialCoordinate(ExactU.function_space().mesh())
