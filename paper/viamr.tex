@@ -674,24 +674,24 @@ Figure \ref{fig:insetmeshes} shows details of the meshes along sample portions o
 
 \section{Discussion} \label{sec:discussion}
 
-It is well-known that inequality-constrained obstacle problems are intrinsically nonlinear, thus that solution methods must be iterative.  At a basic level our AMR methods simply extend this mandatory iteration idea to the generation of sequences of well-adapted unstructured meshes.  The UDO and VCD Algorithms from Section \ref{sec:viamr}, when applied in practice, combine two specific tagging strategies based \emph{a posteriori} on the numerical solution $u_h$ in simple ways:
+It is well-known that inequality-constrained obstacle problems are intrinsically nonlinear, thus that solution methods must be iterative.  At a basic level our AMR methods simply extend the mandatory iteration to the generation of sequences of well-adapted unstructured meshes.
+
+The UDO and VCD Algorithms from Section \ref{sec:viamr} combine two relatively-simple tagging strategies based \emph{a posteriori} on the numerical solution:
 
 \smallskip
 \begin{enumerate}
-\item assuming $u_h$ and $\psi_h$ imply an estimate of the true free boundary $\Gamma_u$, mark nearby elements on both sides of the computed free boundary $\Gamma_u^h$, and
+\item assuming $u_h$ and $\psi_h$ can estimate the true free boundary $\Gamma_u$, mark nearby elements on both sides of the computed free boundary $\Gamma_u^h$, and
 \item assuming $u_h$ approximates the true solution $u$ in the computed inactive set $I_u^h$, mark elements in this set using PDE-type error estimates (Section \ref{sec:inactive}).
 \end{enumerate}
 
 \smallskip
-\noindent The third , AVM Algorithm \ref{alg:avm}, generates a metric according to the same essential heuristics, allowing mesh adaptation.
+\noindent AVM Algorithm \ref{alg:avm} uses the same essential heuristics to generate a metric, which enables mesh adaptation.
 
-Observe that \emph{i)} has nothing directly to do with the regularity or residual of $u_h$; refinement is geometrical in the domain.  Also note that \emph{ii)} could be done methods of arbitrary sophistication, specifically including dual weighted residual methods \cite{BangerthRannacher2003,Suttmeier2008}.  However, the weights in these methods are incapable of communicating information between disconnected components of the inactive set, the number and geometry of which is only found at solution time; Example \ref{example:blisters} shows this.
+Our AMR strategies are tied to the \emph{a priori} theory in Section \ref{sec:vifem}.  On the other hand, we have no direct, quantitative theory of how they reduce numerical error.  Observe that \emph{i)} has nothing directly to do with the regularity or residual of $u_h$; refinement is geometrical in the domain.  On the other hand, \emph{ii)} could be done methods of arbitrary sophistication.  For example, dual weighted residual methods \cite{BangerthRannacher2003,Suttmeier2008} could be applied, although their adjoint-type weights are incapable of communicating information between disconnected components of the inactive set, the number and geometry of which are only found at solution time.  (Example \ref{example:blisters} is an example.)
 
-For classical obstacle problems, the mesh sequences built by our AMR techniques allow the bulk of the Newton iterations to occur inexpensively on the coarse early meshes. However, for harder problems, specifically the glaciation obstacle problem in Section \ref{sec:app}, the solver and AMR components nontrivially interact.  Nontrivial solver iterations are needed on intermediate meshes, to find and stabilize the free boundary.
+For classical obstacle problems, the mesh sequences built by our AMR techniques allow the bulk of the Newton iterations to occur inexpensively on the coarse early meshes. However, for harder problems like the glaciation obstacle problem in Section \ref{sec:app}, the solver and AMR components strongly interact.  Nontrivial solver iterations are needed on intermediate meshes, to find and stabilize the free boundary.
 
-Our AMR strategies are tied to the \emph{a priori} theory in Section \ref{sec:vifem}.  On the other hand, we have no direct, quantitative theory of how they reduce numerical error.
-
-An important extension of our work would be to find effective refinement strategies for time-dependent obstacle problems and parabolic VI problems.  Also, performance could be improved by combining AMR with a multilevel solver approach, but this is also for future research.  The solver in \cite{BuelerFarrell2024} uses coarse meshes to make large corrections inside the solver, including geometrically to the free boundary.  Combining this solver with AMR promises highly-scalable solutions of difficult obstacle problems.
+An important extension of our work would be to find effective refinement strategies for time-dependent obstacle problems and parabolic VIs.  Also, performance could be improved by integrating AMR into a multilevel solver, though this is also for future research.  For example, the solver in \cite{BuelerFarrell2024} uses coarse meshes to make large corrections, including geometrically to the free boundary, and so a combination with AMR promises highly-scalable solutions of difficult obstacle problems.
 
 %\section*{Acknowledgements}
 
