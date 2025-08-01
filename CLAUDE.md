@@ -14,6 +14,13 @@ This repository implements **Adaptive Mesh Refinement (AMR) for Variational Ineq
 ### Code Standards
 - Follow existing Firedrake/PETSc conventions
 - Import structure: firedrake imports, then local viamr imports
+- No underscores in filenames (prefer camelCase or single words)
+- Use `VTKFile` for output, not `File`
+- Output files should follow `result_*.pvd` naming convention
+- All Python files should end with newlines
+- Active set fields should use DG0 function space
+- VI problems should have compatible boundary conditions: `psi ≤ g ≤ ub` on boundary
+- Functions should be pure when possible (separate computation from I/O)
 
 ### Proposed Improvements
 - **UDO Performance**: Optimization with caching and vectorized operations for better scalability
