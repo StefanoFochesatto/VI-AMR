@@ -22,6 +22,10 @@ This repository implements **Adaptive Mesh Refinement (AMR) for Variational Ineq
 - Active set fields should use DG0 function space
 - VI problems should have compatible boundary conditions: `psi ≤ g ≤ ub` on boundary
 - Functions should be pure when possible (separate computation from I/O)
+- Use double quotes for strings (not single quotes)
+- Trailing commas in dictionaries and lists
+- Two blank lines between top-level functions
+- Long function calls split across multiple lines with proper indentation
 
 ### Proposed Improvements
 - **UDO Performance**: Optimization with caching and vectorized operations for better scalability

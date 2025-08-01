@@ -588,13 +588,13 @@ To illustrate some additional mesh and performance features of our AMR approache
 \label{fig:blistersmesh}
 \end{figure}
 
-\begin{example}  \label{example:lshaped}  Our third example is a free-boundary variation of the classic L-shaped Laplace equation problem with an interior corner.  Here the obstacle $\psi$ is the upper unit hemisphere, centered at the origin, and the domain is $\Omega = (-2,5)^2 \setminus S$ where $S$ is a $3\times 3$ square in the lower right corner.  Since $f=0$ and $g=-1$, the Laplace equation is solved in the inactive set, with unbounded solution Hessian in the interior corner.  A result from the VCD$+$BR algorithm, starting from a coarse unstructured mesh, is shown in Figure \ref{fig:lshapedmesh}.  (Again the other methods produce similar results.)  Though the exact free boundary is not known, it resolves into a smooth and nearly-circular curve.  At the same time there is refinement in the interior corner.  This example shows that free-boundary localization and classical PDE refinement goals are simultaneously addressed. \end{example}
+\begin{example}  \label{example:lshaped}  Our third example is a free-boundary variation of the classic L-shaped Laplace equation problem with an interior corner.  Here the obstacle $\psi$ is the upper unit hemisphere, centered at the origin, and the domain is $\Omega = (-2,5)^2 \setminus S$ where $S$ is a $3\times 3$ square in the lower right corner.  Since $f=0$ and $g=-1$, the Laplace equation is solved in the inactive set, with unbounded solution Hessian in the interior corner.  A result from AVM, starting from a coarse unstructured mesh, is shown in Figure \ref{fig:lshapedmesh}.  (Again the other methods produce similar results.)  Though the exact free boundary is not known, it resolves into a smooth and nearly-circular curve.  At the same time there is refinement in the interior corner.  This example shows that free-boundary localization and classical PDE refinement goals are simultaneously addressed. \end{example}
 
-% figure generated from meshfigs/lshaped.pvd
+% figure generated from examples/claudelshaped.py
 \begin{figure}[ht]
 \centering
 \includegraphics[height=62mm]{static/lshaped.png}
-\caption{A refined mesh from five levels of the VCD$+$BR algorithm on Example \ref{example:lshaped}, showing a well-resolved free boundary and refinement in the interior corner.}
+\caption{A refined mesh from three iterations of AVM Algorithm \ref{alg:avm} on Example \ref{example:lshaped}, showing a well-resolved free boundary and refinement in the interior corner.}
 \label{fig:lshapedmesh}
 \end{figure}
 
