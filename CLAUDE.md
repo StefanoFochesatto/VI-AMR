@@ -14,10 +14,16 @@ This repository implements **Adaptive Mesh Refinement (AMR) for Variational Ineq
 ### Code Standards
 - Follow existing Firedrake/PETSc conventions
 - Import structure: firedrake imports, then local viamr imports
-- Known issue: Duplicate petsctools imports in viamr.py lines 18-20
+
+### Proposed Improvements
+- **UDO Performance**: Optimization with caching and vectorized operations for better scalability
 
 ### Testing Commands
+**IMPORTANT: Must activate Firedrake virtual environment first:**
 ```bash
+# Activate Firedrake venv (adjust path as needed)
+source ~/venv-firedrake/bin/activate
+
 # Serial tests
 pytest .
 
