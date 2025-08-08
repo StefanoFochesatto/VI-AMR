@@ -1,0 +1,15 @@
+For the SIAM J Sci Comput submission, these are answers to "Novelty and contributions of the paper"
+
+*1. What is the decisive advance in this paper?
+
+We have created new adaptive mesh refinement algorithms to accurately resolve the free boundaries in obstacle problems.  The algorithms are parallel, fast, and effective, and their implementation is open source and uses the widely-available Firedrake library.  Our methods generate highly-resolved free boundaries at low cost, and they avoid wasted effort in the active set.
+
+
+*2. Why is the method considered in the paper of significant and broad interest to the readers of SISC?
+
+Obstacle problems are common in scientific and engineering applications, and they are a model problem when considering free boundaries.  An application in the paper is to find the outlines of glaciers by solving the flow equations, a problem representative of fluid layer free boundary problems.  On the other hand, finite element software has recently matured to include solvers capable of the handling the corresponding nonlinear variational inequality problems.  Our methods extend that capability to include adaptive mesh refinement.
+
+
+*3. What are the new and original aspects of the paper that set it apart from the existing work in this field (including previous related work by the authors)?
+
+Our methods are based on a revised understanding of the variational inequality formulation of these problems, and the corresponding a priori theory for finite elements.  Prior work did not recognize that for obstacle problems with disconnected inactive sets, for example, the PDE approaches would not be effective.  By contrast, our approach is to separate (and then recombine) the concerns of geometric localization of the free boundary and then the accurate solution of the PDE in the inactive set.  Note that the resolution of the free boundary is often the goal of numerical solutions of these problems, and our methods focus on this.  Our methods are widely-available and in a well-regarded finite element library.
