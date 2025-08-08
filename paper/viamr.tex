@@ -191,7 +191,7 @@ In summary, here are two principles for the AMR methods of this paper:
 \renewcommand{\labelenumi}{\arabic{enumi}.}
 \begin{enumerate}
 \item Relative to uniform refinement, they exhibit significant improvements in convergence rate.  This is measured by norms, or especially by free-boundary localization (geometrical) error (Section \ref{sec:results}),  per mesh degree of freedom.
-\item Their implementations (\href{https://github.com/StefanoFochesatto/VI-AMR}{{\small \texttt{github.com/StefanoFochesatto/VI-AMR}}}) within the Firedrake \cite{Langeetal2016} FE library are parallel, well-documented, and easy-to-use.
+\item Their implementations (\href{https://github.com/StefanoFochesatto/viamr}{{\small \texttt{github.com/StefanoFochesatto/viamr}}}) within the Firedrake \cite{Langeetal2016} FE library are parallel, well-documented, and easy-to-use.
 \end{enumerate}
 
 \smallskip
@@ -479,7 +479,7 @@ The right-hand image in Figure \ref{fig:threeballmeshes} (Introduction) shows an
 
 All three Algorithms run in parallel under the MPI protocol used by Firedrake \cite{Langeetal2016} and PETSc.  However, only UDO produces results which are independent of the number of processes.  The default preconditioned Krylov solver in VCD is slightly-dependent on process count \cite{Bueler2021}.  Choosing a direct solver for problem \eqref{eq:bestep} would give the VCD method process-independence, but it would also reduce scalability.
 
-We end this Section with two Python examples which illustrate how to use the open source VIAMR library (\href{https://github.com/StefanoFochesatto/VI-AMR}{{\small \texttt{github.com/StefanoFochesatto/VI-AMR}}}).
+We end this Section with two Python examples which illustrate how to use the open source VIAMR library (\href{https://github.com/StefanoFochesatto/viamr}{{\small \texttt{github.com/StefanoFochesatto/viamr}}}).
 
 \begin{example} \label{example:AOL}
 Consider Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The code below applies the Firedrake and VIAMR libraries to solve this problem.  First it generates a uniform coarse mesh, then it applies VCD marking near the free boundary, and then it refines to a new mesh (Figure \ref{fig:resultAOL}).  There is no refinement in the inactive set, which is necessary for convergence; compare Example \ref{example:hybrid}, and see the next Section.
