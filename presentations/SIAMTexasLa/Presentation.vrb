@@ -1,0 +1,4 @@
+\inputminted[linenos, frame=lines, fontsize=\scriptsize]{python}{../../examples/aol.py}
+
+    \vfill % Adds flexible vertical space between the code and figures
+

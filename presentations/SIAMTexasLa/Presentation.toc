@@ -1,0 +1,4 @@
+\beamer@sectionintoc {1}{Variational Inequalities}{3}{0}{1}
+\beamer@sectionintoc {2}{Adaptive Mesh Refinement}{16}{0}{2}
+\beamer@sectionintoc {3}{Two New Methods: VCD and UDO}{18}{0}{3}
+\beamer@sectionintoc {4}{Results}{28}{0}{4}
