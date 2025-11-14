@@ -1,0 +1,28 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{firedrake}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{o}{*}
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{viamr}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{VIAMR}
+
+\PYG{n}{mesh} \PYG{o}{=} \PYG{n}{RectangleMesh}\PYG{p}{(}\PYG{l+m+mi}{6}\PYG{p}{,} \PYG{l+m+mi}{12}\PYG{p}{,} \PYG{l+m+mf}{0.5}\PYG{p}{,} \PYG{l+m+mf}{1.0}\PYG{p}{)}
+\PYG{n}{x}\PYG{p}{,} \PYG{n}{y} \PYG{o}{=} \PYG{n}{SpatialCoordinate}\PYG{p}{(}\PYG{n}{mesh}\PYG{p}{)}
+\PYG{n}{r} \PYG{o}{=} \PYG{p}{(}\PYG{n}{x} \PYG{o}{+} \PYG{l+m+mf}{1.0}\PYG{p}{)} \PYG{o}{**} \PYG{l+m+mi}{2} \PYG{o}{+} \PYG{n}{y} \PYG{o}{**} \PYG{l+m+mi}{2}
+\PYG{n}{uexact} \PYG{o}{=} \PYG{n}{conditional}\PYG{p}{(}\PYG{n}{r} \PYG{o}{\PYGZlt{}} \PYG{l+m+mf}{2.0}\PYG{p}{,} \PYG{l+m+mf}{0.25} \PYG{o}{*} \PYG{n}{r} \PYG{o}{\PYGZhy{}} \PYG{l+m+mf}{0.5} \PYG{o}{\PYGZhy{}} \PYG{l+m+mf}{0.5} \PYG{o}{*} \PYG{n}{ln}\PYG{p}{(}\PYG{l+m+mf}{0.5} \PYG{o}{*} \PYG{n}{r}\PYG{p}{),} \PYG{l+m+mf}{0.0}\PYG{p}{)}
+
+\PYG{n}{V} \PYG{o}{=} \PYG{n}{FunctionSpace}\PYG{p}{(}\PYG{n}{mesh}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}CG\PYGZdq{}}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{)}
+\PYG{n}{uh}\PYG{p}{,} \PYG{n}{vh} \PYG{o}{=} \PYG{n}{Function}\PYG{p}{(}\PYG{n}{V}\PYG{p}{),} \PYG{n}{TestFunction}\PYG{p}{(}\PYG{n}{V}\PYG{p}{)}
+\PYG{n}{F} \PYG{o}{=} \PYG{n}{inner}\PYG{p}{(}\PYG{n}{grad}\PYG{p}{(}\PYG{n}{uh}\PYG{p}{),} \PYG{n}{grad}\PYG{p}{(}\PYG{n}{vh}\PYG{p}{))} \PYG{o}{*} \PYG{n}{dx} \PYG{o}{\PYGZhy{}} \PYG{n}{Constant}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)} \PYG{o}{*} \PYG{n}{vh} \PYG{o}{*} \PYG{n}{dx}
+\PYG{n}{bcs} \PYG{o}{=} \PYG{n}{DirichletBC}\PYG{p}{(}\PYG{n}{V}\PYG{p}{,} \PYG{n}{Function}\PYG{p}{(}\PYG{n}{V}\PYG{p}{)}\PYG{o}{.}\PYG{n}{interpolate}\PYG{p}{(}\PYG{n}{uexact}\PYG{p}{),} \PYG{l+s+s2}{\PYGZdq{}on\PYGZus{}boundary\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{problem} \PYG{o}{=} \PYG{n}{NonlinearVariationalProblem}\PYG{p}{(}\PYG{n}{F}\PYG{p}{,} \PYG{n}{uh}\PYG{p}{,} \PYG{n}{bcs}\PYG{p}{)}
+
+\PYG{n}{sp} \PYG{o}{=} \PYG{p}{\PYGZob{}}\PYG{l+s+s2}{\PYGZdq{}snes\PYGZus{}type\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}vinewtonrsls\PYGZdq{}}\PYG{p}{\PYGZcb{}}
+\PYG{n}{solver} \PYG{o}{=} \PYG{n}{NonlinearVariationalSolver}\PYG{p}{(}\PYG{n}{problem}\PYG{p}{,} \PYG{n}{solver\PYGZus{}parameters}\PYG{o}{=}\PYG{n}{sp}\PYG{p}{)}
+\PYG{n}{psih} \PYG{o}{=} \PYG{n}{Function}\PYG{p}{(}\PYG{n}{V}\PYG{p}{)}\PYG{o}{.}\PYG{n}{interpolate}\PYG{p}{(}\PYG{l+m+mf}{0.0}\PYG{p}{)}
+\PYG{n}{INF} \PYG{o}{=} \PYG{n}{Function}\PYG{p}{(}\PYG{n}{V}\PYG{p}{)}\PYG{o}{.}\PYG{n}{interpolate}\PYG{p}{(}\PYG{n}{Constant}\PYG{p}{(}\PYG{n}{PETSc}\PYG{o}{.}\PYG{n}{INFINITY}\PYG{p}{))}
+\PYG{n}{solver}\PYG{o}{.}\PYG{n}{solve}\PYG{p}{(}\PYG{n}{bounds}\PYG{o}{=}\PYG{p}{(}\PYG{n}{psih}\PYG{p}{,} \PYG{n}{INF}\PYG{p}{))}
+
+\PYG{n}{amr} \PYG{o}{=} \PYG{n}{VIAMR}\PYG{p}{()}
+\PYG{n}{mark} \PYG{o}{=} \PYG{n}{amr}\PYG{o}{.}\PYG{n}{vcdmark}\PYG{p}{(}\PYG{n}{uh}\PYG{p}{,} \PYG{n}{psih}\PYG{p}{)}
+\PYG{n}{VTKFile}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}mesh.pvd\PYGZdq{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{write}\PYG{p}{(}\PYG{n}{uh}\PYG{p}{,} \PYG{n}{mark}\PYG{p}{)}
+
+\PYG{n}{refinedmesh} \PYG{o}{=} \PYG{n}{amr}\PYG{o}{.}\PYG{n}{refinemarkedelements}\PYG{p}{(}\PYG{n}{mesh}\PYG{p}{,} \PYG{n}{mark}\PYG{p}{)}
+\PYG{n}{VTKFile}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}refinedmesh.pvd\PYGZdq{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{write}\PYG{p}{(}\PYG{n}{refinedmesh}\PYG{p}{)}
+\end{MintedVerbatim}
