@@ -533,11 +533,11 @@ class VIAMR(OptionsManager):
         self.metricparameters = {"dm_plex_metric": mp}
         return None
 
-    def _isotropicfbmetric(self, mesh, uh, lb, CG1, P1tensor):
+    def _isotropicfbmetric(self, mesh, uh, lb, CG1, P1tensor, bracket):
         """Construct a normalized free-boundary isotropic metric from abs(grad(s)),
         where s is the (smooth) output of vcdmark().  Compare "L2" option in
         animate.compute_isotropic_metric(); here we already have a P1 indicator.)"""
-        s = self.vcdmark(uh, lb, returnSmooth=True)
+        s = self.vcdmark(uh, lb, bracket, returnSmooth=True)
         maggrads = Function(CG1).interpolate(sqrt(dot(grad(s), grad(s))))
         VIMetric = animate.RiemannianMetric(P1tensor)
         VIMetric.set_parameters(self.metricparameters)
@@ -556,7 +556,7 @@ class VIAMR(OptionsManager):
         return hessmetric
 
     def adaptaveragedmetric(
-        self, mesh, uh, lb, gamma=0.50, intersect=False, metric=False
+        self, mesh, uh, lb, gamma=0.50, intersect=False, metric=False, bracket=[0.2, 0.8]
     ):
         """From the solution uh, of an obstacle problem with obstacle lb, constructs both
         an anisotropic Hessian-based metric and an isotropic metric computed from the
@@ -579,7 +579,7 @@ class VIAMR(OptionsManager):
 
         # Branch on gamma to avoid unecesarry computation of both metrics
         if gamma == 1:  # isotropic metric only case
-            VIMetric = self._isotropicfbmetric(mesh, uh, lb, CG1, P1tensor)
+            VIMetric = self._isotropicfbmetric(mesh, uh, lb, CG1, P1tensor, bracket)
             if metric:
                 return VIMetric
             return animate.adapt(mesh, VIMetric)
@@ -592,7 +592,7 @@ class VIAMR(OptionsManager):
 
         else:
             # Default case where both metrics are computed
-            VIMetric = self._isotropicfbmetric(mesh, uh, lb, CG1, P1tensor)
+            VIMetric = self._isotropicfbmetric(mesh, uh, lb, CG1, P1tensor, bracket)
             hessmetric = self._hessianmetric(mesh, uh, P1tensor)
             # average or intersect
             if intersect:
