@@ -533,7 +533,7 @@ class VIAMR(OptionsManager):
         self.metricparameters = {"dm_plex_metric": mp}
         return None
 
-    def _isotropicfbmetric(self, mesh, uh, lb, CG1, P1tensor, bracket):
+    def _isotropicfbmetric(self, mesh, uh, lb, CG1, P1tensor, bracket, smooth = False):
         """Construct a normalized free-boundary isotropic metric from abs(grad(s)),
         where s is the (smooth) output of vcdmark().  Compare "L2" option in
         animate.compute_isotropic_metric(); here we already have a P1 indicator.)"""
@@ -543,7 +543,10 @@ class VIAMR(OptionsManager):
         VIMetric.set_parameters(self.metricparameters)
         VIMetric.interpolate(maggrads * ufl.Identity(mesh.topological_dimension()))
         VIMetric.normalise()  # normalize *before* averaging
-        return VIMetric
+        if smooth:
+            return VIMetric, s
+        else:
+            return VIMetric, None
 
     def _hessianmetric(self, mesh, uh, P1tensor):
         """Construct a normalized metric from the Hessian of uh.  This is motivated
@@ -556,7 +559,7 @@ class VIAMR(OptionsManager):
         return hessmetric
 
     def adaptaveragedmetric(
-        self, mesh, uh, lb, gamma=0.50, intersect=False, metric=False, bracket=[0.2, 0.8]
+        self, mesh, uh, lb, gamma=0.50, intersect=False, metric=False, bracket=[0.2, 0.8], smooth=False
     ):
         """From the solution uh, of an obstacle problem with obstacle lb, constructs both
         an anisotropic Hessian-based metric and an isotropic metric computed from the
@@ -579,7 +582,7 @@ class VIAMR(OptionsManager):
 
         # Branch on gamma to avoid unecesarry computation of both metrics
         if gamma == 1:  # isotropic metric only case
-            VIMetric = self._isotropicfbmetric(mesh, uh, lb, CG1, P1tensor, bracket)
+            VIMetric, VCDSmooth = self._isotropicfbmetric(mesh, uh, lb, CG1, P1tensor, bracket, smooth)
             if metric:
                 return VIMetric
             return animate.adapt(mesh, VIMetric)
@@ -592,7 +595,7 @@ class VIAMR(OptionsManager):
 
         else:
             # Default case where both metrics are computed
-            VIMetric = self._isotropicfbmetric(mesh, uh, lb, CG1, P1tensor, bracket)
+            VIMetric, VCDSmooth = self._isotropicfbmetric(mesh, uh, lb, CG1, P1tensor, bracket, smooth)
             hessmetric = self._hessianmetric(mesh, uh, P1tensor)
             # average or intersect
             if intersect:
@@ -600,7 +603,10 @@ class VIAMR(OptionsManager):
             else:
                 VIMetric.average(hessmetric, weights=[gamma, 1.0 - gamma])
             if metric:
-                return VIMetric
+                if smooth:
+                    return VIMetric, VCDSmooth
+                else:
+                    return VIMetric
             return animate.adapt(mesh, VIMetric)
 
     def jaccard(self, active1, active2, submesh=False):

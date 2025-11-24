@@ -2,7 +2,6 @@ from firedrake import *
 from firedrake.petsc import PETSc
 from viamr import VIAMR
 import numpy as np
-
 from animate import *
 print = PETSc.Sys.Print
 
@@ -29,7 +28,7 @@ class AdaptiveVISolver:
         # Problem parameters
         self.t_param = Constant(0.0)
         self.sigma = Constant(0.09)
-        self.tfactor = Constant(0.00005)
+        self.tfactor = Constant(0.00001)
         self.height = Constant(0.005)
         
         # Mesh and adaptation
@@ -61,13 +60,14 @@ class AdaptiveVISolver:
         }
         
         # Output file
-        self.outfile = VTKFile("result_sphere_timedep_buffered.pvd", adaptive=True)
+        self.outfile = VTKFile("result_zero_obstacle_timestep_source_buffered.pvd", adaptive=True)
         
         # Solution variables
         self.u = None
         self.u_n = None
         self.V = None
         self.lb = None
+        
     def setup_problem(self, prev_mesh_u_n=None):
         """Setup function space and boundary conditions on current mesh."""
         self.V = FunctionSpace(self.mesh, "CG", 1)
@@ -122,7 +122,7 @@ class AdaptiveVISolver:
         # Write output if requested
         if write:
             active_set = self.amr.eleminactive(self.u, self.lb)
-            self.outfile.write(self.u, active_set, time=self.t)
+            self.outfile.write(self.u, self.f, active_set, time=self.t)
         
         # Update time if requested
         if update_t:
@@ -152,12 +152,12 @@ class AdaptiveVISolver:
             # Initial adaptation step
             if step == 0:
                 self.t_param.assign(0.0)
-                self.solve_step(replace_u_n=False, update_t=False, write=True)
+                self.solve_step(replace_u_n=False, update_t=False, write=False)
                 # Initial mesh adaptation
                 self.lb = Function(self.V).assign(0.0)
                 self.mesh = self.amr.adaptaveragedmetric(self.mesh, self.u, self.lb)
                 self.setup_problem(prev_mesh_u_n=self.u_n)
-                continue
+                
             
             # Every buffer_size steps, perform mesh adaptation
             if step % buffer_size == 0:
@@ -166,9 +166,10 @@ class AdaptiveVISolver:
                 
                 # Fill metric buffer
                 self.metric_buffer = []
+                print(f"Filling metric buffer at step {step}...")
                 for _ in range(buffer_size):
                     self.solve_step(replace_u_n=True, update_t=False, write=False)
-                    metric = self.amr.adaptaveragedmetric(self.mesh, self.u_n, self.lb, metric=True, gamma = 1, bracket=[0.1,0.9] )
+                    metric, vcdsmooth = self.amr.adaptaveragedmetric(self.mesh, self.u_n, self.lb, metric=True, gamma = .95, bracket=[0.1,0.9],smooth=True)
                     self.metric_buffer.append(metric)
 
                 metricAVG = self.metric_buffer[0].copy(deepcopy=True)
@@ -177,19 +178,18 @@ class AdaptiveVISolver:
                 
                 
                 
-                # Adapt mesh based on last solution in buffer
+                # Adapt mesh based on average metric of buffer
                 self.lb = Function(self.V).assign(0.0)
                 self.mesh = adapt(self.mesh, metricAVG)
-                
+                print(self.mesh.num_cells(), "cells in mesh")
                 # Setup problem on new mesh, interpolating stored solution
                 self.setup_problem(prev_mesh_u_n=store_u)
             
-            # Solve on current (possibly adapted) mesh
-            self.solve_step(replace_u_n=True, update_t=True, write=True)
+            # Solve on current mesh
+            print(f"Step {step}/{self.num_steps}, t = {self.t:.4f}")
             
-            if step % 10 == 0:
-                print(f"Step {step}/{self.num_steps}, t = {self.t:.4f}")
-    
+            self.solve_step(replace_u_n=True, update_t=True, write=True)
+
     def run_simple(self):
         """Run with adaptation at every time step (original approach)."""
         self.setup_problem()
@@ -213,10 +213,9 @@ class AdaptiveVISolver:
                 print(f"Step {step}/{self.num_steps}, t = {self.t:.4f}")
 
 
-# Main execution
 if __name__ == "__main__":
     # Run with buffered adaptation (every 10 steps)
-    solver = AdaptiveVISolver(m0=25, T=1.0, dt=0.01)
+    solver = AdaptiveVISolver(m0=25, T=1.5, dt=0.01)
     solver.run_with_buffer(buffer_size=5)
     
     # Or run with adaptation at every step (original approach)
