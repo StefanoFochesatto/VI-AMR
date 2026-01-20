@@ -17,6 +17,8 @@
 \usetikzlibrary{arrows}
 \usepackage{mathtools,bm}
 \usepackage{vwcol}
+\usepackage{qrcode}  % Add this line
+
 
 \usepackage{pgfbaselayers}
 \pgfdeclarelayer{background}
@@ -156,7 +158,7 @@ bgColorOne=silver,
   % Format of text header
   eyecatcher=yes,
   headerborder=closed,
-  headerheight=0.11\textheight,
+  headerheight=0.10\textheight,
   headershape=rectangle,
   headershade=plain,
   headerfont=\Large\textsf, %Sans Serif
@@ -184,9 +186,11 @@ bgColorOne=silver,
   \end{center}
   }
   % University logo 
-
-  \tikzstyle{light shaded}=[top color=baposterBGtwo!30!white,bottom color=baposterBGone!30!white,shading=axis,shading angle=30]
-
+ {{\begin{minipage}{7.5em}
+  \centering
+  \includegraphics[height=7.5em]{images/top_part.png}\\[-2.75mm]
+  \includegraphics[width=7.5em]{images/caption.png}[-2mm]
+  \end{minipage}}}
   % Width of left inset image
      \newlength{\leftimgwidth}
      \setlength{\leftimgwidth}{0.78em+8.0em}

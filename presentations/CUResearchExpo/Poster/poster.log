@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.5.29)  19 JAN 2026 18:09
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.5.29)  19 JAN 2026 19:06
 entering extended mode
  \write18 enabled.
  file:line:error style messages enabled.
@@ -577,6 +577,33 @@ Package: ragged2e 2023/06/22 v3.6 ragged2e Package
 \vwcol@box=\box120
 \vwcol@plainbox=\box121
 \vwcol@outputbox=\box122
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/qrcode/qrcode.sty
+Package: qrcode 2015/01/08 v1.51 QR code generation
+\c@qr@i=\count343
+\c@qr@j=\count344
+\qr@a=\count345
+\qr@b=\count346
+\qr@c=\count347
+\qr@for@depth=\count348
+\qr@for@maxdepth=\count349
+\qr@for@start=\count350
+\qr@for@end=\count351
+\qr@for@step=\count352
+\qr@newforcount=\count353
+\qr@newforcount=\count354
+\qr@desiredheight=\skip100
+\qr@modulesize=\skip101
+\qr@minipagewidth=\skip102
+\c@maski=\count355
+\c@maskj=\count356
+\c@totalones=\count357
+\c@penaltyi=\count358
+\c@penaltyii=\count359
+\c@penaltyiii=\count360
+\c@penaltyiv=\count361
+\c@qr@hexchars=\count362
+\qr@newforcount=\count363
+\c@qr@divisionsremaining=\count364
 ) (/usr/local/texlive/2025/texmf-dist/tex/latex/pgf/basiclayer/pgfbaselayers.sty
 
 Package pgf Warning: This package is obsolete and no longer needed on input line 13.
@@ -593,20 +620,20 @@ Package: palatino 2020/03/25 PSNFSS-v9.3 (SPQR)
 ) (/usr/local/texlive/2025/texmf-dist/tex/latex/enumitem/enumitem.sty
 Package: enumitem 2025/02/06 v3.11 Customized lists
 \enitkv@toks@=\toks37
-\labelindent=\skip100
+\labelindent=\skip103
 \enit@outerparindent=\dimen302
 \enit@toks=\toks38
 \enit@inbox=\box127
-\enit@count@id=\count343
-\enitdp@description=\count344
+\enit@count@id=\count365
+\enitdp@description=\count366
 )
 \symextraup=\mathgroup9
-LaTeX Font Info:    Trying to load font information for T1+ppl on input line 102.
+LaTeX Font Info:    Trying to load font information for T1+ppl on input line 104.
  (/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/t1ppl.fd
 File: t1ppl.fd 2001/06/04 font definitions for T1/ppl.
 ) (/usr/local/texlive/2025/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2025-04-14 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count345
+\l__color_backend_stack_int=\count367
 )
 
 LaTeX Warning: Unused global option(s):
@@ -615,32 +642,32 @@ LaTeX Warning: Unused global option(s):
 (./poster.aux)
 \openout1 = `poster.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 102.
-LaTeX Font Info:    ... okay on input line 102.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 102.
-LaTeX Font Info:    ... okay on input line 102.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 102.
-LaTeX Font Info:    ... okay on input line 102.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 102.
-LaTeX Font Info:    ... okay on input line 102.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 102.
-LaTeX Font Info:    ... okay on input line 102.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 102.
-LaTeX Font Info:    ... okay on input line 102.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 102.
-LaTeX Font Info:    ... okay on input line 102.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 104.
+LaTeX Font Info:    ... okay on input line 104.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 104.
+LaTeX Font Info:    ... okay on input line 104.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 104.
+LaTeX Font Info:    ... okay on input line 104.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 104.
+LaTeX Font Info:    ... okay on input line 104.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 104.
+LaTeX Font Info:    ... okay on input line 104.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 104.
+LaTeX Font Info:    ... okay on input line 104.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 104.
+LaTeX Font Info:    ... okay on input line 104.
  (/usr/local/texlive/2025/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count346
+\scratchcounter=\count368
 \scratchdimen=\dimen303
 \scratchbox=\box128
-\nofMPsegments=\count347
-\nofMParguments=\count348
+\nofMPsegments=\count369
+\nofMParguments=\count370
 \everyMPshowfont=\toks39
-\MPscratchCnt=\count349
+\MPscratchCnt=\count371
 \MPscratchDim=\dimen304
-\MPnumerator=\count350
-\makeMPintoPDFobject=\count351
+\MPnumerator=\count372
+\makeMPintoPDFobject=\count373
 \everyMPtoPDFconversion=\toks40
 )
 *geometry* driver: auto-detecting
@@ -689,38 +716,55 @@ Eyecatcher found!
 <images/ComputerScience_bw_center_transparent.png, id=4, 2858.68pt x 1509.64pt>
 File: images/ComputerScience_bw_center_transparent.png Graphic file (type png)
 <use images/ComputerScience_bw_center_transparent.png>
-Package pdftex.def Info: images/ComputerScience_bw_center_transparent.png  used on input line 187.
+Package pdftex.def Info: images/ComputerScience_bw_center_transparent.png  used on input line 193.
 (pdftex.def)             Requested size: 113.58618pt x 60.0pt.
 
-Overfull \hbox (60.58615pt too wide) in paragraph at lines 187--187
+Overfull \hbox (60.58615pt too wide) in paragraph at lines 193--193
 [][] 
  []
 
-LaTeX Font Info:    Trying to load font information for U+msa on input line 187.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 193.
 (/usr/local/texlive/2025/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 187.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 193.
  (/usr/local/texlive/2025/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Trying to load font information for U+zavm on input line 187.
+LaTeX Font Info:    Trying to load font information for U+zavm on input line 193.
  (/usr/local/texlive/2025/texmf-dist/tex/latex/arev/uzavm.fd
 File: uzavm.fd 2006/05/30 Fontinst v1.929 font definitions for U/zavm.
 )
+<images/top_part.png, id=6, 491.8375pt x 491.8375pt>
+File: images/top_part.png Graphic file (type png)
+<use images/top_part.png>
+Package pdftex.def Info: images/top_part.png  used on input line 193.
+(pdftex.def)             Requested size: 74.99573pt x 75.0pt.
+<images/caption.png, id=7, 491.8375pt x 100.375pt>
+File: images/caption.png Graphic file (type png)
+<use images/caption.png>
+Package pdftex.def Info: images/caption.png  used on input line 193.
+(pdftex.def)             Requested size: 75.0pt x 15.30524pt.
+
+Missing character: There is no [ in font nullfont!
+Missing character: There is no - in font nullfont!
+Missing character: There is no 2 in font nullfont!
+Missing character: There is no m in font nullfont!
+Missing character: There is no m in font nullfont!
+Missing character: There is no ] in font nullfont!
 \bf \huge Adaptive Mesh Refinement for Obstacle Problems 
-\leftimgwidth=\skip101
+\leftimgwidth=\skip104
 name=summary,column=0,row=0
-<../../../paper/static/obstacle.png, id=6, 1258.7025pt x 484.81125pt>
+<../../../paper/static/obstacle.png, id=8, 1258.7025pt x 484.81125pt>
 File: ../../../paper/static/obstacle.png Graphic file (type png)
 <use ../../../paper/static/obstacle.png>
-Package pdftex.def Info: ../../../paper/static/obstacle.png  used on input line 291.
+Package pdftex.def Info: ../../../paper/static/obstacle.png  used on input line 295.
 (pdftex.def)             Requested size: 273.67807pt x 105.4086pt.
-LaTeX Font Info:    Trying to load font information for TS1+ppl on input line 291.
+LaTeX Font Info:    Trying to load font information for TS1+ppl on input line 295.
 (/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/ts1ppl.fd
 File: ts1ppl.fd 2001/06/04 font definitions for TS1/ppl.
 )
-Overfull \hbox (13.40288pt too wide) detected at line 291
+Overfull \hbox (13.40288pt too wide) detected at line 295
 []
  []
 
@@ -738,7 +782,7 @@ Missing character: There is no ; in font nullfont!
 Missing character: There is no ; in font nullfont!
 Header
 Header-Shape: rectangle
-LaTeX Font Info:    Trying to load font information for T1+phv on input line 291.
+LaTeX Font Info:    Trying to load font information for T1+phv on input line 295.
 (/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/t1phv.fd
 File: t1phv.fd 2020/03/25 scalable font definitions for T1/phv.
 )
@@ -762,23 +806,23 @@ Header-Shape: rectangle
 Sidebars
 Drawing Text
 name=existence,column=1,row=0
-<Figures/UDOIllustration/000.png, id=7, 798.73407pt x 797.98125pt>
+<Figures/UDOIllustration/000.png, id=9, 798.73407pt x 797.98125pt>
 File: Figures/UDOIllustration/000.png Graphic file (type png)
 <use Figures/UDOIllustration/000.png>
-Package pdftex.def Info: Figures/UDOIllustration/000.png  used on input line 565.
+Package pdftex.def Info: Figures/UDOIllustration/000.png  used on input line 569.
 (pdftex.def)             Requested size: 91.22757pt x 91.13884pt.
-<Figures/UDOIllustration/002.png, id=8, 801.74532pt x 796.47563pt>
+<Figures/UDOIllustration/002.png, id=10, 801.74532pt x 796.47563pt>
 File: Figures/UDOIllustration/002.png Graphic file (type png)
 <use Figures/UDOIllustration/002.png>
-Package pdftex.def Info: Figures/UDOIllustration/002.png  used on input line 565.
+Package pdftex.def Info: Figures/UDOIllustration/002.png  used on input line 569.
 (pdftex.def)             Requested size: 91.22757pt x 90.62659pt.
-<Figures/UDOIllustration/003.png, id=9, 799.48688pt x 796.47563pt>
+<Figures/UDOIllustration/003.png, id=11, 799.48688pt x 796.47563pt>
 File: Figures/UDOIllustration/003.png Graphic file (type png)
 <use Figures/UDOIllustration/003.png>
-Package pdftex.def Info: Figures/UDOIllustration/003.png  used on input line 565.
+Package pdftex.def Info: Figures/UDOIllustration/003.png  used on input line 569.
 (pdftex.def)             Requested size: 91.22757pt x 90.8818pt.
 
-Overfull \hbox (5.59393pt too wide) in paragraph at lines 565--565
+Overfull \hbox (5.59393pt too wide) in paragraph at lines 569--569
  [] 
  []
 
@@ -799,15 +843,15 @@ Header-Shape: rectangle
 Sidebars
 Drawing Text
 name=stability1,column=1,span=1,below=existence
-<../../../paper/genfigs/convball_VCD+BR.png, id=10, 435.0654pt x 342.5598pt>
+<../../../paper/genfigs/convball_VCD+BR.png, id=12, 435.0654pt x 342.5598pt>
 File: ../../../paper/genfigs/convball_VCD+BR.png Graphic file (type png)
 <use ../../../paper/genfigs/convball_VCD+BR.png>
-Package pdftex.def Info: ../../../paper/genfigs/convball_VCD+BR.png  used on input line 608.
+Package pdftex.def Info: ../../../paper/genfigs/convball_VCD+BR.png  used on input line 612.
 (pdftex.def)             Requested size: 145.96133pt x 114.9268pt.
-<../../../paper/genfigs/jaccball.png, id=11, 431.4519pt x 337.5009pt>
+<../../../paper/genfigs/jaccball.png, id=13, 431.4519pt x 337.5009pt>
 File: ../../../paper/genfigs/jaccball.png Graphic file (type png)
 <use ../../../paper/genfigs/jaccball.png>
-Package pdftex.def Info: ../../../paper/genfigs/jaccball.png  used on input line 608.
+Package pdftex.def Info: ../../../paper/genfigs/jaccball.png  used on input line 612.
 (pdftex.def)             Requested size: 145.96133pt x 114.17715pt.
 Setting Coordinates
 Upper Right
@@ -826,25 +870,25 @@ Header-Shape: rectangle
 Sidebars
 Drawing Text
 name=conclusions1,column=2,row=0
-<../../../paper/static/spiralmesh.png, id=12, 506.89375pt x 506.89375pt>
+<../../../paper/static/spiralmesh.png, id=14, 506.89375pt x 506.89375pt>
 File: ../../../paper/static/spiralmesh.png Graphic file (type png)
 <use ../../../paper/static/spiralmesh.png>
-Package pdftex.def Info: ../../../paper/static/spiralmesh.png  used on input line 633.
+Package pdftex.def Info: ../../../paper/static/spiralmesh.png  used on input line 637.
 (pdftex.def)             Requested size: 145.96133pt x 145.95898pt.
-<../../../paper/static/lshaped.png, id=13, 506.89375pt x 506.89375pt>
+<../../../paper/static/lshaped.png, id=15, 506.89375pt x 506.89375pt>
 File: ../../../paper/static/lshaped.png Graphic file (type png)
 <use ../../../paper/static/lshaped.png>
-Package pdftex.def Info: ../../../paper/static/lshaped.png  used on input line 633.
+Package pdftex.def Info: ../../../paper/static/lshaped.png  used on input line 637.
 (pdftex.def)             Requested size: 145.96133pt x 145.95898pt.
-<../../../paper/static/blistersmesh.png, id=14, 506.89375pt x 506.89375pt>
+<../../../paper/static/blistersmesh.png, id=16, 506.89375pt x 506.89375pt>
 File: ../../../paper/static/blistersmesh.png Graphic file (type png)
 <use ../../../paper/static/blistersmesh.png>
-Package pdftex.def Info: ../../../paper/static/blistersmesh.png  used on input line 633.
+Package pdftex.def Info: ../../../paper/static/blistersmesh.png  used on input line 637.
 (pdftex.def)             Requested size: 145.96133pt x 145.95898pt.
-<../../../paper/static/blisterszoomed.png, id=15, 707.64375pt x 707.64375pt>
+<../../../paper/static/blisterszoomed.png, id=17, 707.64375pt x 707.64375pt>
 File: ../../../paper/static/blisterszoomed.png Graphic file (type png)
 <use ../../../paper/static/blisterszoomed.png>
-Package pdftex.def Info: ../../../paper/static/blisterszoomed.png  used on input line 633.
+Package pdftex.def Info: ../../../paper/static/blisterszoomed.png  used on input line 637.
 (pdftex.def)             Requested size: 145.96133pt x 145.95332pt.
 Setting Coordinates
 Upper Right
@@ -863,15 +907,15 @@ Header-Shape: rectangle
 Sidebars
 Drawing Text
 name=conclusions2, column=2,below=conclusions1
-<../../../paper/genfigs/drmax.png, id=16, 411.2163pt x 303.534pt>
+<../../../paper/genfigs/drmax.png, id=18, 411.2163pt x 303.534pt>
 File: ../../../paper/genfigs/drmax.png Graphic file (type png)
 <use ../../../paper/genfigs/drmax.png>
-Package pdftex.def Info: ../../../paper/genfigs/drmax.png  used on input line 685.
+Package pdftex.def Info: ../../../paper/genfigs/drmax.png  used on input line 689.
 (pdftex.def)             Requested size: 145.96133pt x 107.7391pt.
-<../../../paper/genfigs/herrinf.png, id=17, 412.6617pt x 307.1475pt>
+<../../../paper/genfigs/herrinf.png, id=19, 412.6617pt x 307.1475pt>
 File: ../../../paper/genfigs/herrinf.png Graphic file (type png)
 <use ../../../paper/genfigs/herrinf.png>
-Package pdftex.def Info: ../../../paper/genfigs/herrinf.png  used on input line 685.
+Package pdftex.def Info: ../../../paper/genfigs/herrinf.png  used on input line 689.
 (pdftex.def)             Requested size: 145.96133pt x 108.6374pt.
 Setting Coordinates
 Upper Right
@@ -895,25 +939,25 @@ Drawing Text
 
 [2
 
-{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/base/8r.enc} <./images/ComputerScience_bw_center_transparent.png> <../../../paper/static/obstacle.png> <./Figures/UDOIllustration/000.png> <./Figures/UDOIllustration/002.png> <./Figures/UDOIllustration/003.png> <../../../paper/genfigs/convball_VCD+BR.png> <../../../paper/genfigs/jaccball.png> <../../../paper/static/spiralmesh.png> <../../../paper/static/lshaped.png> <../../../paper/static/blistersmesh.png> <../../../paper/static/blisterszoomed.png> <../../../paper/genfigs/drmax.png> <../../../paper/genfigs/herrinf.png>] [3] (./poster.aux)
+{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/base/8r.enc} <./images/ComputerScience_bw_center_transparent.png> <./images/top_part.png> <./images/caption.png> <../../../paper/static/obstacle.png> <./Figures/UDOIllustration/000.png> <./Figures/UDOIllustration/002.png> <./Figures/UDOIllustration/003.png> <../../../paper/genfigs/convball_VCD+BR.png> <../../../paper/genfigs/jaccball.png> <../../../paper/static/spiralmesh.png> <../../../paper/static/lshaped.png> <../../../paper/static/blistersmesh.png> <../../../paper/static/blisterszoomed.png> <../../../paper/genfigs/drmax.png> <../../../paper/genfigs/herrinf.png>] [3] (./poster.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-04-29>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 18546 strings out of 469590
- 378549 string characters out of 5470346
- 819337 words of memory out of 5000000
- 44989 multiletter control sequences out of 15000+600000
+ 20022 strings out of 469590
+ 399143 string characters out of 5470346
+ 837493 words of memory out of 5000000
+ 46461 multiletter control sequences out of 15000+600000
  680220 words of font info for 133 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  117i,20n,121p,469b,1482s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmex8.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/palatino/uplb8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/palatino/uplr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/palatino/uplri8a.pfb>
-Output written on poster.pdf (2 pages, 1718067 bytes).
+Output written on poster.pdf (2 pages, 1725228 bytes).
 PDF statistics:
- 114 PDF objects out of 1000 (max. 8388607)
+ 118 PDF objects out of 1000 (max. 8388607)
  56 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 78 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 88 words of extra memory for PDF output out of 10000 (max. 10000000)
 

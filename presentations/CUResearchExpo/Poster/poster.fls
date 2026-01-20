@@ -216,6 +216,8 @@ INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/trimspaces/trimspaces.sty
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/trimspaces/trimspaces.sty
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/ragged2e/ragged2e.sty
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/ragged2e/ragged2e.sty
+INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/qrcode/qrcode.sty
+INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/qrcode/qrcode.sty
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/pgf/basiclayer/pgfbaselayers.sty
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/pgf/basiclayer/pgfbaselayers.sty
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/helvet.sty
@@ -279,6 +281,16 @@ INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/arev/uzavm.fd
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/arev/favmr7y.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/arev/favmr7y.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/arev/favmr7y.tfm
+INPUT ./images/top_part.png
+INPUT ./images/top_part.png
+INPUT ./images/top_part.png
+INPUT ./images/top_part.png
+INPUT ./images/top_part.png
+INPUT ./images/caption.png
+INPUT ./images/caption.png
+INPUT ./images/caption.png
+INPUT ./images/caption.png
+INPUT ./images/caption.png
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/adobe/palatino/pplb8t.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/adobe/palatino/pplb8t.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/adobe/palatino/pplr8t.tfm

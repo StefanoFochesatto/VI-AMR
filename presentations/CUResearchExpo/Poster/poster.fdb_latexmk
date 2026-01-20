@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex poster"] 1768871392.32395 "poster.aux" "poster.bbl" "poster" 1768871395.46495 0
+["bibtex poster"] 1768874475.27164 "poster.aux" "poster.bbl" "poster" 1768874771.06315 0
   "./poster.bib" 1768871388.10291 1337 88e4561842eafa61aec7716c75fbe0a8 ""
   "/usr/local/texlive/2025/texmf-dist/bibtex/bst/base/plain.bst" 1292289607 20613 bd3fbfa9f64872b81ac57a0dd2ed855f ""
-  "poster.aux" 1768871395.01983 413 67081b7f426d51b49acd933916ee8318 "pdflatex"
+  "poster.aux" 1768874770.42037 598 84a40fab15c9ce393d1b3ca8eab5810b "pdflatex"
   (generated)
   "poster.bbl"
   "poster.blg"
   (rewritten before read)
-["pdflatex"] 1768871392.5064 "/home/stefano/Desktop/VI-AMR/presentations/CUResearchExpo/Poster/poster.tex" "poster.pdf" "poster" 1768871395.46515 0
+["pdflatex"] 1768874766.58432 "/home/stefano/Desktop/VI-AMR/presentations/CUResearchExpo/Poster/poster.tex" "poster.pdf" "poster" 1768874771.06337 0
   "../../../paper/genfigs/convball_VCD+BR.png" 1768598351.95789 27159 d15096843a22f212e46ce1e3742c971e ""
   "../../../paper/genfigs/drmax.png" 1753731897.29048 36292 2db7ba0c745bfe0933794e4a2ccb2057 ""
   "../../../paper/genfigs/herrinf.png" 1753731897.33048 30711 a103f6da45f20447f387fe8df77dabf5 ""
@@ -17,7 +17,7 @@
   "../../../paper/static/lshaped.png" 1754522184.67595 209451 d351f7e0e54e282bc14c6475e80673f1 ""
   "../../../paper/static/obstacle.png" 1748641977.10363 240817 44f21e1e499f633d833ca987589e06aa ""
   "../../../paper/static/spiralmesh.png" 1753731882.66235 113888 e98347283cf12a0edbb96cf645e41568 ""
-  "/home/stefano/Desktop/VI-AMR/presentations/CUResearchExpo/Poster/poster.tex" 1768871365.6902 23013 811a9134695a47a0949bb4cbd059486f ""
+  "/home/stefano/Desktop/VI-AMR/presentations/CUResearchExpo/Poster/poster.tex" 1768874766.01803 23103 f016f728ee26a3e2e027234124fcc912 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/adobe/helvetic/phvb8r.tfm" 1136768653 4484 b828043cbd581d289d955903c1339981 ""
@@ -217,6 +217,7 @@
   "/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/t1ppl.fd" 1137110629 774 5747d3f33ec2f7c4881c94e931a130b1 ""
   "/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/times.sty" 1586716065 856 8e0e5c8cca7b18e0400f97f5a2b90a99 ""
   "/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/ts1ppl.fd" 1137110629 619 35f1cf70bf09b6e2d22ee0902cfb1a8b ""
+  "/usr/local/texlive/2025/texmf-dist/tex/latex/qrcode/qrcode.sty" 1421364289 97259 c0b10c086d1f3ce9a4d6f360d059d5ec ""
   "/usr/local/texlive/2025/texmf-dist/tex/latex/ragged2e/ragged2e.sty" 1687466457 10085 3dececaeed388e31285c366e124c0c4e ""
   "/usr/local/texlive/2025/texmf-dist/tex/latex/relsize/relsize.sty" 1369619135 15542 c4cc3164fe24f2f2fbb06eb71b1da4c4 ""
   "/usr/local/texlive/2025/texmf-dist/tex/latex/setspace/setspace.sty" 1670275497 22490 8cac309b79a4c53a4ffce4b1b07aead0 ""
@@ -236,9 +237,11 @@
   "Figures/UDOIllustration/003.png" 1768514362.15414 407956 4df3097391ecb4a96c3e5e572b2f3d87 ""
   "baposter.cls" 1768375112 43604 5238bcae4d28782df3b344f85d095d6c ""
   "images/ComputerScience_bw_center_transparent.png" 1768365159.14333 47616 51111479d2b1b6a5edd09c8d678d7796 ""
-  "poster.aux" 1768871395.01983 413 67081b7f426d51b49acd933916ee8318 "pdflatex"
-  "poster.bbl" 1768871392.49886 996 32ce6e157c1de3e26f5ae790dd1d60c2 "bibtex poster"
-  "poster.tex" 1768871365.6902 23013 811a9134695a47a0949bb4cbd059486f ""
+  "images/caption.png" 1768874261.71126 4238 f25f1b8f2c47479af7418d434876d1ab ""
+  "images/top_part.png" 1768874341.70548 2608 6b07a4373f09bfa91e29e3282fd5168e ""
+  "poster.aux" 1768874770.42037 598 84a40fab15c9ce393d1b3ca8eab5810b "pdflatex"
+  "poster.bbl" 1768874475.44756 996 32ce6e157c1de3e26f5ae790dd1d60c2 "bibtex poster"
+  "poster.tex" 1768874766.01803 23103 f016f728ee26a3e2e027234124fcc912 ""
   (generated)
   "poster.aux"
   "poster.log"
