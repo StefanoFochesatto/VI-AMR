@@ -1,0 +1,28 @@
+\begin{thebibliography}{1}
+
+\bibitem{Bueler2016}
+E.~Bueler.
+\newblock Stable finite volume element schemes for the shallow ice approximation.
+\newblock {\em J. Glaciol.}, 62(232):230--242, 2016.
+
+\bibitem{Bueler2021}
+Ed~Bueler.
+\newblock {\em {PETSc} for {Partial} {Differential} {Equations}: {Numerical} {Solutions} in {C} and {Python}}.
+\newblock Number~31 in Software, {Environments}, and {Tools}. SIAM Press, Philadelphia, 2021.
+
+\bibitem{GraeserKornhuber2009}
+Carsten Gr\"aser and Ralf Kornhuber.
+\newblock Multigrid methods for obstacle problems.
+\newblock {\em Journal of Computational Mathematics}, 27(1):1--44, 2009.
+
+\bibitem{KinderlehrerStampacchia1980}
+D.~Kinderlehrer and G.~Stampacchia.
+\newblock {\em An {I}ntroduction to {V}ariational {I}nequalities and their {A}pplications}.
+\newblock Academic Press, New York, 1980.
+
+\bibitem{LevandowskyWinter1971}
+M.~Levandowsky and D.~Winter.
+\newblock Distance between sets.
+\newblock {\em Nature}, 234:34--35, 1971.
+
+\end{thebibliography}
