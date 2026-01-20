@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex poster"] 1768874475.27164 "poster.aux" "poster.bbl" "poster" 1768881107.11012 0
-  "./poster.bib" 1768871388.10291 1337 88e4561842eafa61aec7716c75fbe0a8 ""
+["bibtex poster"] 1768883236.4534 "poster.aux" "poster.bbl" "poster" 1768883236.70535 0
+  "./poster.bib" 1768883236.14479 1339 ce327f086123ff2d6ab0446ed6429865 ""
   "/usr/local/texlive/2025/texmf-dist/bibtex/bst/base/plain.bst" 1292289607 20613 bd3fbfa9f64872b81ac57a0dd2ed855f ""
   "poster.aux" 1768881106.52567 598 84a40fab15c9ce393d1b3ca8eab5810b "pdflatex"
   (generated)
   "poster.bbl"
   "poster.blg"
   (rewritten before read)
-["pdflatex"] 1768881103.25243 "/home/stefano/Desktop/VI-AMR/presentations/CUResearchExpo/Poster/poster.tex" "poster.pdf" "poster" 1768881107.11036 0
+["pdflatex"] 1768881103.25243 "/home/stefano/Desktop/VI-AMR/presentations/CUResearchExpo/Poster/poster.tex" "poster.pdf" "poster" 1768883236.70551 0
   "../../../paper/genfigs/convball_VCD+BR.png" 1768598351.95789 27159 d15096843a22f212e46ce1e3742c971e ""
   "../../../paper/genfigs/drmax.png" 1753731897.29048 36292 2db7ba0c745bfe0933794e4a2ccb2057 ""
   "../../../paper/genfigs/herrinf.png" 1753731897.33048 30711 a103f6da45f20447f387fe8df77dabf5 ""
@@ -240,7 +240,7 @@
   "images/caption.png" 1768874261.71126 4238 f25f1b8f2c47479af7418d434876d1ab ""
   "images/top_part.png" 1768874341.70548 2608 6b07a4373f09bfa91e29e3282fd5168e ""
   "poster.aux" 1768881106.52567 598 84a40fab15c9ce393d1b3ca8eab5810b "pdflatex"
-  "poster.bbl" 1768874475.44756 996 32ce6e157c1de3e26f5ae790dd1d60c2 "bibtex poster"
+  "poster.bbl" 1768883236.68691 996 32ce6e157c1de3e26f5ae790dd1d60c2 "bibtex poster"
   "poster.tex" 1768881102.50658 23111 72704fb346e497c3b24ef551641f793e ""
   (generated)
   "poster.aux"
