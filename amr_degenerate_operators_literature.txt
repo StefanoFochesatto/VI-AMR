@@ -1,0 +1,135 @@
+QUESTION
+
+Search for papers which apply adaptive mesh refinement to variational
+inequalities and obstacle problems, but via methods that should work for
+degenerate elliptic operators, e.g. porous media equations and the glacier
+geometry problem; the real question is whether the existing a posteriori
+estimators extend beyond the uniformly-elliptic classical obstacle problem
+which is only a model problem.
+
+
+ANSWER
+
+The classical theory (uniformly elliptic, potential operators)
+----------------------------------------------------------------
+- Chen & Nochetto (2000), "Residual type a posteriori error estimates for
+  elliptic obstacle problems," Numer. Math. 84 -- the original BR-style
+  residual estimator, built on a positivity-preserving interpolant. This is
+  what VIAMR's brinactivemark is descended from.
+- Nochetto, Siebert & Veeser (2003), pointwise/localized a posteriori
+  control (Numer. Math.) -- the NSV method.
+- Braess, "A posteriori error estimators for obstacle problems -- another
+  look" -- a survey making explicit what these proofs actually lean on:
+  coercivity/continuity constants of a linear, self-adjoint bilinear form,
+  plus a complementarity/duality-gap argument that needs the operator to be
+  a potential (gradient of a convex functional).
+
+Both load-bearing assumptions -- linearity/uniform ellipticity and
+potentiality -- are exactly what fail for the porous.py operator and the
+tilted SIA operator in glacier/METHOD.md.
+
+Attempts at extension, and where each one actually stops
+----------------------------------------------------------------
+1. p-Laplacian PDE, no obstacle (Liu & Yan 2001/2002; Ebmeyer & Liu 2005,
+   "quasi-norm" a priori/a posteriori theory) -- shows that naively reusing
+   an energy-norm residual estimator on a degenerate operator gives
+   estimates that are not equivalent to the true error as p moves away from
+   2; a quasi-norm (weighted by |grad u|^(p-2)-type factors) is needed to
+   restore reliability/efficiency. This is the closest theoretical
+   explanation for what porous.py's own comment already flags: "large BR
+   eta values occur near the free boundary... for the ordinary Laplacian
+   that would not be true." That is the quasi-norm mismatch showing up
+   numerically.
+
+2. p-Laplacian obstacle problem -- Banz & Stephan, "Higher order FEM for
+   the obstacle problem of the p-Laplacian -- a variational inequality
+   approach," Comput. Math. Appl. 76 (2018) 1639-1660, plus their earlier
+   hp-IPDG estimator papers. This is the one genuine precedent for
+   "BR/Chen-Nochetto-style estimator + obstacle constraint + degenerate
+   operator," for p in (1, infinity). Still a potential operator (pure
+   p-Laplacian, self-adjoint), so it doesn't touch the non-potentiality
+   problem below.
+
+3. Non-potential monotone operators -- Bobkov & Pastukhova (2025), "A
+   posteriori estimates for problems with monotone operators," Sbornik:
+   Mathematics (arXiv:2504.09931). Derives a posteriori estimates for VIs
+   with monotone but non-potential operators, specifically avoiding duality
+   theory, demonstrated on anisotropic/polyharmonic/fractional p-Laplacians.
+   This matters because glacier/METHOD.md states outright that the tilted
+   SIA operator (with Z = Phi(u)) is not the first-order condition for any
+   minimization -- i.e., non-potential -- which is precisely the case
+   Braess-style duality arguments cannot reach. Likely the highest-value
+   read of the set.
+
+4. Steady porous medium equation (the porous.py case,
+   -div(u^m grad u) = f) with an obstacle constraint -- no dedicated paper
+   found. What exists (Nochetto & Verdi, Chen & Nochetto on the two-phase
+   Stefan problem) is a posteriori theory for the parabolic PME/Stefan
+   free-boundary problem, a different setting (time-regularized degeneracy,
+   not a steady obstacle VI). This looks like a genuine gap, consistent
+   with porous.py's own comment flagging the naive reuse as an open
+   question rather than citing a justification.
+
+5. Glacier/SIA specifically -- Jouvet & Bueler (2012) establish
+   well-posedness of the obstacle-problem formulation but derive no a
+   posteriori estimator. The ISSM ice-sheet AMR paper (Ice Sheet System
+   Model, GMD 2019) uses a Zienkiewicz-Zhu gradient-recovery estimator
+   around the grounding line purely heuristically, with no proof it is
+   reliable/efficient for this degenerate, non-potential operator -- same
+   epistemic status as the GR estimator on porous.py/glacier.
+
+Bottom line on "does the theory extend"
+----------------------------------------------------------------
+- For a single power-law degeneracy with a potential structure (plain
+  p-Laplacian obstacle problem): partially yes, via Banz-Stephan, but even
+  there the quasi-norm literature (item 1) suggests the naive energy-residual
+  estimator is the wrong norm to trust as degeneracy strengthens --
+  reliability/efficiency constants are not shown to stay bounded uniformly
+  in p or gamma.
+- For non-potential operators (tilted/doubly-degenerate SIA): essentially
+  open. Bobkov-Pastukhova (2025) is the first plausible general framework,
+  but nobody has applied it to a doubly-degenerate, solution-dependent-tilt
+  operator like SIA.
+- For the plain porous-medium obstacle problem (porous.py): no dedicated a
+  posteriori theory found at all -- BR is being applied by analogy, and the
+  inline comment already flags the qualitative symptom (anomalously large
+  eta near the free boundary) that quasi-norm theory would predict.
+
+So the honest framing: BR/NSV/GR as currently coded are heuristic
+extensions, empirically validated (Jaccard agreement, convergence plots)
+but not backed by reliability/efficiency proofs once uniform ellipticity
+and potentiality are left behind -- and the Bobkov-Pastukhova and
+Banz-Stephan papers are the two most promising anchors for building or
+citing an actual theoretical bridge rather than relying purely on
+numerical evidence.
+
+Key references
+----------------------------------------------------------------
+- Chen, Z. & Nochetto, R.H. (2000). Residual type a posteriori error
+  estimates for elliptic obstacle problems. Numer. Math. 84, 527-548.
+- Nochetto, R.H., Siebert, K.G. & Veeser, A. (2003). Pointwise a posteriori
+  error control for elliptic obstacle problems. Numer. Math.
+- Braess, D. A posteriori error estimators for obstacle problems -- another
+  look. Numer. Math.
+- Liu, W.B. & Yan, N.N. (2001, 2002). Quasi-norm a priori/a posteriori
+  error estimates for the (nonconforming) p-Laplacian. Numer. Math. 89;
+  SIAM J. Numer. Anal. 39, 40.
+- Ebmeyer, C. & Liu, W.B. (2005). Quasi-norm interpolation error estimates
+  for the piecewise linear finite element approximation of p-Laplacian
+  problems. Numer. Math. 100, 233-258.
+- Banz, L. & Stephan, E.P. (2018). Higher order FEM for the obstacle
+  problem of the p-Laplacian -- a variational inequality approach. Comput.
+  Math. Appl. 76, 1639-1660.
+- Bobkov, V. & Pastukhova, S. (2025/2026). A posteriori estimates for
+  problems with monotone operators. Sbornik: Mathematics. arXiv:2504.09931.
+- Jouvet, G. & Bueler, E. (2012). Steady, shallow ice sheets as obstacle
+  problems: well-posedness and finite element approximation. SIAM J. Appl.
+  Math. 72(4), 1292-1314.
+- Nochetto, R.H. & Verdi, C. Error estimates for FE approximation of
+  degenerate parabolic problems (porous medium equation, two-phase Stefan
+  problem).
+- Implementation and performance of adaptive mesh refinement in the Ice
+  Sheet System Model (ISSM v4.14). GMD 12, 215-235 (2019).
+- Fochesatto, G.S. Adaptive Mesh Refinement for Variational Inequalities.
+  arXiv:2502.14206 (the VIAMR paper itself -- describes VCES/UDO methods
+  but does not address a posteriori theory for degenerate operators).
