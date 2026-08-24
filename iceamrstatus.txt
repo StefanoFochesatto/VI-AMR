@@ -1,0 +1,79 @@
+Ed's question:  search for citations to AMR papers applied to ice     
+  sheet and glacier problems.  there will be stuff from Dan martin (LBL, Chombo).  I am looking for 
+  usage of variational inequality or obstacle ideas in this scope
+
+Answer, claude opus 5:
+
+AMR in ice-sheet/glacier modeling: the corpus
+
+  Chombo / BISICLES (Dan Martin, LBNL) — block-structured finite-volume AMR:
+  - Cornford, Martin, Graves, Ranken, Le Brocq, Gladstone, Payne, Ng, Lipscomb, Adaptive mesh, 
+    finite volume modeling of marine ice sheets, J. Comput. Phys. 232 (2013) 529–549,
+    10.1016/j.jcp.2012.08.037 — 267 citations (S2) / 217 (Crossref). The foundational one.
+  - Cornford, Martin, Lee, Payne, Ng, Adaptive mesh refinement versus subgrid friction interpolation
+    in simulations of Antarctic ice dynamics, Ann. Glaciol. 57(73) (2016) 1–9, 10.1017/aog.2016.13.
+  - Felden, Martin, Ng, SUHMO: an adaptive mesh refinement SUbglacial Hydrology MOdel v1.0, GMD 16
+    (2023) 407–425, 10.5194/gmd-16-407-2023 — same Chombo AMR machinery applied to subglacial
+    hydrology.
+
+  ISSM (finite element, unstructured):
+  - dos Santos, Morlighem, Seroussi, Devloo, Simões, GMD 12 (2019) 215–232, 10.5194/gmd-12-215-2019
+    — the ZZ paper you have. Also the underlying thesis: T. Dias dos Santos, Adaptive mesh 
+    refinement applied to marine ice sheet simulation, Unicamp 2019,
+    10.47749/t/unicamp.2019.1090982.
+
+  Metric-based anisotropic adaptation (Elmer/Ice, Firedrake):
+  - Gillet-Chaulet et al., Greenland ice sheet contribution to sea-level rise from a new-generation 
+    ice-sheet model, TC 6 (2012) 1561–1576, 10.5194/tc-6-1561-2012.
+  - Dundovic, Wallwork, Kramer, Gillet-Chaulet, Hock, Piggott, Anisotropic metric-based mesh 
+    adaptation for ice flow modelling in Firedrake, GMD 18 (2025) 4023–4044,
+    10.5194/gmd-18-4023-2025. I checked this one: explicitly feature-based, not goal-oriented, built
+    on Hessian interpolation-error theory (Loseille–Alauzet continuous metric), with sensors on H,
+    u, and τ_b — τ_b giving the finest resolution at the grounding line. No a posteriori estimator,
+    no VI.
+
+  The VI/obstacle strand — and it barely touches AMR
+
+  I pulled all 276 unique citing papers of the ISSM-AMR and BISICLES papers and keyword-filtered for
+  variational inequalit|obstacle problem|free.boundary|complementarit|contact 
+  problem|nonsmooth|semismooth|active set|monotone multigrid. Two hits, both incidental —
+  Gagliardini et al.'s Elmer/Ice description paper and a Cornford-adjacent modelling paper, each
+  merely mentioning the grounding line as a "contact problem." The AMR-in-ice literature does not
+  use VI framing at all.
+
+  The VI/obstacle glaciology literature is a separate, largely non-overlapping set:
+  - Calvo, Díaz, Durany, Schiavi, Vázquez, On a doubly nonlinear parabolic obstacle problem 
+    modelling ice sheet dynamics, SIAM J. Appl. Math. 63(2) (2003) 683–707,
+    10.1137/S0036139901385345.
+  - Jouvet & Bueler, Steady, shallow ice sheets as obstacle problems, SIAM J. Appl. Math. 72(4)
+    (2012) 1292–1314, 10.1137/110856654.
+  - Jouvet, Bueler, Gräser, Kornhuber, A nonsmooth Newton multigrid method for a hybrid, shallow 
+    model of marine ice sheets, Contemp. Math. 586 (2013) 197–205, 10.1090/conm/586/11657.
+  - Schoof, The effect of cavitation on glacier sliding, Proc. R. Soc. A 461 (2005) 609–627,
+    10.1098/rspa.2004.1350.
+  - Stubblefield, Spiegelman, Creyts, Variational formulation of marine ice-sheet and 
+    subglacial-lake grounding-line dynamics, JFM 919 (2021) A23, 10.1017/jfm.2021.394.
+  - Bueler, Conservation laws for free-boundary fluid layers, SIAM J. Appl. Math. 81 (2021)
+    2007–2032, 10.1137/20m135217x; Bueler & Farrell, SISC 46 (2024) A2421–A2444, 10.1137/23M1594200.
+
+  The one paper in the intersection
+
+  Jouvet & Gräser, An adaptive Newton multigrid method for a model of marine ice sheets, J. Comput. 
+  Phys. 252 (2013) 419–437, 10.1016/j.jcp.2013.06.032 (14 Crossref citations). Per-timestep it
+  solves a generalized p-Laplace minimization with obstacle (SIA) plus a vectorial p-Laplace (SSA)
+  and a transport equation; the Newton multigrid converges mesh-independently and "insensitive to
+  local refinements," which is what makes their adaptive refinement strategy efficient. So:
+  genuinely VI + genuinely adaptive, from the Kornhuber/TNNMG lineage. Caveat I could not close: I
+  could not verify what drives their refinement — the FU Berlin repository copy is behind an Anubis
+  block and the ScienceDirect abstract doesn't say. That needs the PDF.
+
+  Its 18 citing papers are also where the error-estimation-adjacent glaciology sits: Jouvet,
+  Mechanical error estimators for shallow ice flow models, JFM 807 (2016) 40–61,
+  10.1017/jfm.2016.593 (residual-technique a posteriori estimators, but for model error between
+  Stokes/Blatter/SIA/SSA, not discretization error under a constraint), plus a 2015 A posteriori 
+  estimator for the accuracy of the shallow shelf approximation, and both your Bueler papers.
+
+  Bottom line: across this whole corpus, refinement in glaciological AMR is chosen either
+  geometrically (distance to grounding line), by feature/Hessian sensors, or by ZZ gradient recovery
+  — never by an estimator that knows about the constraint. Nobody has combined a VI a posteriori
+  estimator with ice-sheet AMR. Jouvet–Gräser 2013 is the closest prior art and is 13 years old.

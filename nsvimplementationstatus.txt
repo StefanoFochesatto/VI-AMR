@@ -1,0 +1,191 @@
+************
+
+Ed question:
+  is there anywhere on the web where the NSV03 estimator is implemented?      
+  (NSV03 = ~/Desktop/NochettoSiebertVeeser2003.pdf)?  the same authors have a 2005 paper ... is     
+  there an implementation anywhere?                                                                 
+
+claude opus 5 Answer:
+
+● Read both PDFs to pin down what to hunt for:
+
+  - NSV03 = Pointwise a posteriori error control for elliptic obstacle problems, Numer. Math. 95
+    (2003) 163–195. Max-norm upper/lower bounds, P1 with the constraint enforced at nodes only (so
+    χ_h = I_hχ, nonconforming), localization to the non-contact set.
+  - NSV05 = Fully localized a posteriori error estimators and barrier sets for contact problems,
+    SINUM 42(5) (2005) 2118–2135. Pointwise estimators that vanish in the full-contact set, plus
+    barrier sets for the free boundary under nondegeneracy f + Δχ ≤ −λ < 0, giving the strip of
+    width r_h ≈ √(𝓔_h/λ) containing 𝓕.
+
+  NSV03: exactly one implementation on the web — and it's yours
+
+  StefanoFochesatto/viamr ("An adaptive mesh refinement library for variational inequalities built
+  with Firedrake", last push 2026-08-24):
+
+  - viamr/viamr.py → nsvmark() (~line 706 ff.), documented as "mark using the practical estimator
+    from NSV03". It implements formula (7.1): the R_∞ residual from (3.7), the σ_h discrete residual
+    per §2.1 p.169 including the boundary-flux correction, the η_d mass-lumping/quadrature term
+    from §6.3/§7.1 localized to Λ_h, constants C₀ = 0.1 and C₁ = 0.01 as in NSV03, two-pass marking
+    (η_∞ then η_d, union) with an etadratio parameter standing in for NSV03's unquantified "provided
+    quadrature dominates", and the DG7 trick from pp. 188–189.
+  - examples/nsv.py reproduces NSV03 §7.2 "Constant Obstacle" in 2D/3D, comparing UDOBR against NSV,
+    with sup-norm errors and effectivity indices — solved via PETSc snes_type vinewtonrsls.
+  - box-extend-nsv/ is a companion writeup.
+
+  Since bueler/amr-biblio also showed up in the same searches, I assume none of that is news to you
+  — but it is the honest answer to "anywhere on the web": that repo is the only place the NSV03
+  estimator is actually coded.
+
+  Nearest independent thing: DOpElib, and it's a different estimator
+
+  winnifried/dopelib, Examples/PDE/StatPDE/Example16 — obstacle problem on (−1,1)² with the χ and f
+  = −5 "inspired by [Example 7.5] NochettoSiebertVeeser:2003", so the test case is NSV03's. But the
+  estimator is residual-based from Walloth (2017), citing Moon–Nochetto–von Petersdorff–Zhang (2007)
+  and Krause–Veeser–Walloth (2015). It does carry the full-contact-node localization idea (it
+  precomputes, per vertex, whether u = χ on the whole patch ω_i, plus |ω_i| to scale the
+  complementarity residual) — so it's the NSV05 idea in the Walloth lineage, not the NSV
+  pointwise/max-norm estimator. deal.II's own step-41 solves the obstacle problem but refines with a
+  plain Kelly estimator.
+
+  NSV05: nothing, anywhere
+
+  Zero code hits for barrier sets / fully-localized obstacle estimators — GitHub code search on
+  "barrier sets" contact problems Nochetto, Siebert Veeser 2005 barrier estimator obstacle both
+  return 0, and web search turns up only papers citing it. The free-boundary strip {0 < dist(x, {u_h
+  > χ_h + 𝓔_h}) < r_h} appears to have never been coded in public. Note also that the DUNE
+  estimators from last turn (ZouKornhuberSignoriniEstimator, HierarchicContactEstimator) are
+  hierarchical energy-norm estimators — a different branch entirely. So the whole
+  max-norm/barrier-set line has no public implementation beyond viamr's nsvmark().
+
+  Two limits on that conclusion: GitHub code search only indexes default branches of public repos,
+  and it won't see thesis supplements, personal-page MATLAB tarballs, or journal supplementary zips.
+  Given NSV's own simulations were in-house ALBERTA code that was never released, a private-page
+  copy is the main residual possibility — Veeser's Milano page or Nochetto's UMD free-boundary page
+  would be where to look, or just ask Veeser directly.
+
+  Sources: NSV03 (Numer. Math.) · viamr · DOpElib Example16 · Nochetto free-boundary abstracts
+
+
+***************
+
+Ed asks for info on "Walloth (2017), citing Moon–Nochetto–von Petersdorff–Zhang (2007)
+  and Krause–Veeser–Walloth (2015)" in the above.
+
+Answer:
+
+Here are the three, verified against Crossref, plus the surrounding Walloth papers where the
+  actual content lives (the 2017 item is only a 2-page conference abstract).
+
+  The three DOpElib cites
+
+  1. Walloth 2017 — the basis DOpElib names for its obstacle estimator, and it's a GAMM extended
+  abstract, not a full paper:
+
+  ▎ M. Walloth, Localized and efficient estimators for obstacle problems in the context of standard 
+  ▎ residual estimators, PAMM (Proc. Appl. Math. Mech.) 17(1) (2017), 767–768. DOI 
+  ▎ 10.1002/pamm.201710351.
+
+  2. Krause–Veeser–Walloth 2015 — the substantive reliability/efficiency result behind it:
+
+  ▎ R. Krause, A. Veeser, M. Walloth, An efficient and reliable residual-type a posteriori error 
+  ▎ estimator for the Signorini problem, Numer. Math. 130(1) (2015), 151–197. DOI 
+  ▎ 10.1007/s00211-014-0655-8 (online 8 July 2014).
+
+  ⚠️  DOpElib's lit.bib:351-358 is malformed here — it has number = {151--197} with no pages field
+  and no volume/issue split. Don't copy it into ab.bib as-is.
+
+  3. Moon–Nochetto–von Petersdorff–Zhang 2007 — the "original idea for parabolic VIs", and your NSV
+  bridge:
+
+  ▎ K.-S. Moon, R. H. Nochetto, T. von Petersdorff, C.-S. Zhang, A posteriori error analysis for 
+  ▎ parabolic variational inequalities, ESAIM: M2AN 41(3) (2007), 485–511. DOI 10.1051/m2an:2007029.
+  ▎ Open access at Numdam.
+
+  Motivated by American basket-option pricing: parabolic VI on bounded polyhedral domains with
+  continuous piecewise smooth obstacles, P1 in space + backward Euler in time, a posteriori upper
+  bound in an L² space-time Sobolev norm. The localization statement is the parabolic descendant of
+  NSV03's: "the size of the elliptic residual is only relevant in the approximate non-contact 
+  region, and the approximability of the obstacle is only relevant in the approximate contact 
+  region." Lower bounds for the space indicators in the non-contact region and for the time
+  estimator. Nochetto being a co-author is what makes this the actual link from NSV03 into the
+  Walloth line.
+
+  Where the content really is (Walloth, TU Darmstadt)
+
+  The PAMM note's full treatments — note the recurring "no contributions from the nonlinearity in
+  the interior of the actual contact zone", which is NSV05's full-contact localization carried into
+  the energy-norm residual setting rather than NSV's max norm:
+
+  - M. Walloth, A reliable, efficient and localized error estimator for a discontinuous Galerkin 
+    method for the Signorini problem, Appl. Numer. Math. 135 (2019), 276–296. DOI
+    10.1016/j.apnum.2018.09.002. — 2D/3D, arbitrary gap functions; error notion measures
+    displacements plus a quantity tied to contact stresses and the actual contact zone; upper and
+    lower bounds; "no contributions related to the non-linearity in the interior of the actual
+    contact zone", while the critical region between actual and non-actual contact zones gets well
+    refined.
+  - M. Walloth, Residual-type a posteriori error estimator for a quasi-static Signorini contact 
+    problem, IMA J. Numer. Anal. 40(3) (2020), 1937–1971. DOI 10.1093/imanum/drz023. — nondiscrete
+    gap functions; estimator splits into temporal and spatial contributions for time-step and mesh
+    adaptation.
+  - M. Walloth, Residual-type a posteriori estimators for a singularly perturbed reaction-diffusion 
+    variational inequality — reliability, efficiency and robustness, arXiv:1812.01957.
+  - Phase-field fracture with irreversibility (a VI in disguise): M. Walloth & W. Wollner, SISC 
+    44(3) (2022), B479–B505, DOI 10.1137/21m1427437; Mang–Walloth–Wick–Wollner, GAMM-Mitt. 43(1)
+    (2020), DOI 10.1002/gamm.202000003. This is why the estimator ended up in DOpElib — Wollner is a
+    DOpElib author.
+
+  How DOpElib actually implements it
+
+  From Example16/content.tex: the estimator needs two nonlocal quantities per vertex, so it does one
+  extra global integration pass. ObstacleResidualErrorContainer::NPrecomputedNodalValues returns 1;
+  |ω_i| = ∫_Ω φ_i dx comes from a nodal vector (used to scale the complementarity residual), and
+  the full-contact indicator (u = χ on all of ω_i) is built by adding 1 to a nodal vector whenever a
+  vertex's support sits in a full-contact element, then rescaling by GetNNeighbourElementsOfVertex.
+  Both are then read as aux_error_0 inside the Strong*Residual terms. The VI itself is handled by a
+  Lagrange multiplier in the Q1 dual basis with the max(0, λ−c(u−χ)) complementarity function and
+  Gauss–Lobatto quadrature.
+
+  BibTeX for ab.bib:
+
+  bibtex
+  @article{Walloth2017,
+    author  = {M. Walloth},
+    title   = {Localized and efficient estimators for obstacle problems in the
+               context of standard residual estimators},
+    journal = {PAMM},
+    volume  = {17},  number = {1},  pages = {767--768},  year = {2017},
+    doi     = {10.1002/pamm.201710351}
+  }
+  @article{KrauseVeeserWalloth2015,
+    author  = {R. Krause and A. Veeser and M. Walloth},
+    title   = {An efficient and reliable residual-type a posteriori error
+               estimator for the {S}ignorini problem},
+    journal = {Numer. Math.},
+    volume  = {130},  number = {1},  pages = {151--197},  year = {2015},
+    doi     = {10.1007/s00211-014-0655-8}
+  }
+  @article{MoonNochettoPetersdorffZhang2007,
+    author  = {K.-S. Moon and R. H. Nochetto and T. von Petersdorff and C.-S. Zhang},
+    title   = {A posteriori error analysis for parabolic variational inequalities},
+    journal = {ESAIM: Math. Model. Numer. Anal.},
+    volume  = {41},  number = {3},  pages = {485--511},  year = {2007},
+    doi     = {10.1051/m2an:2007029}
+  }
+  @article{Walloth2019,
+    author  = {M. Walloth},
+    title   = {A reliable, efficient and localized error estimator for a
+               discontinuous {G}alerkin method for the {S}ignorini problem},
+    journal = {Appl. Numer. Math.},
+    volume  = {135},  pages = {276--296},  year = {2019},
+    doi     = {10.1016/j.apnum.2018.09.002}
+  }
+  @article{Walloth2020,
+    author  = {M. Walloth},
+    title   = {Residual-type a posteriori error estimator for a quasi-static
+               {S}ignorini contact problem},
+    journal = {IMA J. Numer. Anal.},
+    volume  = {40},  number = {3},  pages = {1937--1971},  year = {2020},
+    doi     = {10.1093/imanum/drz023}
+  }
+
+
