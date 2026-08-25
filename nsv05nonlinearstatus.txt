@@ -1,0 +1,119 @@
+Ed asks: track down references of NochettoSiebertVeeser2005.pdf (current dir) and see which                
+  nonlinear-operator VIs (if any) it has been extended to
+
+Answer from Claude opus 5:
+
+● What the paper is
+
+  NochettoSiebertVeeser2005.pdf = Nochetto, Siebert & Veeser, Fully Localized A Posteriori Error 
+  Estimators and Barrier Sets for Contact Problems, SIAM J. Numer. Anal. 42(5):2118–2135, 2005 (DOI
+  10.1137/S0036142903424404). Pointwise (max-norm) a posteriori estimators for the Laplacian
+  obstacle problem, vanishing entirely on the full-contact set, plus a posteriori barrier sets for
+  the free boundary under a nondegeneracy condition.
+
+  Citation harvest: 71 citing works (Semantic Scholar), 57 (OpenAlex). I scanned all of them plus
+  the sibling paper's 116 (NSV 2003, Numer. Math. 95).
+
+  Answer up front
+
+  No one has carried it to a genuinely nonlinear-operator VI — no p-Laplacian, no
+  porous-medium/degenerate-diffusion, no Glen-type obstacle problem gets pointwise estimators or
+  barrier sets. The descendant tree extends the constraint set and the discretization, not the
+  operator.
+
+  1. Signorini / contact-type extensions (constraint changes, operator stays linear)
+
+  This is where essentially the whole citation tree lives — Laplacian or linear elasticity, with the
+  constraint moved to the boundary or between bodies:
+
+  - Hild & Nicaise 2005 (Numer. Math.), residual estimators for Signorini — the earliest follow-on.
+  - Krause, Veeser & Walloth 2015 (Numer. Math.) — efficient/reliable residual estimator for
+    Signorini, the direct localization descendant. (you have this one: KrauseVeeserWalloth2015.pdf)
+  - Walloth 2019 (IMA J. Numer. Anal.) quasi-static Signorini; Walloth 2019 (Appl. Numer. Math.) DG
+    Signorini; Walloth 2017 PAMM (you have Malloth2017.pdf).
+  - Khandelwal & Porwal 2022 (J. Sci. Comput.) — pointwise a posteriori for Signorini; the most
+    literal transplant of the max-norm/barrier machinery to a Signorini constraint. Continued by
+    Khandelwal, Porwal & Wadhawan 2024 (quadratic FEM, sup-norm), Garg, Porwal & Singla 2026
+    (nonconforming, sup-norm).
+  - Dios, Gudi & Porwal 2022 — pointwise DG control for unilateral contact.
+  - Wohlmuth 2007 (J. Sci. Comput.) two-body contact on non-matching meshes; Weiss & Wohlmuth 2010
+    (SISC); Wohlmuth 2011 Acta Numerica survey.
+  - Hild & Lleras 2009 (SINUM) — Coulomb friction.
+  - Brenner, Gedicke & Sung 2015 (SINUM) — Kirchhoff plate obstacle: a different (biharmonic)
+    operator, but still linear.
+  - Walloth & Wollner 2021 (SISC) — phase-field fracture irreversibility constraint.
+
+  Plus a large discretization branch on the same model problem: quadratic FEM, IPDG, nonconforming,
+  weak Galerkin, surface FEM, hierarchical estimators (Kornhuber & Zou), convergence of AFEM for
+  obstacle problems (Braess–Carstensen–Hoppe, Siebert–Veeser, Page–Praetorius, Carstensen–Hu).
+
+  2. Nonlinear-operator directions — how far they actually got
+
+  These are the only citing works that touch the operator, and each stops short of a
+  nonlinear-operator VI:
+
+  Work: Nochetto, Schmidt & Siebert 2006 (Numer. Math. 104) Pointwise a posteriori error estimates 
+  for monotone semi-linear equations  
+  Operator: −Δu + f(u), monotone f
+  Constraint?: no — equation only
+  ────────────────────────────────────────
+  Work: Demlow 2006 (SINUM) localized pointwise gradient estimates, 2nd-order quasilinear      
+  Operator: quasilinear
+  Constraint?: no
+  ────────────────────────────────────────                      
+  Work: Demlow & Kopteva 2015 (Numer. Math.) max-norm, ε-robust        
+  Operator: semilinear reaction–diffusion                           
+  Constraint?: no
+  ────────────────────────────────────────
+  Work: Walloth 2018 singularly perturbed reaction–diffusion VI        
+  Operator: linear + reaction, ε-robust
+  Constraint?: yes
+  ────────────────────────────────────────                             
+  Work: Borthagaray, Nochetto & Salgado 2024 monotone two-scale schemes
+  Operator: integro-differential (fractional, order 2s); also a concave fully nonlinear nonlocal
+  problem
+  Constraint?: yes — and it does give free-boundary error estimates, but a priori, from scheme 
+  monotonicity, not a posteriori barrier sets
+  
+  So the closest anyone comes to your question is: nonlinear operator without constraint (NSS 2006,
+  Demlow 2006), or constraint with a nonlocal-but-linear operator (Borthagaray et al. 2024).
+
+  The reason is structural: the barrier-set argument runs on sharp Green's-function bounds for the
+  linearized operator and a discrete maximum principle. Both break for degenerate/singular operators
+  like the p-Laplacian or the porous-medium nonlinearity, where you don't have an L¹-uniform
+  Green's function or the right comparison principle at the free boundary.
+
+  3. Scalar porous-medium / p-Laplacian type VIs — a disjoint lineage
+
+  Nonlinear-operator obstacle problems do have a posteriori theory, but it descends from Liu–Barrett
+  quasi-norms rather than from NSV2005, and it is energy/quasi-norm, never pointwise, with no
+  free-boundary barrier sets:
+
+  - Liu & Barrett 1994 (M2AN), 1996 (SINUM) — quasi-norm framework for degenerate quasilinear
+    equations and variational inequalities. (you have both)
+  - Liu & Yan 2000 (J. Sci. Comput. 15) A posteriori error estimators for a class of variational 
+    inequalities — quasi-norm estimators for p-Laplacian-type obstacle problems. This is the actual
+    "nonlinear-operator VI a posteriori" reference.
+  - Ebmeyer & Liu 2005 (Numer. Math.), 2008 (SINUM, fast-diffusion/porous-medium) — quasi-norm
+    interpolation and a priori theory. (you have both)
+  - Banz, Lamichhane & Stephan 2019 (CMAM 19(2), DOI 10.1515/cmam-2018-0015) — higher-order mixed
+    FEM for the p-Laplace obstacle problem via biorthogonal systems, with a general a posteriori
+    estimate and hp-adaptive results for p = 1.5 (singular) and p = 3 (degenerate). This is the most
+    usable modern reference for adaptivity on a nonlinear-operator VI.
+  - Bartels & Milicevic 2020 (M2AN 54:1635–1660) — primal-dual gap estimators for nonsmooth convex
+    minimization; guaranteed bounds covering p-Laplacian and constrained problems without residual
+    localization. Attractive for your setting because it sidesteps the Green's-function machinery
+    entirely.
+  - Ahmed & Amdouni 2025 (CAMWA) equilibrated-flux estimators for nonlinear doubly degenerate
+    elliptic problems (you have it) — note this is an equation, not a VI; no obstacle constraint in
+    it.
+
+  The gap, stated plainly: localized pointwise estimators + a posteriori barrier sets for the free
+  boundary of a degenerate nonlinear obstacle problem (p-Laplacian / porous-medium /
+  marine-ice-sheet type) does not exist in the literature. The two halves of it exist separately —
+  barrier sets for the linear case (NSV 2005), quasi-norm/duality estimators for the nonlinear case
+  (Liu–Yan, Banz et al., Bartels–Milicevic).
+
+  Sources: SIAM abstract · NSV 2003 Numer. Math. · Nochetto–Schmidt–Siebert 2006 · Khandelwal–Porwal
+  Signorini pointwise (arXiv) · Banz–Lamichhane–Stephan, p-Laplace obstacle · Bartels–Milicevic 
+  primal-dual gap · Liu–Yan 2000
