@@ -59,22 +59,22 @@
 % Optional PDF information
 \ifpdf
 \hypersetup{
-  pdftitle={Adaptive mesh refinement for obstacle problems},
+  pdftitle={VIAMR: Adaptive mesh refinement and adaptation for variational inequalities and obstacle problems},
   pdfauthor={G.~S.~Fochesatto and E.~Bueler}
 }
 \fi
 
 % Sets running headers as well as PDF title and authors
-\headers{Adaptive mesh refinement for obstacle problems}{G.~S.~Fochesatto and E.~Bueler}
+\headers{VIAMR: Adaptive mesh refinement and adaptation for VIs}{G.~S.~Fochesatto and E.~Bueler}
 
 % Title.
-\title{Adaptive mesh refinement for obstacle problems\thanks{Submitted to the editors DATE (draft \today).}}
+\title{VIAMR: Adaptive mesh refinement and adaptation for variational inequalities and obstacle problems}
 
 % Authors: full names plus addresses.
 \author{%
-G.~Stefano Fochesatto\thanks{Dept.~of Mathematics and Statistics, University of Alaska Fairbanks, USA}
+G.~Stefano Fochesatto\thanks{Dept.~of Computer Science, University of Colorado Boulder, USA}
 \and
-Ed Bueler\footnotemark[2]\thanks{corresponding author: \email{elbueler@alaska.edu}}%
+Ed Bueler\footnotemark[2]\thanks{Dept.~of Mathematics and Statistics, University of Alaska Fairbanks, USA; corresponding author: \email{elbueler@alaska.edu} (draft \today)}%
 }
 
 % FundRef data to be entered by SIAM
@@ -96,7 +96,7 @@ Ed Bueler\footnotemark[2]\thanks{corresponding author: \email{elbueler@alaska.ed
 \maketitle
 
 \begin{abstract}
-Free-boundary problems posed as variational inequalities, including obstacle problems, appear in many scientific and engineering applications.  In their finite element (FE) solution, localization of the free boundary may be a primary goal, and the geometrical localization error often dominates the overall numerical error.  In this paper we implement, using the Firedrake FE library, new parallel adaptive mesh refinement strategies which generate accurate, high-resolution free boundaries through $h$-refinement.  We evaluate three approaches: \emph{(i)} a tag-and-refine unstructured dilation operator method using discrete adjacency to the free boundary, \emph{(ii)} a tag-and-refine method based on variable-coefficient diffusion, which thresholds a diffused active-set indicator function, and \emph{(iii)} a metric-based mesh adaptation method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the diffused indicator in \emph{(ii)}.  For \emph{(i)} and \emph{(ii)} classical \emph{a posteriori} error estimators must be added within the computed inactive sets to attain convergence.  These methods are evaluated, versus mesh complexity, by norm error and by geometrical localization using Jaccard distances for active sets.  Applications include classical Laplacian obstacle problems and a shallow ice flow problem for predicting glaciation.
+FIXME Free-boundary problems posed as variational inequalities, including obstacle problems, appear in many scientific and engineering applications.  In their finite element (FE) solution, localization of the free boundary may be a primary goal, and the geometrical localization error often dominates the overall numerical error.  In this paper we implement, using the Firedrake FE library, new parallel adaptive mesh refinement strategies which generate accurate, high-resolution free boundaries through $h$-refinement.  We evaluate three approaches: \emph{(i)} a tag-and-refine unstructured dilation operator method using discrete adjacency to the free boundary, \emph{(ii)} a tag-and-refine method based on variable-coefficient diffusion, which thresholds a diffused active-set indicator function, and \emph{(iii)} a metric-based mesh adaptation method which averages an anisotropic, Hessian-derived Riemannian metric with an isotropic metric computed from the diffused indicator in \emph{(ii)}.  For \emph{(i)} and \emph{(ii)} classical \emph{a posteriori} error estimators must be added within the computed inactive sets to attain convergence.  These methods are evaluated, versus mesh complexity, by norm error and by geometrical localization using Jaccard distances for active sets.  Applications include classical Laplacian obstacle problems and a shallow ice flow problem for predicting glaciation.
 \end{abstract}
 
 \begin{keywords}
