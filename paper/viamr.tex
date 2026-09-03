@@ -483,7 +483,7 @@ We end this Section with two Python examples which illustrate how to use the ope
 
 \begin{example} \label{example:AOL}
 Consider Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle problem over a rectangle, with obstacle $\psi=0$ and a known exact solution.  The code below applies the Firedrake and VIAMR libraries to solve this problem.  First it generates a uniform coarse mesh, then it applies VCD marking near the free boundary, and then it refines to a new mesh (Figure \ref{fig:resultAOL}).  There is no refinement in the inactive set, which is necessary for convergence; compare Example \ref{example:hybrid}, and see the next Section.
-\inputminted[linenos, frame=lines]{python}{../examples/aol.py}
+\inputminted[linenos, frame=lines]{python}{/home/bueler/repos/viamr/examples/aol.py}
 \end{example}
 
 \begin{figure}[ht]
@@ -491,7 +491,7 @@ Consider Example 1 from \cite{AinsworthOdenLee1993}, a classical obstacle proble
 \mbox{\includegraphics[width=0.19\textwidth]{static/aol-mesh.png} \qquad\qquad
 \includegraphics[width=0.19\textwidth]{static/aol-marked.png} \qquad\qquad
 \includegraphics[width=0.19\textwidth]{static/aol-refinedmesh.png}}
-\caption{The Python code in Example \ref{example:AOL} solves Example 1 from \cite{AinsworthOdenLee1993}: initial mesh (left), marking by the default-parameter VCD scheme (middle), and the refined mesh (right).  The exact free boundary, unknown to the algorithm, is overlaid in black.}
+\caption{The Python code in Example \ref{example:AOL} solves Example 1 from \cite{AinsworthOdenLee1993}: initial mesh (left), marking by the $n=0$ UDO scheme (middle), and the refined mesh (right).  The exact free boundary, unknown to the algorithm, is overlaid in red.}
 \label{fig:resultAOL}
 \end{figure}
 
