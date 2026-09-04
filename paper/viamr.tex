@@ -1,5 +1,5 @@
-%\documentclass[final,hidelinks,onefignum,onetabnum]{siamart250211}
-\documentclass[review,hidelinks,onefignum,onetabnum]{siamart250211}
+\documentclass[final,hidelinks,onefignum,onetabnum]{siamart250211}
+%\documentclass[review,hidelinks,onefignum,onetabnum]{siamart250211}
 
 \usepackage{amsfonts,amssymb,bbold,stmaryrd,bm}
 
@@ -100,7 +100,7 @@ FIXME Free-boundary problems posed as variational inequalities, including obstac
 \end{abstract}
 
 \begin{keywords}
-variational inequality, free boundary, obstacle problem, finite element, adaptive mesh refinement, glaciers
+variational inequality, obstacle problem, free boundary, finite element, adaptive mesh refinement, mesh adaptation, a posteriori estimate, glacier
 \end{keywords}
 
 \begin{MSCcodes}
@@ -110,31 +110,42 @@ variational inequality, free boundary, obstacle problem, finite element, adaptiv
 
 \section{Introduction} \label{sec:intro}
 
-The classical Laplacian obstacle problem \cite{KinderlehrerStampacchia1980} finds the equilibrium vertical displacement $u$ of an elastic membrane over some domain $\Omega \subset \RR^2$.  The membrane, attached with displacement $g$ at the fixed boundary $\partial\Omega$, is subjected to an applied force $f$, but it is also constrained to be above a given obstacle $\psi$.  The strong formulation is thus a complementarity problem over $\Omega$:
+Obstacle problems are usually posed as variational inequalities (VIs) \cite{KinderlehrerStampacchia1980}.  The latter are weak-form inequalities extending the use of partial differential equation (PDE) models from fixed-location boundary conditions to the simultaneous determination of the location of free boundaries \cite{Friedman1982} as an intrinsic part of the solution process.  These problems appear in many scientific, engineering, and economic applications  \cite[for example]{FacchineiPang2003,Rodrigues1987} in which the solution is subject to inequality bounds.  The finite element (FE) method was adapted to the solution of VI problems relatively early, for example in the well-known 1978 textbook on FE by Ciarlet \cite{Ciarlet2002}, and the literature of their FE solutions is now large.  (Some this literature, addressing mesh refinement in particular, is addressed later in this Introduction.)  However, VI problems continue to represent challenging problems for solvers and meshing methods, and substantial developments in concepts and solvers have occurred in the last decade, including \cite{BuelerFarrell2024,KeithSurowiec2024,KirbyShapero2024} for example.
+
+This paper introduces the new VIAMR\footnote{Download or clone the library from \href{https://github.com/StefanoFochesatto/viamr}{\texttt{github.com/StefanoFochesatto/viamr}}.} Python library for adaptive mesh refinement and mesh adaptation on bilateral, scalar obstacle problems, built on the Firedrake \cite{Rathgeberetal2016} FE library.  To describe the new VIAMR library we recall some example obstacle problems, then review some of the literature of \emph{a posteriori} estimators for FE solutions, before finally summarizing the library scope and methods.
+
+The classical, unilateral Laplacian obstacle problem \cite{Evans2010,KinderlehrerStampacchia1980} is the much-studied canonical case.  This model problem finds the equilibrium vertical displacement $u$ of an elastic membrane, subject to small deflections, over a domain $\Omega \subset \RR^d$, typically with $d \in \{1,2,3\}$.  The membrane, attached with displacement $g$ at the fixed boundary $\partial\Omega$, is subjected to an applied force $f$, but it is also constrained to be above a given obstacle $\psi$.
+
+The strong formulation is a complementarity problem \cite{FacchineiPang2003} over $\Omega$:
 \begin{subequations} \label{eq:classical:ncp}
 \begin{align}
-  -\nabla^2 u - f \geq 0 \label{eq:classical:ncp:a} \\
-  u - \psi \geq 0\\
-  (-\nabla^2u - f)(u - \psi) = 0 \label{eq:classical:ncp:c}
+  u - \psi \geq 0 \\
+  -\nabla^2 u - f \geq 0 \label{eq:classical:ncp:b} \\
+  (u - \psi)(-\nabla^2u - f) = 0 \label{eq:classical:ncp:c}
 \end{align}
 \end{subequations}
-From a solution of \eqref{eq:classical:ncp}, or rather of its weak form (below), we may identify the inactive and active sets, and the free boundary:
+From a solution of \eqref{eq:classical:ncp} we may identify the inactive and active sets, and the free boundary:
 \begin{equation}
   I_u = \{x \in \Omega \,:\, u(x) > \psi(x)\}, \quad A_u = \Omega \setminus I_u, \quad \Gamma_u = \Omega \cap \partial I_u. \label{eq:classical:sets}
 \end{equation}
+In obstacle problem and VI applications, the determination of these sets may be the primary purpose of the numerical solution process, or at least of comparable importance to the solution function $u$ itself.
+
+An example is shown in Figure \ref{fig:ball}, where the obstacle $\psi$ is an upper hemisphere, the active set $A_u$ (white mesh) is a disc, and the free boundary $\Gamma_u$ is a circle.  Note that $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$; this ``interior condition'' \cite{KinderlehrerStampacchia1980} is the black mesh in the Figure.  Note that both Dirichlet ($u=\psi$) and Neumann ($\partial u/\partial n = \partial \psi/\partial n$) conditions apply along the unknown free boundary $\Gamma_u$ \cite{Friedman1982}.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.7\textwidth]{static/obstacle.png}
-\caption{Solution, as wireframe, to a problem with a (hemi)spherical obstacle.}
+\caption{Solution, as wireframe, to a classical (hemi)spherical obstacle problem.}
 \label{fig:ball}
 \end{figure}
 
-For the example shown in Figure \ref{fig:ball}, the obstacle $\psi$ is an upper hemisphere, the active set $A_u$ (white mesh) is a disc, and the free boundary $\Gamma_u$ is a circle.  Note that $u$ solves the Poisson equation $-\nabla^2u = f$ on $I_u$; this ``interior condition'' of the problem is the black mesh in the Figure.  Note that both Dirichlet ($u=\psi$) and Neumann ($\partial u/\partial n = \partial \psi/\partial n$) conditions apply along the unknown free boundary $\Gamma_u$.
+Another physical interpretation of the classical problem is that $u$ models the water pressure in a porous dam \cite{AinsworthOdenLee1993}; the pressure cannot go below zero ($u\ge\psi=0$), and the goal is to determine which portion of the dam is saturated.  In another physical interpretation, wherein the unilateral constraint is an upper bound ($u\le \psi$), the solution $u$ is the displacement in elastic/plastic torsion of a beam, and the goal is to determine which portion has failed plastically \cite{Kornhuber1994}.
 
-Another physical interpretation of problem \eqref{eq:classical:ncp} is that $u$ models the water pressure, which cannot go below zero ($\psi=0$), in a porous dam \cite[for example]{AinsworthOdenLee1993}; see Example \ref{example:AOL}.  Section \ref{sec:app} will present a different obstacle problem application with a highly-nonlinear operator.  There the solution is the surface elevation of a glacier, which is constrained to be above the bedrock elevation on which the glacier sits.
+FIXME as a cliched model problem the numerical analysis is often presented for smooth data, and in any case the Laplacian operator is very well behaved.  our goal for the library is to handle very general operators and rough data.  although we implement methods which exploit the nice structure of the classical Laplacian case, we also implement partly-heuristic methods which perform at least equally well on the classical problem and yet apply naturally to much more realistic cases
 
-Problem \eqref{eq:classical:ncp} has a weak formulation which is a variational inequality (VI) \cite{KinderlehrerStampacchia1980} over a Sobolev space.  Let $\Omega \subset \RR^d$ be the domain, $d\ge 1$, let $\cX=H^1(\Omega)$ \cite{Evans2010}, and suppose $\psi \in \cX \cap C(\bar\Omega)$.  Let $g:\partial \Omega\to \RR$ be continuous, with $g\ge\psi|_{\partial \Omega}$, and define
+Section \ref{sec:app} will present a different obstacle problem application with a highly-nonlinear operator.  There the solution is the surface elevation of a glacier, which is constrained to be above the bedrock elevation on which the glacier sits.
+
+However, as with elliptic PDE problems generally, mathematical precision suggests we work with a weak form and identified function spaces.  Problem \eqref{eq:classical:ncp} has a weak formulation which is a variational inequality (VI) \cite{KinderlehrerStampacchia1980} over a Sobolev space.  Let $\Omega \subset \RR^d$ be the domain, $d\ge 1$, let $\cX=H^1(\Omega)$ \cite{Evans2010}, and suppose $\psi \in \cX \cap C(\bar\Omega)$.  Let $g:\partial \Omega\to \RR$ be continuous, with $g\ge\psi|_{\partial \Omega}$, and define
 \begin{equation} \label{eq:classical:admissible}
 \cK = \{u \in \cX \,:\, u \ge \psi \text{ and } u|_{\partial \Omega} = g\}
 \end{equation}
