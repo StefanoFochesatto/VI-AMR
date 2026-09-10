@@ -38,7 +38,7 @@
 \makeatother
 
 \begin{document}
-\noindent \textbf{Three algorithms, motivated by Papadapoulos \& Hinterm\"uller (2026).}
+\noindent \textbf{Three algorithms (see Papadapoulos \& Hinterm\"uller, 2026).}
 
 \medskip
 \noindent Problem (linear operator $\bF(\bu) = A\bu - \bb$):
@@ -48,7 +48,7 @@ A \bu + \blambda &= \bb  \tag{3.1a} \\
 \end{align}
 
 \vspace{-3mm}
-\begin{algorithm}
+\begin{algorithm}[!ht]
 \caption{HIK solver for (3.1)}
 \label{alg:hik}
 \begin{algorithmic}[1]
@@ -75,12 +75,13 @@ A \bu + \blambda &= \bb  \tag{3.1a} \\
 \medskip
 \noindent Problem (nonlinear operator $\bF(\bu)$):
 \begin{align}
-F(\bu) + \blambda &= \bzero  \tag{99a} \\
+\bF(\bu) + \blambda &= \bzero  \tag{99a} \\
 \blambda - \left(\blambda + c(\bu-\bvarphi)\right)_+ &= \bzero \tag{99b}
 \end{align}
-equivalently  $\left<F(\bu),\bv-\bu\right> \ge 0$ for all $\bv \in K = \left\{\bv\le \bvarphi\right\}$.  Let's assume $\bF$ is differentiable, and that $\bF(\bu+\bw) = \bF(\bu) + \bJ(\bu) \bw + o(\|\bw\|)$.
+equivalently  $\left<\bF(\bu),\bv-\bu\right> \ge 0$ for all $\bv \in K = \left\{\bv\le \bvarphi\right\}$.  Let's assume $\bF$ is differentiable, and that $\bF(\bu+\bw) = \bF(\bu) + \bJ(\bu) \bw + o(\|\bw\|)$.
 
-\begin{algorithm}
+\vspace{-1mm}
+\begin{algorithm}[!ht]
 \caption{``HIK'' solver for (99)}
 \label{alg:hiknl}
 \begin{algorithmic}[1]
@@ -103,28 +104,28 @@ equivalently  $\left<F(\bu),\bv-\bu\right> \ge 0$ for all $\bv \in K = \left\{\b
 \end{algorithmic}
 \end{algorithm}
 
-\medskip
-\begin{algorithm}
+\smallskip
+\noindent Define truncation $\pi:\RR^n\to K$.  Alg 3 has admissible iterates and a pre-setting of the sets, thus losing the $\bJ(\bu^k)_{\Ic{k},\Ac{k}}$ term in the solve line.
+
+\vspace{-1mm}
+\begin{algorithm}[!ht]
 \caption{RSLS solver for (99)}
 \label{alg:rsls}
 \begin{algorithmic}[1]
 \numberfromzero
-\State \textbf{parameters:} $\tol>0$.  \hfill {\scriptsize ({\color{red} \emph{no ``$c$'' vs HIK}})}
-\State \textbf{input:} $\bF:{\color{red} K}\to\RR^n$, $\bJ:{\color{red} K}\to\RR^{n\times n}$, $\bvarphi$, $\bu^0 {\color{red} \in K^\circ}$.
-\State $\blambda^0 = \bzero$, $\Ac{0} = \emptyset$ and $\Ic{0} = \{1:N\}$.
+\State \textbf{parameters:} $\tol>0$.
+\State \textbf{input:} $\bF:{\color{red} K}\to\RR^n$, $\bJ:{\color{red} K}\to\RR^{n\times n}$, $\bvarphi$, $\bu^0$.
+\State $\bu^0 \leftarrow \pi[\bu^0]$, $\blambda^0 = -\bF(\bu^0)$, $\Ac{0} = {\color{red} \{i : u^0_i = \varphi_i \text{ \& } \lambda^0_i > 0\}}$, $\Ic{0} = \{1:N\}\backslash\Ac{0}$.
 \State Initialize $k = 0$.
-\While{${\color{red} \|\hat\bF(\bu^k)\|_{\ell^2}} \ge \tol$ {\Large $\strut$}}  \hfill {\scriptsize \Big({\color{red} $\hat\bF(\bu)_i=\begin{cases} \bF(\bu)_i \text{ if } u_i<\varphi_i \\ (\bF(\bu)_i)_+ \text{ if } u_i=\varphi_i \end{cases}$}\Big)}
-
+\Repeat
   \State Solve $\bJ(\bu^k)_{\Ic{k},\Ic{k}}\,\bdelta^k_{\Ic{k}}
-         = - \bF(\bu^k)_{\Ic{k}}$.  \hfill {\scriptsize ({\color{red} \emph{missing term vs HIK}})}
-  \State Assign $\bdelta^k_{\Ac{k}}=\bzero$ and $\bu^{k+1} = {\color{red} \pi[\bu^k + \alpha\bdelta^k]}$.  \hfill {\scriptsize ({\color{red} \emph{$\pi:\RR^n\to K$ truncates; $\alpha$ from line search}})}
-  \State Assign $\blambda^{k+1}_{\Ac{k}} = -\bF(\bu^{k+1})_{\Ac{k}}$
-         and $\blambda^{k+1}_{\Ic{k}} = \bzero$.
+         = - \bF(\bu^k)_{\Ic{k}}$.
+  \State Assign $\bdelta^k_{\Ac{k}}=\bzero$ and $\bu^{k+1} = {\color{red} \pi[\bu^k + \alpha\bdelta^k]}$.  \hfill {\scriptsize ({\color{red} \emph{$\alpha$ from line search}})}
+  \State Assign $\blambda^{k+1} = -\bF(\bu^{k+1})$.
   \State Assign $\Ac{k+1} = {\color{red} \{i : u^{k+1}_i = \varphi_i \text{ \& } \lambda^{k+1}_i > 0 \}}$
          and $\Ic{k+1} = \{1:N\}\backslash\Ac{k+1}$.
   \State Assign $k \leftarrow k+1$.
-%\Until{${\color{red} \|\hat\bF(\bu^k)\|_{\ell^2}} < \tol$.} {\Large $\strut$}  \hfill {\scriptsize \Big({\color{red} $\hat\bF(\bu)_i=\begin{cases} \bF(\bu)_i \text{ if } u_i<\varphi_i \\ (\bF(\bu)_i)_+ \text{ if } u_i=\varphi_i \end{cases}$}\Big)}
-\EndWhile
+\Until{${\color{red} \|\hat\bF(\bu^k)\|_{\ell^2}} < \tol$ {\Large $\strut$}}  \hfill {\scriptsize \Big({\color{red} $\hat\bF(\bu)_i=\begin{cases} \bF(\bu)_i \text{ if } u_i<\varphi_i \\ (\bF(\bu)_i)_+ \text{ if } u_i=\varphi_i \end{cases}$}\Big)}
 \end{algorithmic}
 \end{algorithm}
 
