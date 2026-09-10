@@ -113,18 +113,18 @@ equivalently  $\left<F(\bu),\bv-\bu\right> \ge 0$ for all $\bv \in K = \left\{\b
 \State \textbf{input:} $\bF:{\color{red} K}\to\RR^n$, $\bJ:{\color{red} K}\to\RR^{n\times n}$, $\bvarphi$, $\bu^0 {\color{red} \in K^\circ}$.
 \State $\blambda^0 = \bzero$, $\Ac{0} = \emptyset$ and $\Ic{0} = \{1:N\}$.
 \State Initialize $k = 0$.
-\Repeat
+\While{${\color{red} \|\hat\bF(\bu^k)\|_{\ell^2}} \ge \tol$ {\Large $\strut$}}  \hfill {\scriptsize \Big({\color{red} $\hat\bF(\bu)_i=\begin{cases} \bF(\bu)_i \text{ if } u_i<\varphi_i \\ (\bF(\bu)_i)_+ \text{ if } u_i=\varphi_i \end{cases}$}\Big)}
+
   \State Solve $\bJ(\bu^k)_{\Ic{k},\Ic{k}}\,\bdelta^k_{\Ic{k}}
          = - \bF(\bu^k)_{\Ic{k}}$.  \hfill {\scriptsize ({\color{red} \emph{missing term vs HIK}})}
   \State Assign $\bdelta^k_{\Ac{k}}=\bzero$ and $\bu^{k+1} = {\color{red} \pi[\bu^k + \alpha\bdelta^k]}$.  \hfill {\scriptsize ({\color{red} \emph{$\pi:\RR^n\to K$ truncates; $\alpha$ from line search}})}
-  %\Statex foo
   \State Assign $\blambda^{k+1}_{\Ac{k}} = -\bF(\bu^{k+1})_{\Ac{k}}$
          and $\blambda^{k+1}_{\Ic{k}} = \bzero$.
-  %\State $\strut$ \hfill {\scriptsize ({\color{red} \emph{no $\blambda$ update}})}
   \State Assign $\Ac{k+1} = {\color{red} \{i : u^{k+1}_i = \varphi_i \text{ \& } \lambda^{k+1}_i > 0 \}}$
          and $\Ic{k+1} = \{1:N\}\backslash\Ac{k+1}$.
   \State Assign $k \leftarrow k+1$.
-\Until{${\color{red} \|\hat\bF(\bu^k)\|_{\ell^2}} < \tol$.} {\Large $\strut$}  \hfill {\scriptsize \Big({\color{red} $\hat\bF(\bu)_i=\begin{cases} \bF(\bu)_i \text{ if } u_i<\varphi_i \\ (\bF(\bu)_i)_+ \text{ if } u_i=\varphi_i \end{cases}$}\Big)}
+%\Until{${\color{red} \|\hat\bF(\bu^k)\|_{\ell^2}} < \tol$.} {\Large $\strut$}  \hfill {\scriptsize \Big({\color{red} $\hat\bF(\bu)_i=\begin{cases} \bF(\bu)_i \text{ if } u_i<\varphi_i \\ (\bF(\bu)_i)_+ \text{ if } u_i=\varphi_i \end{cases}$}\Big)}
+\EndWhile
 \end{algorithmic}
 \end{algorithm}
 
