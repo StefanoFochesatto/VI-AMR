@@ -1,0 +1,131 @@
+\documentclass[10pt]{article}
+
+\usepackage[total={5.5in,10.5in},top=0.6in,left=1.3in]{geometry}
+
+\usepackage{amsmath,amssymb}
+\usepackage[ruled]{algorithm}      % float with caption-on-top and rules
+\usepackage{algpseudocode}         % \State, \Repeat/\Until, line numbering
+
+\usepackage{xcolor}
+
+% index sets and shorthands
+\newcommand{\Ac}[1]{\mathcal{A}_h^{#1}}   % active set
+\newcommand{\Ic}[1]{\mathcal{I}_h^{#1}}   % inactive set
+
+\newcommand{\tol}{\mathrm{tol}}
+\newcommand{\ptol}{\mathrm{ptol}}
+\newcommand{\dtol}{\mathrm{dtol}}
+
+% vectors are bold; scalar components (subscript i) stay italic
+\newcommand{\bF}{\mathbf{F}}
+\newcommand{\bJ}{\mathbf{J}}
+
+\newcommand{\bb}{\mathbf{b}}
+\newcommand{\bff}{\mathbf{f}}
+\newcommand{\bu}{\mathbf{u}}
+\newcommand{\bv}{\mathbf{v}}
+\newcommand{\bw}{\mathbf{w}}
+
+\newcommand{\bdelta}{\boldsymbol{\delta}}
+\newcommand{\bvarphi}{\boldsymbol{\varphi}}
+\newcommand{\blambda}{\boldsymbol{\lambda}}
+\newcommand{\bzero}{\mathbf{0}}
+
+\newcommand{\RR}{\mathbb{R}}
+
+\makeatletter
+\newcommand{\numberfromzero}{\setcounter{ALG@line}{-1}}
+\makeatother
+
+\begin{document}
+\noindent \textbf{Three algorithms, motivated by Papadapoulos \& Hinterm\"uller (2026).}
+
+\medskip
+\noindent Problem (linear operator $\bF(\bu) = A\bu - \bb$):
+\begin{align}
+A \bu + \blambda &= \bb  \tag{3.1a} \\
+\blambda - \left(\blambda + c(\bu-\bvarphi)\right)_+ &= \bzero \tag{3.1b}
+\end{align}
+
+\vspace{-3mm}
+\begin{algorithm}
+\caption{HIK solver for (3.1)}
+\label{alg:hik}
+\begin{algorithmic}[1]
+\numberfromzero
+\State \textbf{parameters:} $c>0$, $\tol>0$.  \hfill {\scriptsize (\emph{HIK: $c=1$.})}
+\State \textbf{input:} $A$, $\bb := M\bff$, $\bvarphi$, $\bu^0$.
+\State $\blambda^0 = \bzero$, $\Ac{0} = \emptyset$ and $\Ic{0} = \{1:N\}$.
+\State Initialize $k = 0$.
+\Repeat
+  \State Solve $A_{\Ic{k},\Ic{k}}\,\bdelta^k_{\Ic{k}}
+         = -A_{\Ic{k},\Ac{k}}(\bvarphi - \bu^k)_{\Ac{k}} - (A\bu^k - \bb)_{\Ic{k}}$.
+  \State Assign $\bu^{k+1}_{\Ic{k}} = \bu^k_{\Ic{k}} + \bdelta^k_{\Ic{k}}$
+         and $\bu^{k+1}_{\Ac{k}} = \bvarphi_{\Ac{k}}$.
+  \State Assign $\blambda^{k+1}_{\Ac{k}} = -(A\bu^{k+1} - \bb)_{\Ac{k}}$
+         and $\blambda^{k+1}_{\Ic{k}} = \bzero$.
+  \State Assign $\Ac{k+1} = \{i : \lambda^{k+1}_i + c(u^{k+1}_i - \varphi_i) > 0\}$
+         and $\Ic{k+1} = \{1:N\}\backslash\Ac{k+1}$.
+  \State Assign $k \leftarrow k+1$.
+\Until{$\|\blambda^k - (\blambda^k + c(\bu^k - \bvarphi))_+\|_{\ell^2} + \|A\bu^k + \blambda^k - \bb\|_{\ell^2} < \tol$.}
+\end{algorithmic}
+\end{algorithm}
+
+
+\medskip
+\noindent Problem (nonlinear operator $\bF(\bu)$):
+\begin{align}
+F(\bu) + \blambda &= \bzero  \tag{99a} \\
+\blambda - \left(\blambda + c(\bu-\bvarphi)\right)_+ &= \bzero \tag{99b}
+\end{align}
+equivalently  $\left<F(\bu),\bv-\bu\right> \ge 0$ for all $\bv \in K = \left\{\bv\le \bvarphi\right\}$.  Let's assume $\bF$ is differentiable, and that $\bF(\bu+\bw) = \bF(\bu) + \bJ(\bu) \bw + o(\|\bw\|)$.
+
+\begin{algorithm}
+\caption{``HIK'' solver for (99)}
+\label{alg:hiknl}
+\begin{algorithmic}[1]
+\numberfromzero
+\State \textbf{parameters:} $c>0$, $\tol>0$.  \hfill {\scriptsize (\emph{HIK: $c=1$.})}
+\State \textbf{input:} $\bF:\RR^n\to\RR^n$, $\bJ:\RR^n\to\RR^{n\times n}$, $\bvarphi$, $\bu^0$.  \hfill {\scriptsize (\emph{HIK: $\bF(\bu)=A\bu-\bb$ and $\bJ(\bu)=A$.})}
+\State $\blambda^0 = \bzero$, $\Ac{0} = \emptyset$ and $\Ic{0} = \{1:N\}$.
+\State Initialize $k = 0$.
+\Repeat
+  \State Solve $\bJ(\bu^k)_{\Ic{k},\Ic{k}}\,\bdelta^k_{\Ic{k}}
+         = -\bJ(\bu^k)_{\Ic{k},\Ac{k}}(\bvarphi - \bu^k)_{\Ac{k}} - \bF(\bu^k)_{\Ic{k}}$.
+  \State Assign $\bu^{k+1}_{\Ic{k}} = \bu^k_{\Ic{k}} + \bdelta^k_{\Ic{k}}$
+         and $\bu^{k+1}_{\Ac{k}} = \bvarphi_{\Ac{k}}$.
+  \State Assign $\blambda^{k+1}_{\Ac{k}} = -\bF(\bu^{k+1})_{\Ac{k}}$
+         and $\blambda^{k+1}_{\Ic{k}} = \bzero$.
+  \State Assign $\Ac{k+1} = \{i : \lambda^{k+1}_i + c(u^{k+1}_i - \varphi_i) > 0\}$
+         and $\Ic{k+1} = \{1:N\}\backslash\Ac{k+1}$.
+  \State Assign $k \leftarrow k+1$.
+\Until{$\|\blambda^k - (\blambda^k + c(\bu^k - \bvarphi))_+\|_{\ell^2} + \|\bF(\bu^k) + \blambda^k\|_{\ell^2} < \tol$.}
+\end{algorithmic}
+\end{algorithm}
+
+\medskip
+\begin{algorithm}
+\caption{RSLS solver for (99)}
+\label{alg:rsls}
+\begin{algorithmic}[1]
+\numberfromzero
+\State \textbf{parameters:} $\tol>0$.  \hfill {\scriptsize ({\color{red} \emph{no ``$c$'' vs HIK}})}
+\State \textbf{input:} $\bF:{\color{red} K}\to\RR^n$, $\bJ:{\color{red} K}\to\RR^{n\times n}$, $\bvarphi$, $\bu^0 {\color{red} \in K^\circ}$.
+\State $\blambda^0 = \bzero$, $\Ac{0} = \emptyset$ and $\Ic{0} = \{1:N\}$.
+\State Initialize $k = 0$.
+\Repeat
+  \State Solve $\bJ(\bu^k)_{\Ic{k},\Ic{k}}\,\bdelta^k_{\Ic{k}}
+         = - \bF(\bu^k)_{\Ic{k}}$.  \hfill {\scriptsize ({\color{red} \emph{missing term vs HIK}})}
+  \State Assign $\bdelta^k_{\Ac{k}}=\bzero$ and $\bu^{k+1} = {\color{red} \pi[\bu^k + \alpha\bdelta^k]}$.  \hfill {\scriptsize ({\color{red} \emph{$\pi:\RR^n\to K$ truncates; $\alpha$ from line search}})}
+  %\Statex foo
+  \State Assign $\blambda^{k+1}_{\Ac{k}} = -\bF(\bu^{k+1})_{\Ac{k}}$
+         and $\blambda^{k+1}_{\Ic{k}} = \bzero$.
+  %\State $\strut$ \hfill {\scriptsize ({\color{red} \emph{no $\blambda$ update}})}
+  \State Assign $\Ac{k+1} = {\color{red} \{i : u^{k+1}_i = \varphi_i \text{ \& } \lambda^{k+1}_i > 0 \}}$
+         and $\Ic{k+1} = \{1:N\}\backslash\Ac{k+1}$.
+  \State Assign $k \leftarrow k+1$.
+\Until{${\color{red} \|\hat\bF(\bu^k)\|_{\ell^2}} < \tol$.} {\Large $\strut$}  \hfill {\scriptsize \Big({\color{red} $\hat\bF(\bu)_i=\begin{cases} \bF(\bu)_i \text{ if } u_i<\varphi_i \\ (\bF(\bu)_i)_+ \text{ if } u_i=\varphi_i \end{cases}$}\Big)}
+\end{algorithmic}
+\end{algorithm}
+
+\end{document}
