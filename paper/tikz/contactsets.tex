@@ -1,0 +1,51 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% plan view of Omega
+\begin{tikzpicture}[x=1.0cm,y=1.15cm,>={Stealth[length=5pt]}]
+  \draw[dashed] (0,0) rectangle (4.6,3.2);
+  \node at (0.35,2.9) {$\Omega$};
+  % contact sets
+  \filldraw[Blue,fill=Blue!12,thick]
+    plot[smooth cycle] coordinates {(0.55,1.55) (0.75,2.25) (1.45,2.45) (1.7,1.85) (1.6,1.05) (1.0,0.95)};
+  \filldraw[Red,fill=Red!12,thick]
+    plot[smooth cycle] coordinates {(3.1,1.35) (3.3,2.05) (3.8,2.35) (4.2,1.75) (3.95,1.05) (3.25,0.9)};
+  \node[Blue] at (1.2,1.6) {$\Cbotu$};
+  \node[Red] at (3.6,1.62) {$\Ctopu$};
+  % the cut A--A'
+  \draw[gray] (0,2.05) -- (4.6,2.05);
+  \node[gray,left] at (0,2.05) {$A$};
+  \node[gray,right] at (4.6,2.05) {$A'$};
+\end{tikzpicture}
+\hfill
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% profile along the cut A--A'
+\begin{tikzpicture}[x=1.0cm,y=1.4cm,>={Stealth[length=5pt]},
+  declare function={
+    plo(\x) = 0.85 + 0.75*exp(-(\x-1.2)^2/0.45) + 0.55*exp(-(\x-2.9)^2/0.5);
+    pup(\x) = 2.55 - 0.90*exp(-(\x-4.6)^2/0.55) - 0.55*exp(-(\x-2.9)^2/0.45);
+  }]
+  % the cut A--A', carrying the traces of the contact sets
+  \draw[gray] (0,0.50) -- (6,0.50);
+  \node[gray,left] at (0,0.50) {$A$};
+  \node[gray,right] at (6,0.50) {$A'$};
+  \draw[Blue,line width=2pt] (0.75,0.50) -- (1.7,0.50);
+  \draw[Red,line width=2pt] (4.2,0.50) -- (5.0,0.50);
+  \node[Blue,below] at (1.225,0.48) {$\Cbotu$};
+  \node[Red,below] at (4.6,0.48) {$\Ctopu$};
+  \draw[dotted,gray] (0.75,0.50) -- (0.75,{plo(0.75)});
+  \draw[dotted,gray] (1.7,0.50) -- (1.7,{plo(1.7)});
+  \draw[dotted,gray] (4.2,0.50) -- (4.2,{pup(4.2)});
+  \draw[dotted,gray] (5.0,0.50) -- (5.0,{pup(5.0)});
+  % obstacles
+  \draw[Blue,thick] plot[domain=0:6,samples=200,smooth] (\x,{plo(\x)});
+  \draw[Red,thick]  plot[domain=0:6,samples=200,smooth] (\x,{pup(\x)});
+  \node[Blue,below] at (3.3,{plo(3.3)}) {$\lb$};
+  \node[Red,above] at (1.1,{pup(1.1)}) {$\ub$};
+  % solution, heavy where it coincides with an obstacle
+  \draw[line width=1.2pt] (0,1.95) to[out=-58,in=230] (0.75,{plo(0.75)});
+  \draw[line width=2pt] plot[domain=0.75:1.7,samples=60,smooth] (\x,{plo(\x)});
+  \draw[line width=1.2pt] (1.7,{plo(1.7)}) to[out=-41,in=196] (2.15,1.31)
+                                           to[out=16,in=205] (2.9,1.53)
+                                           to[out=25,in=176] (3.70,1.95)
+                                           to[out=-4,in=132] (4.2,{pup(4.2)});
+  \draw[line width=2pt] plot[domain=4.2:5.0,samples=60,smooth] (\x,{pup(\x)});
+  \draw[line width=1.2pt] (5.0,{pup(5.0)}) to[out=50,in=192] (6,2.22);
+  \node[above] at (0.30,1.90) {$u$};
+\end{tikzpicture}

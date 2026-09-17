@@ -1,4 +1,4 @@
-\documentclass[final,hidelinks,onefignum,onetabnum]{siamart250211}
+\documentclass[final,hidelinks,onefignum,onetabnum,dvipsnames]{siamart250211}
 %\documentclass[review,hidelinks,onefignum,onetabnum]{siamart250211}
 
 \usepackage{amsmath,amsfonts,amssymb,bbold,stmaryrd,bm}
@@ -11,7 +11,7 @@
 \fi
 
 \usepackage{tikz}
-\usetikzlibrary{math,positioning}
+\usetikzlibrary{math,positioning,arrows.meta}
 
 \usepackage{tcolorbox}
 \tcbuselibrary{theorems}
@@ -225,11 +225,18 @@ The general weak-form problem covered by the library is to find $u\in \cK$ satis
 Let us say a bit more about continuum VI \eqref{eq:vi} before addressing its FE solution.  If $\cX = W^{1,p}(\Omega)$ then \eqref{eq:vi} is well-posed for $F$ satisfying certain conditions from the theory of monotone operators.  Specifically, if $F$ is strictly monotone, coercive, and continuous then it has a unique solution \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.  These conditions apply to the classical problem \eqref{eq:classical:vi} and its $p$-Laplacian extensions \cite{LiuBarrett1994}.  They also apply to the advection-diffusion problem in section \ref{sec:results}, and, with appropriate adjustments \cite{JouvetBueler2012}, to flat-topography cases of the highly-nonlinear glacier geometry problem in section \ref{sec:app}.  However, as for any numerical solver/meshing library, it is the user's responsibility to address a well-posed problem.
 
 A complementarity concept, illustrated by \eqref{eq:classical:ncp} for the classical problem, also applies to \eqref{eq:vi}.  That is, the solution residual $F(u)\in \cX'$ may be highly-irregular, but it has certain sign properties because $\cK$ is defined by box constraints \eqref{eq:admissible}.  Write
-\begin{equation}
+\begin{gather}
 \label{eq:contactsets}
-\Cbotu = \{x\,:\,u(x) = \lb(x)\} \quad \text{ and } \quad \Ctopu = \{x\,:\,u(x) = \ub(x)\}
-\end{equation}
-for the \emph{lower-} and \emph{upper-contact} (active) subsets of $\Omega$; they are disjoint by the compatibility conditions \eqref{eq:compat}.  Let $E_u = \Omega \setminus (\Cbotu \cup \Ctopu)$ be the open \emph{inactive} set.
+\Cbotu = \{x\in\Omega\,:\,u(x) = \lb(x)\}, \quad \Ctopu = \{x\in\Omega\,:\,u(x) = \ub(x)\}, \\
+E_u = \Omega \setminus (\Cbotu \cup \Ctopu), \quad \Gamma_u = \Omega \cap \partial E_u, \notag
+\end{gather}
+for the \emph{lower-} and \emph{upper-contact} (active) subsets, the \emph{inactive} set, and the \emph{free boundary}, respectively.  The contact sets are disjoint by the compatibility conditions \eqref{eq:compat}.  The free boundary generally has a subset from lower contact and a disjoint subset from upper contact.  Figure \ref{fig:contactsets} illustrates one possibility.
+
+\begin{figure}[ht]
+\mbox{\input{tikz/contactsets}}
+\caption{A notional illustration of contact sets $\Cbotu,\Ctopu$ from \eqref{eq:contactsets}, for $\Omega\subset \RR^2$; not to scale.  Left: plan view of $\Omega$.  Right: profile $A-A'$, with $u$ drawn heavy where it contacts an obstacle.}
+\label{fig:contactsets}
+\end{figure}
 
 A dual property to the primal box constraints \eqref{eq:admissible} holds:\footnote{That is, $\left<F(u),\varphi\right> \ge 0$ for every $\varphi \ge 0$ compactly supported in $\Omega \setminus \Ctopu$.  Prove this by substituting $v=u+\eps \varphi$ into \eqref{eq:vi}.  For sufficiently small $\eps>0$, such that $v\le \ub$ and thus that $v\in\cK$, then $\left<F(u),v - u\right> = \eps \left<F(u),\varphi\right> \ge 0$.  The second inequality is similar.}
 \begin{equation}
