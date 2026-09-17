@@ -1,7 +1,7 @@
 \documentclass[final,hidelinks,onefignum,onetabnum]{siamart250211}
 %\documentclass[review,hidelinks,onefignum,onetabnum]{siamart250211}
 
-\usepackage{amsfonts,amssymb,bbold,stmaryrd,bm}
+\usepackage{amsmath,amsfonts,amssymb,bbold,stmaryrd,bm}
 
 \usepackage{graphicx}
 \ifpdf
@@ -12,6 +12,9 @@
 
 \usepackage{tikz}
 \usetikzlibrary{math,positioning}
+
+\usepackage{tcolorbox}
+\tcbuselibrary{theorems}
 
 \usepackage[T1]{fontenc}
 
@@ -31,6 +34,27 @@
 % Used for creating new theorem and remark environments
 \newsiamremark{example}{Example}
 \newsiamthm{conjecture}{Conjecture}
+
+% box with rounded corners for main library features
+\newtcolorbox{libbox}{
+  colback=white,
+  colframe=black,
+  boxrule=1pt,
+  arc=1mm,
+  ams nodisplayskip,
+}
+\newtcolorbox{libboxtitle}[1]{
+  colback=white,
+  colframe=black,
+  boxrule=1pt,
+  arc=1mm,
+  ams nodisplayskip,
+  title={#1},
+  colbacktitle=white,    % Title bar background color
+  coltitle=black,        % Title text color
+  fonttitle=\bfseries,   % Makes the title bold
+  attach title to upper, % Blends title smoothly if you prefer no separation line
+}
 
 % obstacles
 \newcommand{\lb}{\psi_\bot}
@@ -83,7 +107,7 @@
 \headers{VIAMR: Adaptive mesh refinement and adaptation for VIs}{G.~S.~Fochesatto and E.~Bueler}
 
 % Title.
-\title{VIAMR: \\ Adaptive mesh refinement and adaptation \\ for variational inequalities and obstacle problems}
+\title{VIAMR: Adaptive mesh refinement and adaptation \\ for variational inequalities \\ and obstacle problems}
 
 % Authors: full names plus addresses.
 \author{%
@@ -164,29 +188,39 @@ For $f\in L^2(\Omega)$, the weak re-formulation of \eqref{eq:classical:ncp} seek
 
 Ignoring regularity for the moment, and speaking intuitively, integration of \eqref{eq:classical:vi} by parts yields $\big<-\nabla^2 u - f, v-u\big>\ge 0$, thus that any vector $v-u$, pointing arbitrarily from the solution $u$ into $K$, is at most at a right angle away from the residual $F(u) = -\nabla^2 u - f$.  In particular, if $u$ is in the interior $\cK^\circ$ then the residual must be zero, and then $u$ solves the Poisson equation, and furthermore $I_u=\Omega, A_u=\emptyset, \Gamma_u = \emptyset$.  Thus \eqref{eq:classical:vi} generalizes the weak-form Poisson equation, as a PDE over $I_u=\Omega$.
 
-The obstacle problems addressed by the VIAMR library include the above classical continuum problem, but generalized in two important directions:
-\begin{itemize}
-\item the residual operator can have any (nonlinear) formula, and
-\item the constraint set may be defined by upper and lower obstacles.
-\end{itemize}
+The obstacle problems addressed by the VIAMR library include the above classical continuum problem, but generalized in important directions.  The scope is defined in the following boxes.
 
-In fact, the continuum VI problem expected by the library is defined by certain data.  We assume a polygonal domain $\Omega\subset \RR^d$.  The data includes a Dirichlet function $g\in C(\bar D)\strut$, over well-behaved $D\subset\partial\Omega$, and two continuous functions $\lb,\ub \in C(\bar\Omega)$, the \emph{box constraints}.  These data must satisfy compatibility conditions:
+\begin{libboxtitle}{VIAMR library scope:}
+  \begin{itemize}
+  \item scalar obstacle problems defined by VIs, in which
+  \item the residual operator can have any (nonlinear) formula, and
+  \item the constraint set is defined by upper and lower obstacles.
+  \end{itemize}
+\end{libboxtitle}
+
+The continuum VI problem expected by the library is defined by certain data, defined over a polygonal domain $\Omega\subset \RR^d$, including a Dirichlet function $g\in C(\bar D)\strut$ over well-behaved $D\subset\partial\Omega$, and two continuous functions $\lb,\ub \in C(\bar\Omega)$, the \emph{box constraints}.  These data must satisfy compatibility conditions:
+\begin{libbox}
 \begin{equation}
 \lb < \ub \text{ on } \Omega \quad \text{and} \quad \lb \le g \le \ub \text{ on } D.\label{eq:compat}
 \end{equation}
-(Fixed Neumann boundary conditions, if any, are regarded as part of the operator $F$ used in \eqref{eq:vi} below.)  The data functions may be already be in FE spaces, or they may be Unified Form Language (UFL) symbolic expressions \cite{Alnaesetal2014}, but we assume continuity to permit nodal values as needed.  Note that the library enables unilateral constraints by setting either $\lb$ or $\ub$ to Python value \texttt{None}.
+\end{libbox}
+\noindent (Fixed Neumann boundary conditions, if any, are regarded as part of the operator $F$ used in \eqref{eq:vi} below.)  The data functions may be already be in FE spaces, or they may be Unified Form Language (UFL) symbolic expressions \cite{Alnaesetal2014}, but we assume continuity to permit nodal values as needed.  Note that the library enables unilateral constraints by setting either $\lb$ or $\ub$ to Python value \texttt{None}.
 
 Let $\cX$ be a Banach space of scalar functions over $\Omega$, with $C^1(\bar\Omega) \subset \cX \subset L^2(\Omega)$.  The closed and convex admissible subset $\cK \subset \cX$ is defined as:
+\begin{libbox}
 \begin{equation} \label{eq:admissible}
 \cK = \{v \in \cX \,:\, \lb \le v \le \ub \text{ and } v|_{D} = g\}.
 \end{equation}
-(In this continuum set-up, (in)equalities are almost everywhere.)  The compatibility conditions imply that $\cK$ is nonempty.
+\end{libbox}
+\noindent (In this continuum set-up, (in)equalities are almost everywhere.)  The compatibility conditions imply that $\cK$ is nonempty.
 
 The general weak-form problem covered by the library is to find $u\in \cK$ satisfying a variational inequality (VI) of the following form.  Let $F:\cK \to \cX'$ be a continuous residual function, at least defined for admissible inputs, with $\cX'$ denoting the topological dual space.  The VI problem is
+\begin{libbox}
 \begin{equation} \label{eq:vi}
 \left<F(u),v - u\right> \ge 0 \quad \text{ for all } v \in \cK,
 \end{equation}
-where $\left<\cdot,\cdot\right>$ is the dual pairing.  For example, $\left<F(u),w\right> = \int_\Omega \nabla u \cdot \nabla w - fw$ in classical problem \eqref{eq:classical:vi}.
+\end{libbox}
+\noindent where $\left<\cdot,\cdot\right>$ is the dual pairing.  For example, $\left<F(u),w\right> = \int_\Omega \nabla u \cdot \nabla w - fw$ in classical problem \eqref{eq:classical:vi}.
 
 Let us say a bit more about continuum VI \eqref{eq:vi} before addressing its FE solution.  If $\cX = W^{1,p}(\Omega)$ then \eqref{eq:vi} is well-posed for $F$ satisfying certain conditions from the theory of monotone operators.  Specifically, if $F$ is strictly monotone, coercive, and continuous then it has a unique solution \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.  These conditions apply to the classical problem \eqref{eq:classical:vi} and its $p$-Laplacian extensions \cite{LiuBarrett1994}.  They also apply to the advection-diffusion problem in section \ref{sec:results}, and, with appropriate adjustments \cite{JouvetBueler2012}, to flat-topography cases of the highly-nonlinear glacier geometry problem in section \ref{sec:app}.  However, as for any numerical solver/meshing library, it is the user's responsibility to address a well-posed problem.
 
