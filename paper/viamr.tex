@@ -1,7 +1,7 @@
 \documentclass[final,hidelinks,onefignum,onetabnum,dvipsnames]{siamart250211}
 %\documentclass[review,hidelinks,onefignum,onetabnum]{siamart250211}
 
-\usepackage{amsmath,amsfonts,amssymb,bbold,stmaryrd,bm}
+\usepackage{amsmath,amsfonts,amssymb,bbold,stmaryrd,bm,stackengine}
 
 \usepackage{graphicx}
 \ifpdf
@@ -48,13 +48,15 @@
   colframe=black,
   boxrule=1pt,
   arc=1mm,
-  ams nodisplayskip,
+  %ams nodisplayskip,
   title={#1},
   colbacktitle=white,    % Title bar background color
   coltitle=black,        % Title text color
   fonttitle=\bfseries,   % Makes the title bold
-  attach title to upper, % Blends title smoothly if you prefer no separation line
+  %attach title to upper, % Blends title smoothly if you prefer no separation line
 }
+
+\newcommand{\subsettilde}{\mathrel{\stackunder[0.6pt]{$\subset$}{$\scriptstyle\sim$}}}
 
 % obstacles
 \newcommand{\lb}{\psi_\bot}
@@ -164,7 +166,7 @@ The unilateral Laplacian obstacle problem is the classical and canonical case, a
 \end{align}
 \end{subequations}
 
-From a solution of \eqref{eq:classical:ncp} we may identify certain subsets of $\Omega$.  The Poisson equation $-\nabla^2 u = f$ (``interior condition'' of the VI \cite{KinderlehrerStampacchia1980}) holds on the \emph{inactive set} $E_u=\{x \in \Omega \,:\, u(x) > \psi(x)\}$, while $u=\psi$ on the \emph{active} or \emph{contact} set $C_u = \Omega \setminus I_u$.  The boundary between these, $\Gamma_u = \Omega \cap \partial E_u$, is called the \emph{free boundary}.  In applications the determination of these sets may be the primary purpose of the numerical solution, or of comparable importance to determining $u$ itself.
+From a solution of \eqref{eq:classical:ncp} we may identify certain subsets of $\Omega$.  The Poisson equation $-\nabla^2 u = f$ (``interior condition'' of the VI \cite{KinderlehrerStampacchia1980}) holds on the \emph{inactive set} $E_u=\{x \in \Omega \,:\, u(x) > \psi(x)\}$, while $u=\psi$ on the \emph{active} or \emph{contact} set $C_u = \Omega \setminus I_u$.  The boundary between these, $\Gamma_u = \Omega \cap \partial E_u$, is called the \emph{free boundary}.  The determination of these sets, which depend on $u$ and must be solved-for simultaneously with it, may be the primary purpose of an applied numerical solution, or of comparable importance to $u$ itself.
 
 An example is shown in Figure \ref{fig:ball}, where the obstacle $\psi$ is an upper hemisphere, the active set $C_u$ (white-colored portion of the mesh) is a disc; $\psi$ is shown as a full sphere for aesthetic reasons only.  The Poisson equation holds on $E_u$, the black-colored portion, and the free boundary $\Gamma_u$ is the circle where white and black meet.  Note that both Dirichlet $u=\psi$ and Neumann $\partial (u-\psi)/\partial n = 0$ conditions apply along the free boundary $\Gamma_u$ \cite{Friedman1982}.  As with any VIAMR library application, the computation which generated this Figure used a single mesh; the sets are computed diagnostically from the result.
 
@@ -188,49 +190,50 @@ For $f\in L^2(\Omega)$, the weak re-formulation of \eqref{eq:classical:ncp} seek
 
 Ignoring regularity for the moment, and speaking intuitively, integration of \eqref{eq:classical:vi} by parts yields $\big<-\nabla^2 u - f, v-u\big>\ge 0$, thus that any vector $v-u$, pointing arbitrarily from the solution $u$ into $K$, is at most at a right angle away from the residual $F(u) = -\nabla^2 u - f$.  In particular, if $u$ is in the interior $\cK^\circ$ then the residual must be zero, and then $u$ solves the Poisson equation, and furthermore $I_u=\Omega, A_u=\emptyset, \Gamma_u = \emptyset$.  Thus \eqref{eq:classical:vi} generalizes the weak-form Poisson equation, as a PDE over $I_u=\Omega$.
 
-The obstacle problems addressed by the VIAMR library include the above classical continuum problem, but generalized in important directions.  The scope is defined in the following boxes.
+The obstacle problems addressed by the VIAMR library substantially generalize the above classical continuum problem.  The scope of the library is defined in the following boxes.
 
-\begin{libboxtitle}{VIAMR library scope:}
+\begin{libboxtitle}{VIAMR library scope includes:}
   \begin{itemize}
-  \item scalar obstacle problems defined by VIs, in which
-  \item the residual operator can have any (nonlinear) formula, and
-  \item the constraint set is defined by upper and lower obstacles.
+  \item scalar obstacle problems in which
+  \item the constraint set is defined by upper and lower obstacles, and
+  \item the residual operator may have any (nonlinear) formula.
   \end{itemize}
 \end{libboxtitle}
 
-The continuum VI problem expected by the library is defined by certain data, defined over a polygonal domain $\Omega\subset \RR^d$, including a Dirichlet function $g\in C(\bar D)\strut$ over well-behaved $D\subset\partial\Omega$, and two continuous functions $\lb,\ub \in C(\bar\Omega)$, the \emph{box constraints}.  These data must satisfy compatibility conditions:
+The continuum VI problem is thus defined by certain data over a bounded, polygonal domain $\Omega\subset \RR^d$.  This includes a Dirichlet datum $g\in C(D)\strut$, over well-behaved $D\subset\partial\Omega$, and two continuous functions $\lb,\ub \in C(\bar\Omega)$, the \emph{box constraints}.  These data must satisfy compatibility conditions:
 \begin{libbox}
 \begin{equation}
 \lb < \ub \text{ on } \Omega \quad \text{and} \quad \lb \le g \le \ub \text{ on } D.\label{eq:compat}
 \end{equation}
 \end{libbox}
-\noindent (Fixed Neumann boundary conditions, if any, are regarded as part of the operator $F$ used in \eqref{eq:vi} below.)  The data functions may be already be in FE spaces, or they may be Unified Form Language (UFL) symbolic expressions \cite{Alnaesetal2014}, but we assume continuity to permit nodal values as needed.  Note that the library enables unilateral constraints by setting either $\lb$ or $\ub$ to Python value \texttt{None}.
 
-Let $\cX$ be a Banach space of scalar functions over $\Omega$, with $C^1(\bar\Omega) \subset \cX \subset L^2(\Omega)$.  The closed and convex admissible subset $\cK \subset \cX$ is defined as:
+These data may be already be in FE spaces, or they may be Unified Form Language (UFL) symbolic expressions \cite{Alnaesetal2014}, but we assume continuity to permit nodal evaluation as needed.  Note that the library enables unilateral constraints by setting either $\lb$ or $\ub$ to Python value \texttt{None}.  Also, fixed Neumann boundary conditions, if any, are part of the operator $F$ used in \eqref{eq:vi} below.
+
+Let $\cX$ be a Banach space of scalar functions over $\Omega$ such that $C^1(\bar\Omega) \subset \cX \subset L^2(\Omega)$.  The closed and convex \emph{admissible subset} is defined as follows:
 \begin{libbox}
 \begin{equation} \label{eq:admissible}
 \cK = \{v \in \cX \,:\, \lb \le v \le \ub \text{ and } v|_{D} = g\}.
 \end{equation}
 \end{libbox}
-\noindent (In this continuum set-up, (in)equalities are almost everywhere.)  The compatibility conditions imply that $\cK$ is nonempty.
+\noindent (In this continuum set-up, (in)equalities are almost everywhere.)  The compatibility conditions imply that $\cK$ is nonempty.  The set $\cK$ is bounded if both box constraints are continuous functions on $\bar\Omega$, but if one bound is \texttt{None} then $\cK$ is a cone.
 
-The general weak-form problem covered by the library is to find $u\in \cK$ satisfying a variational inequality (VI) of the following form.  Let $F:\cK \to \cX'$ be a continuous residual function, at least defined for admissible inputs, with $\cX'$ denoting the topological dual space.  The VI problem is
+The general weak-form problem covered by the library is to find $u\in \cK$ satisfying a variational inequality (VI) of the following form:
 \begin{libbox}
 \begin{equation} \label{eq:vi}
 \left<F(u),v - u\right> \ge 0 \quad \text{ for all } v \in \cK,
 \end{equation}
 \end{libbox}
-\noindent where $\left<\cdot,\cdot\right>$ is the dual pairing.  For example, $\left<F(u),w\right> = \int_\Omega \nabla u \cdot \nabla w - fw$ in classical problem \eqref{eq:classical:vi}.
+\noindent Here $F:\cK \to \cX'$ is a continuous \emph{residual function}, defined for admissible inputs, or even over all of $\cX$.  Note that $\cX'$ denotes the topological dual space, and $\left<\cdot,\cdot\right>$ the dual pairing.  For example, $\left<F(u),w\right> = \int_\Omega \nabla u \cdot \nabla w - fw$ in classical problem \eqref{eq:classical:vi}.
 
-Let us say a bit more about continuum VI \eqref{eq:vi} before addressing its FE solution.  If $\cX = W^{1,p}(\Omega)$ then \eqref{eq:vi} is well-posed for $F$ satisfying certain conditions from the theory of monotone operators.  Specifically, if $F$ is strictly monotone, coercive, and continuous then it has a unique solution \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.  These conditions apply to the classical problem \eqref{eq:classical:vi} and its $p$-Laplacian extensions \cite{LiuBarrett1994}.  They also apply to the advection-diffusion problem in section \ref{sec:results}, and, with appropriate adjustments \cite{JouvetBueler2012}, to flat-topography cases of the highly-nonlinear glacier geometry problem in section \ref{sec:app}.  However, as for any numerical solver/meshing library, it is the user's responsibility to address a well-posed problem.
+Let us say a bit more about continuum VI \eqref{eq:vi} before addressing its FE solution.  For $\cX = W^{1,p}(\Omega)$, problem \eqref{eq:vi} is well-posed if $F$ satisfies certain conditions from the theory of monotone operators.  Specifically, if $F$ is strictly monotone, coercive, and continuous then it has a unique solution \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.  These conditions apply to the classical problem \eqref{eq:classical:vi} and its $p$-Laplacian extensions \cite{LiuBarrett1994}.  They also apply to the advection-diffusion problem in section \ref{sec:results}, and, with appropriate adjustments \cite{JouvetBueler2012}, to flat-topography cases of the highly-nonlinear glacier geometry problem in section \ref{sec:app}.  However, as for any numerical solver library, it is the user's responsibility to supply a well-posed problem.
 
-A complementarity concept, illustrated by \eqref{eq:classical:ncp} for the classical problem, also applies to \eqref{eq:vi}.  That is, the solution residual $F(u)\in \cX'$ may be highly-irregular, but it has certain sign properties because $\cK$ is defined by box constraints \eqref{eq:admissible}.  Write
+Complementarity, illustrated by \eqref{eq:classical:ncp} for the classical problem, also applies to VI \eqref{eq:vi}.  That is, at the solution the residual $F(u)\in \cX'$ has certain sign properties since $\cK$ is defined by box constraints \eqref{eq:admissible}.  Write
 \begin{gather}
 \label{eq:contactsets}
 \Cbotu = \{x\in\Omega\,:\,u(x) = \lb(x)\}, \quad \Ctopu = \{x\in\Omega\,:\,u(x) = \ub(x)\}, \\
 E_u = \Omega \setminus (\Cbotu \cup \Ctopu), \quad \Gamma_u = \Omega \cap \partial E_u, \notag
 \end{gather}
-for the \emph{lower-} and \emph{upper-contact} (active) subsets, the \emph{inactive} set, and the \emph{free boundary}, respectively.  The contact sets are disjoint by the compatibility conditions \eqref{eq:compat}.  The free boundary generally has a subset from lower contact and a disjoint subset from upper contact.  Figure \ref{fig:contactsets} illustrates one possibility.
+for the \emph{lower-} and \emph{upper-contact} (active) subsets, the \emph{inactive} set, and the \emph{free boundary}, respectively.  The contact sets are disjoint ($\Cbotu \cap \Ctopu = \emptyset$) by the compatibility conditions \eqref{eq:compat}.  The free boundary generally includes a subset from lower contact and a disjoint subset from upper contact.  Figure \ref{fig:contactsets} illustrates one possibility.
 
 \begin{figure}[ht]
 \mbox{\input{tikz/contactsets}}
@@ -243,35 +246,39 @@ A dual property to the primal box constraints \eqref{eq:admissible} holds:\footn
 \label{eq:Fsign}
   F(u) \ge 0 \text{ on } \Cbotu \quad \text{and} \quad F(u) \le 0 \text{ on } \Ctopu,
 \end{equation}
-with $F(u)=0$ on their complement $E_u$.  In fact, as a distribution, $F(u)$ is a signed measure \cite{EvansGariepy2015} which admits a decomposition $F(u) = \mu_{\bot,u} - \mu^{\top}_u$ into nonnegative Radon measures supported on $\Cbotu$ and $\Ctopu$ respectively, e.g.~\cite[Theorem II.6.9]{KinderlehrerStampacchia1980}.
+with $F(u)=0$ on their complement $E_u$.  In fact, as a distribution, $F(u)$ is a signed Radon measure \cite{EvansGariepy2015} which admits a decomposition $F(u) = \mu_{\bot,u} - \mu^{\top}_u$ into nonnegative measures supported on $\Cbotu$ and $\Ctopu$ respectively, e.g.~\cite[Theorem II.6.9]{KinderlehrerStampacchia1980}.
 
-Now, the VIAMR library is designed for piecewise-linear ($P_1$) or bilinear ($Q_1$) FE methods for problem \eqref{eq:vi}.  Restricting to the former for concreteness, let $\cT_h$ be a shape-regular mesh triangulation of $\Omega$ \cite{ElmanSilvesterWathen2014}, and let $\cX_h \subset \cX \cap C(\bar\Omega)$ be the finite-dimensional $P_1$ FE subspace.  Denote the interpolation operator by $I_h : C(\bar\Omega) \to \cX_h$, and define $g_h=I_h g$, $\lbh=I_h\lb$, and $\ubh=I_h\ub$.  By the nodal monotonicity property of $P_1$ and $Q_1$ elements \cite[for example]{BuelerFarrell2024}, the same compatibility conditions hold: $\lbh < \ubh$ on $\Omega$ and $\lbh \le g_h \le \ubh$ on $D$.  Therefore define the (nonempty) discrete admissible set as before:
+Now, the VIAMR library assumes that the piecewise-linear ($P_1$) FE method \cite{Ciarlet2002} has been applied to problem \eqref{eq:vi}.  Let $\cT_h$ be a (finite) shape-regular mesh triangulation of $\Omega$ \cite{Braess2007}, and let $\cX_h \subset \cX \cap C(\bar\Omega)$ be the finite-dimensional $P_1$ FE subspace.  Denote the interpolation operator by $I_h : C(\bar\Omega) \to \cX_h$.
+
+The discretized problem data are $g_h=I_h g$, $\lbh=I_h\lb$, and $\ubh=I_h\ub$.  By the nodal monotonicity property of $P_1$ elements, the same compatibility conditions as \eqref{eq:compat} hold, namely $\lbh < \ubh$ on $\Omega$ and $\lbh \le g_h \le \ubh$ on $D$, so we define the nonempty, closed, and convex \emph{discrete admissible set} as in \eqref{eq:admissible}:
 \begin{equation} \label{eq:fe:admissible}
 \cK_h = \{v_h \in \cX_h \,:\, \lbh \le v_h \le \ubh \text{ and } v_h = g_h \text{ on }D\}.
 \end{equation}
 
-Our FE method seeks $u_h\in\cK_h$ satisfying a VI problem which approximates \eqref{eq:vi}:
-\begin{equation} \label{eq:fe:vi}
-\left<F_h(u_h), v_h - u_h\right> \ge 0 \quad \text{ for all } v_h \in \cK_h.
-\end{equation}
-The FE residual function $F_h:\cK_h\to\cX'$ could be defined by the UFL expression for $F$ itself, but generally there are approximations like quadrature or regularization in its construction.\footnote{An \emph{a priori} estimate comparing the solutions of \eqref{eq:vi} and \eqref{eq:fe:vi} is found in \cite[Theorem 5.1]{Bueler2025}.  This extends the classical Falk bound \cite{Falk1974} for VIs, applicable to bilinear forms, specifically by adding a term $\left<F(u_h)-F_h(u_h),u_h\right>$.  In turn, Falk's bound itself extends Cea's lemma \cite{Ciarlet2002}.}  The same monotonicity and coercivity argument which shows well-posedness for \eqref{eq:vi} may well show it for \eqref{eq:fe:vi}.
-
-Similar to the continuum problem, for a solution $u_h$ to \eqref{eq:fe:vi}, we define contact and inactive sets:
-\begin{gather}
-\label{eq:fe:sets}
-\Cbotuh = \{x\,:\,u_h(x) = \lbh(x)\}, \quad \Ctopuh = \{x\,:\,u_h(x) = \ubh(x)\}, \\
-E_h = \Omega \setminus (\Cbotuh \cup \Ctopuh). \notag
-\end{gather}
-These sets, defined \emph{a posteriori} from solving \eqref{eq:fe:vi}, FIXME address nodal and elementwise interpretation
-
-Because $\cK_h \subset \cX_h \subset \cX$, we might regard \eqref{eq:fe:vi} as a conforming FE method for \eqref{eq:vi}.  This is, however, subtle for an obstacle problem, as it depends on the pointwise relationship between the constraints and their interpolants \cite{Ciarlet2002}.  For example, if $\lbh=I_h \lb$, $\ubh=I_h \ub$ are the interpolants then $\cK_h \approx \cK$ in some sense, but generally there is no containment.  One might distinguish three levels of increasingly conformity:
+Because $\cK_h \subset \cX_h \subset \cX$, one might suppose \eqref{eq:fe:vi} is a conforming FE method for \eqref{eq:vi}.  However, the subtlety is that containment $\cK_h\subset \cK$ depends on the pointwise relationship between the box constraints and their interpolants \cite{Ciarlet2002}.  Obviously $\cK_h \subsettilde \cK$ in some sense, but we prefer to distinguish levels of increasingly conformity:
 \renewcommand{\labelenumi}{(\roman{enumi})}
 \begin{enumerate}
 \item $\cK_h \not \subset \cK$,
-\item $\cK_h \subset \cK$, and
+\item $\cK_h \subset \cK$,
 \item $\cK_h = \cK \cap \cX_h$.
 \end{enumerate}
-Situation (i) generally occurs when $\lb$ is concave or $\ub$ is convex.  Situation (ii) can be imposed either by a convex/concave assumption, or it can be imposed by use of monotone injection operators to define the discrete constraints \cite{BuelerFarrell2024,GraeserKornhuber2009}; see also the proof of Theorem 5.1.2 in \cite{Ciarlet2002}.  The strongest condition (iii) holds if the constraints are themselves affine, for example, e.g.~including the $\lb=0$ unilateral examples in section \ref{sec:results}.
+Noting that we are restricting to $P_1$ elements, a mesh can be found which forces situation (i) if $\lb$ is somewhere concave or $\ub$ is somewhere convex.  Situation (ii) can be imposed either by restricting the constraint convexity or by use of monotone injection operators to define $\lbh$, $\ubh$ \cite{BuelerFarrell2024,GraeserKornhuber2009}; see also the proof of Theorem 5.1.2 in \cite{Ciarlet2002}.  The strongest condition (iii) holds if the continuum constraints $\lb$, $\ub$ are themselves affine, e.g.~in the section \ref{sec:results} unilateral examples for which $\lb=0$.
+
+Now the FE method seeks $u_h\in\cK_h$ satisfying a finite-dimensional VI problem which approximates \eqref{eq:vi}:
+\begin{equation} \label{eq:fe:vi}
+\left<F_h(u_h), v_h - u_h\right> \ge 0 \quad \text{ for all } v_h \in \cK_h.
+\end{equation}
+Here the FE residual function $F_h:\cK_h\to\cX'$ could be defined by the UFL expression for $F$ from \eqref{eq:vi}, but generally there are approximations like quadrature or regularization in its construction.  If monotonicity and coercivity arguments show well-posedness for \eqref{eq:vi} then the same arguments may show it for \eqref{eq:fe:vi}.  An \emph{a priori} estimate comparing the solutions of \eqref{eq:vi} and \eqref{eq:fe:vi} is found in \cite[Theorem 5.1]{Bueler2025}.\footnote{This estimate extends the classical Falk bound \cite{Falk1974}, applicable to bilinear forms, to nonlinear operators by adding a term $\left<F(u_h)-F_h(u_h),u_h\right>$ to the bound.  In turn, Falk's bound extends Cea's lemma \cite{Ciarlet2002} to VIs.}
+
+As with the continuum problem, solving \eqref{eq:fe:vi} for $u_h$ simultaneously defines subsets of $\Omega$:
+\begin{gather}
+\label{eq:fe:sets}
+\Cbotuh = \{x\in\Omega\,:\,u_h(x) = \lbh(x)\}, \quad \Ctopuh = \{x\in\Omega\,:\,u_h(x) = \ubh(x)\}, \\
+E_h = \Omega \setminus (\Cbotuh \cup \Ctopuh), \quad \Gamma_h = \Omega \cap \partial E_h. \notag
+\end{gather}
+The discrete (FE) contact sets $\Cbotuh,\Ctopuh$ are finite unions of nodes, closed edges (faces), and closed elements up to dimension $d$.  The discrete inactive set $E_h$ is open.  The discrete free boundary $\Gamma_h$ is a finite union of closed nodes, edges, etc.~up to dimension $d-1$.  (Note that $\Gamma_h$ cannot contain element-interior points because, in the $P_1$ space, if $u_h=\lbh$ for such a point, for example, then that entire element is in $\Cbotuh$.)
+
+FIXME address nodal and elementwise interpretation
 
 FIXME bullet list analogous to (but generalized) that in NSV03
 
@@ -279,11 +286,7 @@ FIXME as a cliched model problem the numerical analysis is often presented for s
 
 Section \ref{sec:app} will present a different obstacle problem application with a highly-nonlinear operator.  There the solution is the surface elevation of a glacier, which is constrained to be above the bedrock elevation on which the glacier sits.
 
-However, as with elliptic PDE problems generally, 
-
-In Section \ref{sec:vifem} we will recall the theory of such VIs, and extend the theory of their finite element (FE) approximation.  We will generalize \eqref{eq:classical:vi} from elliptic bilinear forms like \eqref{eq:classical:vi} to coercive nonlinear operators over Banach spaces.  In an FE approximation of such a VI the numerical solution $u_h$ will solve the same weak form, but over a finite-dimensional admissible set constructed on a mesh $\cT_h$.  Similarly to Cea's lemma for PDEs \cite{ElmanSilvesterWathen2014}, the norm errors $\|u-u_h\|$ can be bounded \emph{a priori}, which we do by extending the Falk \cite{Falk1974} technique to nonlinear operators.  This will show how norm errors are controlled by FE space approximation properties, as usual, but subject to admissibility concerns, and with separation of active-set and inactive-set errors.
-
-Adaptive mesh refinement (AMR) uses \emph{a posteriori} information from the numerical solution to strategically add mesh elements to increase the resolution and reduce the numerical error.  However, for VI problems the simulation goal is often the accurate approximation of the sets in \eqref{eq:classical:sets}, attainability of which is problem-dependent.
+FIXME Adaptive mesh refinement (AMR) uses \emph{a posteriori} information from the numerical solution to strategically add mesh elements to increase the resolution and reduce the numerical error.  However, for VI problems the simulation goal is often the accurate approximation of the sets in \eqref{eq:classical:sets}, attainability of which is problem-dependent.
 
 \begin{example} \label{example:notcontinuous}  Suppose $\Omega = (-1,1)$, $\psi(x)=1 - x^2$, and $g(x)=0$, but let $f$ be constant: $f(x)=\alpha$.  The exact solution $u$ of \eqref{eq:classical:vi} is now easily calculated: $u(x)=\psi(x)$ if $\alpha\le 2$ and $u(x)= 0.5 \alpha \psi(x)>\psi(x)$ if $\alpha>2$.  Thus for $\alpha \ge 2$ we have $C_u=\Omega$ and $E_u=\emptyset$, while if $\alpha<2$ then $A_u=\emptyset$ and $E_h=\Omega$.  This example shows that the sets \eqref{eq:classical:sets} are not continuous functions of the data $f$ of the problem.  An easy modification of this example shows that the sets are also not continuous functions of $\psi$.
 \end{example}
