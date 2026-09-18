@@ -190,17 +190,17 @@ For $f\in L^2(\Omega)$, the weak re-formulation of \eqref{eq:classical:ncp} seek
 
 Ignoring regularity for the moment, and speaking intuitively, integration of \eqref{eq:classical:vi} by parts yields $\big<-\nabla^2 u - f, v-u\big>\ge 0$, thus that any vector $v-u$, pointing arbitrarily from the solution $u$ into $K$, is at most at a right angle away from the residual $F(u) = -\nabla^2 u - f$.  In particular, if $u$ is in the interior $\cK^\circ$ then the residual must be zero, and then $u$ solves the Poisson equation, and furthermore $I_u=\Omega, A_u=\emptyset, \Gamma_u = \emptyset$.  Thus \eqref{eq:classical:vi} generalizes the weak-form Poisson equation, as a PDE over $I_u=\Omega$.
 
-The obstacle problems addressed by the VIAMR library substantially generalize the above classical continuum problem.  The scope of the library is defined in the following boxes.
+The obstacle problems addressed by the VIAMR library substantially generalize the above classical obstacle problem.
 
-\begin{libboxtitle}{VIAMR library scope includes:}
+\begin{libboxtitle}{VIAMR library scope:}
   \begin{itemize}
   \item scalar obstacle problems in which
   \item the constraint set is defined by upper and lower obstacles, and
-  \item the residual operator may have any (nonlinear) formula.
+  \item the residual operator can have any (nonlinear) formula.
   \end{itemize}
 \end{libboxtitle}
 
-The continuum VI problem is thus defined by certain data over a bounded, polygonal domain $\Omega\subset \RR^d$.  This includes a Dirichlet datum $g\in C(D)\strut$, over well-behaved $D\subset\partial\Omega$, and two continuous functions $\lb,\ub \in C(\bar\Omega)$, the \emph{box constraints}.  These data must satisfy compatibility conditions:
+The general continuum VI problem is defined by certain data over a bounded, polygonal domain $\Omega\subset \RR^d$.  This includes a Dirichlet datum $g\in C(D)\strut$, over well-behaved $D\subset\partial\Omega$, and two continuous functions $\lb,\ub \in C(\bar\Omega)$, the \emph{box constraints}.  These data must satisfy compatibility conditions:
 \begin{libbox}
 \begin{equation}
 \lb < \ub \text{ on } \Omega \quad \text{and} \quad \lb \le g \le \ub \text{ on } D.\label{eq:compat}
@@ -220,10 +220,10 @@ Let $\cX$ be a Banach space of scalar functions over $\Omega$ such that $C^1(\ba
 The general weak-form problem covered by the library is to find $u\in \cK$ satisfying a variational inequality (VI) of the following form:
 \begin{libbox}
 \begin{equation} \label{eq:vi}
-\left<F(u),v - u\right> \ge 0 \quad \text{ for all } v \in \cK,
+\left<F(u),v - u\right> \ge \left<\ell,v-u\right> \quad \text{ for all } v \in \cK,
 \end{equation}
 \end{libbox}
-\noindent Here $F:\cK \to \cX'$ is a continuous \emph{residual function}, defined for admissible inputs, or even over all of $\cX$.  Note that $\cX'$ denotes the topological dual space, and $\left<\cdot,\cdot\right>$ the dual pairing.  For example, $\left<F(u),w\right> = \int_\Omega \nabla u \cdot \nabla w - fw$ in classical problem \eqref{eq:classical:vi}.
+\noindent Here $F:\cK \to \cX'$ is a continuous \emph{residual function}, defined for admissible inputs, or even over all of $\cX$, and $\ell \in \cX'$ is a source term.\footnote{Separating $\ell$ from the general operator $F$ is not strictly needed, but it is helpful when considering qualitative behavior under changes in the data, and when comparing to the classical case \eqref{eq:classical:vi}.}  Note that $\cX'$ denotes the topological dual space, and $\left<\cdot,\cdot\right>$ the dual pairing.  For example, $\left<F(u),w\right> = \int_\Omega \nabla u \cdot \nabla w$ and $\ell(w)=\int_\Omega f w$ in classical problem \eqref{eq:classical:vi}.
 
 Let us say a bit more about continuum VI \eqref{eq:vi} before addressing its FE solution.  For $\cX = W^{1,p}(\Omega)$, problem \eqref{eq:vi} is well-posed if $F$ satisfies certain conditions from the theory of monotone operators.  Specifically, if $F$ is strictly monotone, coercive, and continuous then it has a unique solution \cite[Corollary III.1.8]{KinderlehrerStampacchia1980}.  These conditions apply to the classical problem \eqref{eq:classical:vi} and its $p$-Laplacian extensions \cite{LiuBarrett1994}.  They also apply to the advection-diffusion problem in section \ref{sec:results}, and, with appropriate adjustments \cite{JouvetBueler2012}, to flat-topography cases of the highly-nonlinear glacier geometry problem in section \ref{sec:app}.  However, as for any numerical solver library, it is the user's responsibility to supply a well-posed problem.
 
@@ -262,15 +262,15 @@ Because $\cK_h \subset \cX_h \subset \cX$, one might suppose \eqref{eq:fe:vi} is
 \item $\cK_h \subset \cK$,
 \item $\cK_h = \cK \cap \cX_h$.
 \end{enumerate}
-Noting that we are restricting to $P_1$ elements, a mesh can be found which forces situation (i) if $\lb$ is somewhere concave or $\ub$ is somewhere convex.  Situation (ii) can be imposed either by restricting the constraint convexity or by use of monotone injection operators to define $\lbh$, $\ubh$ \cite{BuelerFarrell2024,GraeserKornhuber2009}; see also the proof of Theorem 5.1.2 in \cite{Ciarlet2002}.  The strongest condition (iii) holds if the continuum constraints $\lb$, $\ub$ are themselves affine, e.g.~in the section \ref{sec:results} unilateral examples for which $\lb=0$.
+Noting that we are restricting to $P_1$ elements, a mesh can be found which forces the bad situation (i) if $\lb$ is somewhere concave or $\ub$ is somewhere convex.  On the other hand, the better situation (ii) applies under assumptions on constraint convexity, or it can be imposed by applying monotone injection operators \cite{BuelerFarrell2024,GraeserKornhuber2009} to define $\lbh$, $\ubh$; see \cite[Theorem 5.1.2]{Ciarlet2002}.  The nicest situation (iii) holds if the continuum constraints $\lb$, $\ub$ are themselves affine, e.g.~in the section \ref{sec:results} unilateral examples for which $\lb=0$.  Certain \emph{a posteriori} estimator literature for the classical obstacle problem assumes this case, e.g.~\cite{BraessCarstensenHoppe2007,CarstensenHu2015}, or only demonstrates methods in this case, e.g.~\cite{AinsworthOdenLee1993}, but the current library targets support for the more general situations (i) and (ii).
 
 Now the FE method seeks $u_h\in\cK_h$ satisfying a finite-dimensional VI problem which approximates \eqref{eq:vi}:
 \begin{equation} \label{eq:fe:vi}
-\left<F_h(u_h), v_h - u_h\right> \ge 0 \quad \text{ for all } v_h \in \cK_h.
+\left<F_h(u_h), v_h - u_h\right> \ge \left<\ell,v_h-u_h\right> \quad \text{ for all } v_h \in \cK_h.
 \end{equation}
 Here the FE residual function $F_h:\cK_h\to\cX'$ could be defined by the UFL expression for $F$ from \eqref{eq:vi}, but generally there are approximations like quadrature or regularization in its construction.  If monotonicity and coercivity arguments show well-posedness for \eqref{eq:vi} then the same arguments may show it for \eqref{eq:fe:vi}.  An \emph{a priori} estimate comparing the solutions of \eqref{eq:vi} and \eqref{eq:fe:vi} is found in \cite[Theorem 5.1]{Bueler2025}.\footnote{This estimate extends the classical Falk bound \cite{Falk1974}, applicable to bilinear forms, to nonlinear operators by adding a term $\left<F(u_h)-F_h(u_h),u_h\right>$ to the bound.  In turn, Falk's bound extends Cea's lemma \cite{Ciarlet2002} to VIs.}
 
-As with the continuum problem, solving \eqref{eq:fe:vi} for $u_h$ simultaneously defines subsets of $\Omega$:
+As with the continuum problem, solving \eqref{eq:fe:vi} for $u_h$ simultaneously defines subsets of $\Omega$, but unlike their continuum versions, these are known \emph{a posteriori} like $u_h$ itself:
 \begin{gather}
 \label{eq:fe:sets}
 \Cbotuh = \{x\in\Omega\,:\,u_h(x) = \lbh(x)\}, \quad \Ctopuh = \{x\in\Omega\,:\,u_h(x) = \ubh(x)\}, \\
@@ -278,9 +278,17 @@ E_h = \Omega \setminus (\Cbotuh \cup \Ctopuh), \quad \Gamma_h = \Omega \cap \par
 \end{gather}
 The discrete (FE) contact sets $\Cbotuh,\Ctopuh$ are finite unions of nodes, closed edges (faces), and closed elements up to dimension $d$.  The discrete inactive set $E_h$ is open.  The discrete free boundary $\Gamma_h$ is a finite union of closed nodes, edges, etc.~up to dimension $d-1$.  (Note that $\Gamma_h$ cannot contain element-interior points because, in the $P_1$ space, if $u_h=\lbh$ for such a point, for example, then that entire element is in $\Cbotuh$.)
 
-FIXME address nodal and elementwise interpretation
+% FIXME address nodal and elementwise interpretation more?
 
-FIXME bullet list analogous to (but generalized) that in NSV03
+As sketched by Nochetto, Siebert, and Veeser \cite{NSV03} for the unilateral classical obstacle problem, \emph{a posteriori} estimators and associated adaptive procedures for obstacle problems should exhibit certain properties:
+\begin{itemize}
+\item In the discrete contact sets $\Cbotuh,\Ctopuh$ the estimator should be insensitive to the forcing term $\ell$, which should not dictate mesh quality.
+\item In the inactive set $E_h$ the estimator should be insensitive to the obstacles, and thus reduce to the usual estimator for the (unconstrained) PDE.
+\item The estimator must be able to detect the situation where the discrete solution is non-conforming with respect to the continuum obstacles, i.e.~$u_h\notin \cK$, and refine accordingly.
+\item FIXME If the residual measure $\sigma = F(u)-\ell$ happens to be singular with respect to the Lebesgue measure, then we could expect a strong refinement near the discrete free boundary. The piecewise linear approximation $\sigma_h$ of $\sigma$ cannot be very accurate in such a case no matter whether the corresponding singularity in the exact solution $u$ can be resolved in the discrete space.
+\item FIXME It is not advisable to preadapt the mesh according to data $\ell,\lb,\ub$ since the contact set is unknown beforehand and its local mesh size should only depend on obstacles but not $\ell$, whereas the opposite situation occurs in the non-contact set.
+\end{itemize}
+These properties are fulfilled to varying degrees by the methods of this paper, with maximum success in the easier cases (e.g.~classical obstacle problem with an affine obstacle).
 
 FIXME as a cliched model problem the numerical analysis is often presented for smooth data, and in any case the Laplacian operator is very well behaved.  our goal for the library is to handle very general operators and rough data.  although we implement methods which exploit the nice structure of the classical Laplacian case, we also implement partly-heuristic methods which perform at least equally well on the classical problem and yet apply naturally to much more realistic cases
 
