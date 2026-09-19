@@ -175,7 +175,7 @@ An example is shown in Figure \ref{fig:ball}, where the obstacle $\psi$ is an up
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.7\textwidth]{static/obstacle.png}
-\caption{Solution $u$, as wireframe, to a classical (hemi)spherical obstacle problem over $\Omega \subset \RR^2$.}
+\caption{Solution $u$, as wireframe, to a classical unilateral obstacle problem, over $\Omega \subset \RR^2$.}
 \label{fig:ball}
 \end{figure}
 
@@ -251,6 +251,12 @@ Complementarity, illustrated by \eqref{eq:classical:ncp} for the classical probl
 \end{equation}
 with $\sigma=0$ on their complement $E_u$.  In fact, in standard cases with $\cX=W^{1,p}(\Omega)$ and $\ell\in L^1(\Omega)$ then $\sigma = F(u)-\ell$ is a signed Radon measure \cite{EvansGariepy2015} which admits a decomposition $\sigma = \mu_{\bot,u} - \mu^{\top}_u$ into nonnegative measures supported on $\Cbotu$ and $\Ctopu$ respectively, e.g.~\cite[Theorem II.6.9]{KinderlehrerStampacchia1980}.
 
+FIXME finish-up introduction here with outline of paper structure: The paper is organized as follows:  Section \ref{sec:vifem} provides \emph{a priori} norm bounds for FE methods applied to VI problems; aspects of this material are new.  Section \ref{sec:inactive} addresses \emph{a posteriori} error estimators which can be applied in the inactive set.  Section \ref{sec:viamr} describes the three new AMR methods in more detail.  Sections \ref{sec:results} and \ref{sec:app} compare and discuss their performance on classical obstacle model problems and in a realistic glacier application.  Table \ref{tab:abbrev} states the few abbreviations used herein.
+
+
+
+\section{Finite element approximation, and goals for \emph{a posteriori} estimators} \label{sec:goals}
+
 Now, the VIAMR library assumes that the piecewise-linear ($P_1$) FE method \cite{Ciarlet2002} has been applied to problem \eqref{eq:vi}.  Let $\cT_h$ be a (finite) shape-regular mesh triangulation of $\Omega$ \cite{Braess2007}, and let $\cX_h \subset \cX \cap C(\bar\Omega)$ be the finite-dimensional $P_1$ subspace.  Denote the nodal interpolation operator by $I_h : C(\bar\Omega) \to \cX_h$.
 
 The discretized problem data are $g_h=I_h g$, $\lbh=I_h\lb$, and $\ubh=I_h\ub$.  By the nodal monotonicity property of $P_1$ elements, the same compatibility conditions as \eqref{eq:compat} hold, namely $\lbh < \ubh$ on $\Omega$ and $\lbh \le g_h \le \ubh$ on $D$, so we define the nonempty, closed, and convex \emph{discrete admissible set} just as in \eqref{eq:admissible}:
@@ -273,40 +279,45 @@ The FE method itself seeks $u_h\in\cK_h$ satisfying a finite-dimensional VI prob
 \end{equation}
 Here the approximating operator $F_h:\cK_h\to\cX'$ could be defined by a UFL expression for $F$, but generally quadrature and/or regularization is involved in its construction.  Note that if monotonicity and coercivity arguments show well-posedness for \eqref{eq:vi} then the same arguments may show it for \eqref{eq:fe:vi}.  Falk \cite{Falk1974} proved an \emph{a priori} estimate comparing the solutions of \eqref{eq:vi} and \eqref{eq:fe:vi} in the linear operator case, thereby extending Cea's lemma to VIs, and a further extension to nonlinear coercive operators is in \cite[Theorem 5.1]{Bueler2025}.
 
-As with the continuum problem, solving \eqref{eq:fe:vi} for $u_h$ determines discrete (FE) subsets of $\Omega$:
+Solving the finite-dimensional VI \eqref{eq:fe:vi} for $u_h$ determines these FE subsets of $\Omega$:
 \begin{gather}
 \label{eq:fe:sets}
 \Cbotuh = \{x\in\Omega\,:\,u_h(x) = \lbh(x)\}, \quad \Ctopuh = \{x\in\Omega\,:\,u_h(x) = \ubh(x)\}, \\
 E_h = \Omega \setminus (\Cbotuh \cup \Ctopuh), \quad \Gamma_h = \Omega \cap \partial E_h. \notag
 \end{gather}
-The contact sets $\Cbotuh,\Ctopuh$ are finite unions of closed entities (nodes, edges, cells) up to dimension $d$.  Similarly, the free boundary $\Gamma_h$ is a finite union of closed entities up to dimension $d-1$.  (It cannot contain cell-interior points because, in the $P_1$ space, if for example $u_h\in\cK_h$ and $u_h=\lbh$ at an cell-interior point then that entire cell is in $\Cbotuh$.)  The inactive set $E_h$ is open, and if $E_h$ contains $x \in \mathring T$, a point in the interior of a cell $T\in E_h$, then it contains the entire cell interior.  In any case, and like $u_h$ itself, these sets are accessible \emph{a posteriori}.
+Because the FE space is $P_1$, the contact sets $\Cbotuh,\Ctopuh$ are finite unions of closed entities (nodes, edges, cells) up to dimension $d$.  In fact, only because the functions are continuous, the inactive set $E_h=\{x\,:\,\lbh(x) < u_h(x) < \ubh(x)\}$ is open.  However, for $P_1$, if $E_h$ contains $x \in \mathring T$, a point in the interior of a cell $T\in \cT_h$, then it contains the entire cell interior; $\mathring T \subset E_h$.  From similar reasoning, the free boundary $\Gamma_h$ is a finite union of closed entities only up to dimension $d-1$.
 
-The methods of the VIAMR library, documented in Section \ref{sec:viamr}, use such \emph{a posteriori} information to estimate the errors made in certain cells, or to (heuristically) identify cells near free boundaries where refinement should reduce location errors in the sets in \eqref{eq:fe:sets}.  Adaptive mesh refinement (AMR) can the add mesh cells to increase the resolution and reduce the numerical error, $\|u_h-u\|$ in some norm.  For VI problems, however, the simulation goal is often the accurate approximation of the sets \eqref{eq:contactsets}, e.g.~$E_h \approx E_u$ for the inactive set, attainability of which is problem-dependent.
+Like $u_h$ itself, the sets \eqref{eq:fe:sets} are accessible \emph{a posteriori}.  The methods of the VIAMR library (Section \ref{sec:viamr}) all use \emph{a posteriori} information to estimate the errors made in certain cells, or to (heuristically) identify cells near free boundaries where refinement should reduce location errors in the sets in \eqref{eq:fe:sets}.  Tag-and-refine mesh refinement methods then add mesh cells to increase the resolution and reduce the numerical error, i.e.~$\|u_h-u\|$ in some norm.  For VI problems, however, the simulation goal is often the accurate approximation of the sets \eqref{eq:contactsets}, e.g.~$E_h \approx E_u$ for the inactive set, attainability of which is problem-dependent.
 
-For the unilateral classical obstacle problem, Nochetto, Siebert, and Veeser (NSV) \cite{NSV03} proposed properties that \emph{a posteriori} estimators and associated adaptive procedures should exhibit.  Here is their list, for the box-constrained case \eqref{eq:fe:admissible}--\eqref{eq:fe:sets}:
+For the classical unilateral obstacle problem based on the Laplacian operator, Nochetto, Siebert, and Veeser (NSV) \cite{NSV03} have proposed properties/principles that \emph{a posteriori} estimators and associated adaptive procedures should exhibit.  Here is their list, adapted for the box-constrained case \eqref{eq:fe:admissible}--\eqref{eq:fe:sets}:
 \renewcommand{\labelenumi}{(\alph{enumi})}
 \begin{enumerate}
 \item In the discrete contact sets $\Cbotuh,\Ctopuh$, estimators should be insensitive to the forcing term $\ell$, which should not dictate mesh quality.
-\item In the inactive set $E_h$, estimators should be insensitive to the continuum obstacles $\lb,\ub$, and reduce to an estimator for the (unconstrained) PDE.
-\item Estimators should detect where the discrete solution is non-conforming, with respect to the continuum obstacles ($u_h\notin \cK$), and refine accordingly.
+\item In the inactive set $E_h$, estimators should be insensitive to the obstacles $\lbh,\ubh$, and reduce to an estimator for the (unconstrained) PDE.
+\item Estimators should detect where the discrete solution is non-conforming, with respect to the continuum obstacles, i.e.~$u_h\notin \cK$, and refine accordingly.
 \item If the residual measure $\sigma = F(u)-\ell$ is singular with respect to Lebesgue measure at a free boundary, then we expect strong refinement near there.  A piecewise-linear approximation of $\sigma$ cannot be very accurate in such a case.
-\item It is not advisable to preadapt the mesh according to the data $\ell,\lb,\ub$ since the contact set is unknown beforehand.  In the contact set the local mesh size should only depend on the obstacles $\lb,\ub$, but not $\ell$, whereas the opposite situation occurs in the non-contact set.
+\item It is not advisable to preadapt the mesh according to the data $\ell,\lb,\ub$ since the contact set is unknown beforehand.
 \end{enumerate}
 
-For the classical obstacle problem \eqref{eq:classical:vi}, the examples of section \ref{sec:results} show that the above properties are fulfilled by all of the major methods of this paper.  Specifically, the library includes implementations of the NSV estimators \cite{NSV03,NSV05} which, though restricted to the classical case, are proven to have versions of these desirable properties.  In related work \cite{Bueler2026} we have extended the NSV method in \cite{NSV03} to box constraints, which nontrivially changes the internal cell classification in the estimator.  In any case, the rigorous NSV methods are benchmarks for the other, more flexible but less rigorous, methods in the library; see section \ref{sec:results}.
+For the classical obstacle problem \eqref{eq:classical:vi}, our numerical results (Section \ref{sec:results}) show that the above properties are fulfilled by all of the major methods of this paper.  Specifically, the library includes implementations of the NSV estimators \cite{NSV03,NSV05} which, though restricted to the classical case, are proven to possess these desirable properties.  Furthermore, as documented separately \cite{Bueler2026}, we have extended the methods in \cite{NSV03} from unilateral to box constraints, which nontrivially changes the cell classification used inside the estimator.  In any case, these rigorous classical obstacle problem methods are benchmarks for the other, more flexible but less rigorous, methods in the library (Section \ref{sec:results}).
 
-FIXME we agree (a),(b) but we have concerns about (c),(d),(e).  we add (f): refinement in active can be wasted, esp re blistering property problems Appendix \ref{app:blistering}
+Our target applications include certain obstacle problems with highly-nonlinear diffusion operators.  The glacier application in Section \ref{sec:app} is an example, and here the unregularized (continuum) diffusivity also degenerates to being identically zero in any part of the contact set $\Cbotu$ (noting the problem is unilateral).  For such problems the goals of the adaptive procedure should change because any refinement deep inside a contact set is wasted effort.  We regard this as sixth on the list:
+\begin{enumerate}
+\setcounter{enumi}{5}
+\item For degenerating obstacle problems of the appropriate type (Appendix \ref{app:blistering}), and in computed contact-set regions where the source term has a certain sign, cells should not be marked for refinement.
+\end{enumerate}
 
-FIXME actually \emph{goals} for the methods in our library? because our scope includes degenerating-diffusivity operators, essentially (a), (b), (d), (f), with (c), (e) being additional goals for uniformly-elliptic operators.  but these are imperfectly achieved because, to our understanding, new rigorous bounds would be needed for each new class of nonlinear operator
+Looking at the whole list of desirable properties, and considering all examples and results in this paper (Sections \ref{sec:results}, \ref{sec:app}), we conclude that properties (a), (b), and (d) would seem to be generally desireable, while properties (c), (e), and (f) actually appear to be problem-dependent goals.  All of the NSV goals (a)--(f) are valid for obstable problems, including bilinear ones, if the operator has a uniform ellipticity property, of course including the classical case for which the \cite{NSV03,NSV05} estimators are proven to be reliable and efficient.
 
-FIXME although we implement methods which exploit the nice structure of the classical Laplacian case, we also implement partly-heuristic methods which perform at least equally well on the classical problem and yet apply naturally to much more realistic cases
+However, users of the VIAMR library may arrive with a degenerating-diffusivity problem or they may have data $\ell,\lb,\ub$ given only by observed and/or gridded data; that is, the library must extend beyond model problems.  If the obstacles are only given by observations on a pre-existing grid then continuum admissiblity may be unknowable; here the desirability of property (c) will be situation-dependent.  (Have we already refined to the resolution of the obstacles?)  Regarding property (d), for the glaciers obstacle problem every practitioner would assume that areas with positive source term ($\left<\ell,\varphi\right>\ge 0$ for $\varphi$ a hat function) should be pre-refined because in those areas a detailed fluid model must be solved (along with portions of the negative-source area which are only known \emph{a posteriori}).  Property (f) applies to the glacier problem, as noted, but it should be ignored for classical Laplacians and other uniformly-elliptic operators.
 
-Section \ref{sec:app} will present a different obstacle problem application with a highly-nonlinear operator.  There the solution is the surface elevation of a glacier, which is constrained to be above the bedrock elevation on which the glacier sits.
+FIXME goals these are imperfectly achieved because, to our understanding, new rigorous bounds would be needed for each new class of nonlinear operator
 
-\begin{example} \label{example:notcontinuous}  Suppose $\Omega = (-1,1)$, $\psi(x)=1 - x^2$, and $g(x)=0$, but let $f$ be constant: $f(x)=\alpha$.  The exact solution $u$ of \eqref{eq:classical:vi} is now easily calculated: $u(x)=\psi(x)$ if $\alpha\le 2$ and $u(x)= 0.5 \alpha \psi(x)>\psi(x)$ if $\alpha>2$.  Thus for $\alpha \ge 2$ we have $C_u=\Omega$ and $E_u=\emptyset$, while if $\alpha<2$ then $A_u=\emptyset$ and $E_h=\Omega$.  This example shows that the sets \eqref{eq:classical:sets} are not continuous functions of the data $f$ of the problem.  An easy modification of this example shows that the sets are also not continuous functions of $\psi$.
-\end{example}
+FIXME we implement partly-heuristic methods which perform equally well on the classical problem and yet apply naturally to much more realistic cases
 
-The $\alpha=2$ case of Example \ref{example:notcontinuous} is \emph{degenerate} \cite{KinderlehrerStampacchia1980}, that is, the unconstrained solution happens to match the obstacle on a nonempty open set.  Usable convergence results for FE approximations of the solution-dependent sets $A_u,E_h,\Gamma_u$ will usually depend upon problem nondegeneracy, and our examples are accordingly non-degenerate.  Furthermore, the effectiveness of different AMR strategies for non-degenerate VI problems depends strongly upon the measure (area or volume) of the active and inactive sets.  This observation largely motivates the \emph{a posteriori} approaches of this paper.  For example, in certain problems, those cells which are significantly interior to the active set require no further computation or refinement.  For such problems, with examples given in Sections \ref{sec:results} and \ref{sec:app}, if a solution is desired at higher resolution within the active set then this can be computed in post-processing by arbitrary interpolation of the obstacle data $\psi$.
+FIXME move stuff between here and start of section \ref{sec:inactive} to methods section (section \ref{sec:viamr}) and to results section \ref{sec:results}
+
+FIXME degenerate \cite{KinderlehrerStampacchia1980}: the unconstrained solution happens to match the obstacle on a nonempty open set.  Usable convergence results for FE approximations of the solution-dependent sets $A_u,E_h,\Gamma_u$ will usually depend upon problem nondegeneracy, and our examples are accordingly non-degenerate.  Furthermore, the effectiveness of different AMR strategies for non-degenerate VI problems depends strongly upon the measure (area or volume) of the active and inactive sets.  This observation largely motivates the \emph{a posteriori} approaches of this paper.  For example, in certain problems, those cells which are significantly interior to the active set require no further computation or refinement.  For such problems, with examples given in Sections \ref{sec:results} and \ref{sec:app}, if a solution is desired at higher resolution within the active set then this can be computed in post-processing by arbitrary interpolation of the obstacle data $\psi$.
 
 \begin{example} \label{example:activesets} Examples in Section \ref{sec:results} include three classical obstacle problems over square domains, and Figure \ref{fig:activesizes} shows their active sets in black.  For the left-hand problem, with a small active set and a long free boundary, our AMR methods refine a large fraction of the cells, namely the many cells which are close to the free boundary.  The middle problem has a known exact solution; Example \ref{example:ball} shows convergence rates.  For the right-hand problem, a clear performance benefit of our techniques, relative to uniform refinement, comes from avoiding refinement in the active set, an efficiency also exploited by the glaciation application in Section \ref{sec:app}. \end{example}
 
@@ -350,8 +361,7 @@ In summary, here are two principles for the AMR methods of this paper:
 \item Their implementations (\href{https://github.com/StefanoFochesatto/viamr}{{\small \texttt{github.com/StefanoFochesatto/viamr}}}) within the Firedrake \cite{Langeetal2016} FE library are parallel, well-documented, and easy-to-use.
 \end{enumerate}
 
-\smallskip
-The paper is organized as follows:  Section \ref{sec:vifem} provides \emph{a priori} norm bounds for FE methods applied to VI problems; aspects of this material are new.  Section \ref{sec:inactive} addresses \emph{a posteriori} error estimators which can be applied in the inactive set.  Section \ref{sec:viamr} describes the three new AMR methods in more detail.  Sections \ref{sec:results} and \ref{sec:app} compare and discuss their performance on classical obstacle model problems and in a realistic glacier application.  Table \ref{tab:abbrev} states the few abbreviations used herein.
+FIXME where to put table
 
 \begin{table}[ht]
 \centering
