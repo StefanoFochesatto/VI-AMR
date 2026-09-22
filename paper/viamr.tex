@@ -58,6 +58,16 @@
   %attach title to upper, % Blends title smoothly if you prefer no separation line
 }
 
+\usepackage{letltxmacro}
+\LetLtxMacro{\origtextendash}{\textendash}  % backup originals
+\LetLtxMacro{\origtextemdash}{\textemdash}
+% Define a custom vector en-, em-dash with correct thickness and length
+% 1.2em = length, 0.08em = thickness, 0.22ex = vertical clearance from baseline
+\newcommand{\thickendash}{\raisebox{0.35ex}{\rule{0.7em}{0.06em}}}
+\newcommand{\thickemdash}{\raisebox{0.35ex}{\rule{1.2em}{0.06em}}}
+\renewcommand{\textendash}{\thickendash}  % overwrite globally
+\renewcommand{\textemdash}{\thickemdash}  % overwrite globally
+
 \newcommand{\subsettilde}{\mathrel{\stackunder[0.6pt]{$\subset$}{$\scriptstyle\sim$}}}
 
 % obstacles
