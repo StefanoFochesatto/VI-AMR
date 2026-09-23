@@ -358,7 +358,7 @@ Our target applications include obstacle problems with highly-nonlinear diffusio
 \smallskip
 \begin{enumerate}
 \setcounter{enumi}{5}
-\item For degenerating obstacle problems of the appropriate type (Appendix \ref{app:blistering}), and subject to a sign convention on the source, cells should not be marked for refinement in computed contact-set regions.
+\item For certain degenerating obstacle problems, subject to a sign convention on the source the cells should not be marked for refinement in computed contact-set regions.
 \end{enumerate}
 
 \smallskip
@@ -377,6 +377,7 @@ However, users with nonlinear operators $F$, or gridded data for $\ell,\lb,\ub$,
 
 \smallskip
 \noindent In summary, the above NSV goals are a helpful guide for \emph{a posteriori} estimators, but different obstacle problems and nonlinear operators will limit what can be learned from them, as they are focussed on a classical model problem.  Users of the VIAMR library should always consider this goal list in choosing algorithms.
+
 
 \section{\emph{A posteriori} error estimators for VIs} \label{sec:estimators}
 
@@ -589,8 +590,6 @@ In any case, the obstacle $\psi$ is given \emph{as data} for VI problem \eqref{e
 
 FIXME material removed
 
-Consider the first two integrals in bound \eqref{eq:falktwo} from the point of view of AMR.  Their size is determined partly by the action of $F$ on the continuum obstacle, and partly by the source term $\ell$.  However, because they are over the active set $A_u$, neither integral, nor the third $A_u$ integral, requires mesh refinement so as to improve the quality of the FE solution, \emph{as long as the mesh and solver have accurately located the free boundary}.  This observation suggests why the primary goal of AMR for VIs should be to generate close approximation $\Gamma_u^h\approx \Gamma_u$.  Computation expended on better approximation of the data $\psi$ in $A_u$ can be avoided if the free boundary is accurately resolved.  This is easiest to exploit within the class of unilateral obstacle problems described in Appendix \ref{app:blistering}, which includes the $\psi=0$ case of the classical obstacle problem \eqref{eq:classical:vi} and the glacier problem of Section \ref{sec:app}.  In such problems one may preprocess the data, noting all the areas where the source term is negative, and then systematically avoid unnecessary active set refinement.
-
 However, in order for $\Gamma_u^h\approx \Gamma_u$ to be an accurate approximation, the interior condition of the VI, over $E_h$, must be accurately solved.  (This gives the significance of the final integral in \eqref{eq:falktwo}.)  Our AMR approaches will systematically refine on both sides of the computed free boundary $\Gamma_u^h$, and generally in the inactive set $E_h^h$.
 
 \begin{example} \label{example:activesets} Examples in Section \ref{sec:results} include three classical obstacle problems over square domains, and Figure \ref{fig:activesizes} shows their active sets in black.  For the left-hand problem, with a small active set and a long free boundary, our AMR methods refine a large fraction of the cells, namely the many cells which are close to the free boundary.  The middle problem has a known exact solution; Example \ref{example:ball} shows convergence rates.  For the right-hand problem, a clear performance benefit of our techniques, relative to uniform refinement, comes from avoiding refinement in the active set, an efficiency also exploited by the glaciation application in Section \ref{sec:app}. \end{example}
@@ -663,7 +662,7 @@ To illustrate some additional mesh and performance features of our AMR approache
 \label{fig:spiralmesh}
 \end{figure}
 
-\begin{example}  \label{example:blisters}   Consider the example shown in Figure \ref{fig:activesizes} (right), which has a large active set.  Here $\Omega=(0,1)^2$ and $\psi = g = 0$ in \eqref{eq:classical:vi}.  The source term $f$ is a sum of small-variance gaussian peaks against a negative background value; see the code for details.  The blistering property (Appendix \ref{app:blistering}) applies, so inactive set components necessarily include a $f>0$ portion.  The inactive set has six connected components, but this is only revealed at high resolution.  Figure \ref{fig:blistersmesh} shows the result of applying the VCD$+$BR method, giving a mesh with 100 times fewer cells than a uniform mesh with the same free-boundary resolution.  Similar to the glacier example in the next Section, in this case the avoidance of active-set refinement gives a distinct performance advantage.  The result from UDO$+$BR is very similar, and not shown. \end{example}
+\begin{example}  \label{example:blisters}   Consider the example shown in Figure \ref{fig:activesizes} (right), which has a large active set.  Here $\Omega=(0,1)^2$ and $\psi = g = 0$ in \eqref{eq:classical:vi}.  The source term $f$ is a sum of small-variance gaussian peaks against a negative background value; see the code for details.  On this problem, inactive set components necessarily include a $f>0$ portion.  The inactive set has six connected components, but this is only revealed at high resolution.  Figure \ref{fig:blistersmesh} shows the result of applying the VCD$+$BR method, giving a mesh with 100 times fewer cells than a uniform mesh with the same free-boundary resolution.  Similar to the glacier example in the next Section, in this case the avoidance of active-set refinement gives a distinct performance advantage.  The result from UDO$+$BR is very similar, and not shown. \end{example}
 
 % generated from examples/blisters.py at levels=4
 \begin{figure}[ht]
@@ -689,7 +688,7 @@ To illustrate some additional mesh and performance features of our AMR approache
 
 \section{Application to determining glaciated land areas} \label{sec:glacier}
 
-In this section we apply our AMR techniques to a model for the steady geometry of a glacier, over a given bedrock topography and subject to a given climate.  In particular, this model solves for which land is covered by ice.  Though glacier ice will cover any land on which snowfall exceeds melt, ice flow expands the glaciated area out to a free boundary, the glacier margin, which can only be found from conservation equations.  In fact, any fluid layer subject to surface processes which add or remove mass is governed by a related model \cite{Bueler2021b}.  In these VI problems, which generally are \emph{not} of optimization type, the unknown fluid thickness must be nonnegative, the operator is nonlinear, and the blistering property (Appendix \ref{app:blistering}) applies.
+In this section we apply our AMR techniques to a model for the steady geometry of a glacier, over a given bedrock topography and subject to a given climate.  In particular, this model solves for which land is covered by ice.  Though glacier ice will cover any land on which snowfall exceeds melt, ice flow expands the glaciated area out to a free boundary, the glacier margin, which can only be found from conservation equations.  In fact, any fluid layer subject to surface processes which add or remove mass is governed by a related model \cite{Bueler2021b}.  In these VI problems, which generally are \emph{not} of optimization type, the unknown fluid thickness must be nonnegative and the operator is nonlinear.
 
 Let $\Omega \subset \RR^2$ be a fixed land region, with bedrock elevation $b \in C^1(\Omega)$ and a surface mass-balance \cite{GreveBlatter2009} function $a:\Omega \times \RR \to \RR$.  The value of this climatic function is the annually-averaged rate of ice accumulation (snow) minus melt and runoff.  If $a$ depends on the surface elevation $s$ then we suppose that $a(x,y,s)\in L^\infty(\Omega)$ for any $s \in L^\infty(\Omega)$, and additionally that $a$ is Lipschitz continuous in $s$.
 
@@ -786,41 +785,5 @@ An important extension of our work would be to find effective refinement strateg
 
 \bibliographystyle{siamplain}
 \bibliography{viamr}
-
-
-\appendix
-\section{Obstacle problems with the blistering property} \label{app:blistering}
-
-In a classical, unilateral obstacle problem \eqref{eq:classical:vi} an upward force $f(x)>0$ may occur in the active set $A_u$.  Physically speaking, in such a case the upward force was insufficient to lift $u$ off the obstacle $\psi$.  However, in certain problems this situation cannot occur.  The hypotheses of Lemma \ref{lem:blister} hold for classical problems \eqref{eq:classical:vi} when $\psi=0$, for the porous dam saturation free-boundary problem \cite[for example]{AinsworthOdenLee1993}, and for the glacier problem in Section \ref{sec:app}.
-
-\begin{lemma} \label{lem:blister}
-Suppose that $\psi=0$ and $\ell[v] = \int_\Omega fv\,dx$ for $f\in L^2(\Omega)$.  Suppose also that the operator $F$ is given by measurable densities,
-\begin{equation} \label{eq:densitiesform}
-F(w)[v] = \int_\Omega \phi(w(x),\grad w(x)) v(x) + \Phi(w(x),\grad w(x)) \cdot \grad v(x)\,dx,
-\end{equation}
-satisfying $\phi(0,0)=0$ and $\Phi(0,0)=0$.  Then for $u$ solving VI \eqref{eq:vi}, $f\le 0$ a.e.~in $A_u$.
-\end{lemma}
-
-\begin{proof}
-Let $S\subset A_u$ be a Borel set, and denote its indicator function by $\chi_S \in L^\infty(\Omega)$.  By a density argument and the assumptions on $\phi$ and $\Phi$, the operator value $F(u)[\chi_S]$ is well-defined, \emph{and zero}, because $S$ is in the active set.  Thus by Lemma \ref{lem:measure},
-\begin{equation*}
-0 \le d\mu_u(S) = F(u)[\chi_S]-\ell[\chi_S] = 0 - \ell[\chi_S] = -\int_S f\,dx.
-\end{equation*}
-This shows $f\le 0$ a.e.~with respect to Lebesgue measure.
-\end{proof}
-
-\begin{definition}
-For a unilateral obstacle problem \eqref{eq:vi} with source term $\ell[v] = \int_\Omega fv\,dx$ and $f\in C(\bar \Omega)$, we say that the \emph{blistering property} holds if $A_u \subset \{x \in \Omega\, :\, f(x)\le 0\}$ \cite{JouvetBueler2012}, that is, if the conclusion of Lemma \ref{lem:blister} holds.
-\end{definition}
-
-To explain the language, if $f(x)>0$ for some $x\in\Omega$ then, assuming this property, the inactive set $E_h$ must be non-empty, and $x\in E_h$.  That is, even a small upward force ``blisters'' the membrane off the obstacle.
-
-Any classical problem \eqref{eq:classical:vi} with a smooth obstacle $\psi\in C^2(\bar\Omega)$ can be transformed into one with the blistering property.  Let $\tilde v=v-\psi$, thus $\tilde\cK = \{\tilde v\in\cX\,:\,\tilde v\ge 0 \text{ and } \tilde v|_{\partial\Omega}=g-\psi|_{\partial\Omega}\}$.  Integration-by-parts shows \eqref{eq:classical:vi} is equivalent to finding $\tilde u = u -\psi \in \tilde \cK$ so that
-\begin{equation} \label{eq:classical:vi:blister}
-\int_\Omega \nabla \tilde u \cdot \nabla(\tilde v - \tilde u) \ge \int_\Omega \left(f+\grad^2\psi\right)(\tilde v - \tilde u) \quad \text{ for all } \tilde v \in \tilde \cK.
-\end{equation}
-For VI problem \eqref{eq:classical:vi:blister}, if $x\in A_{\tilde u} = \{\tilde u(x)=0\}$ then $\tilde f(x)= f(x)+\grad^2\psi(x)\le 0$.
-
-For blistering-property problems, AMR costs can be reduced by systematically avoiding refinement in the computed active sets.  From a computed solution $u_h$, one identifies cells $K\in \cT_h$ such that $K \subset A_u^h$.  (In our implementation we require that every node in the closure of $K$ is active, according to some tolerance.)  The degenerate case must be excluded, so we also require $K \subset \Omega_- = \{x\in \Omega\,:\,f(x) < 0\}$; note this uses only the data of the problem.  Then for $K\subset \Omega_- \cap A_u^h$ no refinement is needed \emph{if} $K$ is geometrically far from the free boundary.  However, if later refinements move the free boundary to be incident to $K$ then refinement of $K$ becomes appropriate.
 
 \end{document}
