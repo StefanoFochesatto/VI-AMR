@@ -293,7 +293,7 @@ VI        & variational inequality
 
 \section{Finite element approximation and \emph{a posteriori} goals} \label{sec:goals}
 
-The VIAMR library assumes that the piecewise-linear ($P_1$) FE method \cite{Ciarlet2002} has been applied to problem \eqref{eq:vi}.  Let $\cT_h$ be a (finite) shape-regular triangulation ($d=2$) or tetrahedralization ($d=3$) of $\Omega$ \cite{Braess2007}, and write $\cX_h$ for the finite-dimensional space of continuous functions which are piece-wise linear on each $T\in\cT_h$.  Regarding the Banach space $\cX$ we assume $\cX_h \subset \cX \cap C(\bar\Omega)$, so the method is conforming in that sense.  Denote the nodal interpolation operator by $I_h : C(\bar\Omega) \to \cX_h$
+The VIAMR library assumes that the piecewise-linear ($P_1$) FE method \cite{Ciarlet2002} has been applied to problem \eqref{eq:vi}.  Let $\cT_h$ be a (finite) shape-regular \cite{Braess2007} partition of $\bar\Omega$ into simplices, namely triangles or tetrahedra in dimensions $d=2,3$, respectively.  Write $\cX_h$ for the finite-dimensional space of continuous functions which are piece-wise linear on each $T\in\cT_h$.  Regarding the Banach space $\cX$ we assume $\cX_h \subset \cX \cap C(\bar\Omega)$, so the method is conforming in that sense.  Denote the nodal interpolation operator by $I_h : C(\bar\Omega) \to \cX_h$
 
 The discretized problem data are $g_h=I_h g$, $\lbh=I_h\lb$, and $\ubh=I_h\ub$.  By the nodal monotonicity property of $P_1$ elements, the same compatibility conditions as \eqref{eq:compat} hold, namely $\lbh < \ubh$ on $\Omega$ and $\lbh \le g_h \le \ubh$ on $D$, so we define the nonempty, closed, and convex \emph{discrete admissible set} just as in \eqref{eq:admissible}:
 \begin{equation} \label{eq:fe:admissible}
